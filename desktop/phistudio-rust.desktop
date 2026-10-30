@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=PhiStudio Rust
+Comment=Phigros chart editor
+Exec=phistudio
+Icon=phistudio-rust
+Terminal=false
+Categories=AudioVideo;Audio;Music;

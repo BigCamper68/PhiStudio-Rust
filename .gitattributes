@@ -1,0 +1,2 @@
+# Preserve the BOM/CRLF parser fixture byte for byte on every checkout.
+crates/phistudio-core/tests/fixtures/conversion/pec-minimum.pec -text whitespace=cr-at-eol

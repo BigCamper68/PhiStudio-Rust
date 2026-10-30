@@ -1,0 +1,26 @@
+[package]
+name = "phistudio-prpr"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+tempfile.workspace = true
+anyhow.workspace = true
+async-trait.workspace = true
+serde_json.workspace = true
+macroquad.workspace = true
+prpr.workspace = true
+prpr-l10n.workspace = true
+sasa.workspace = true
+glyph_brush = "0.7"
+phistudio-core.workspace = true
+image = { workspace = true, features = ["gif"] }
+fastblur = "=0.1.1"
+serde_yaml = "0.9.34"
+
+[dev-dependencies]
+pollster.workspace = true
+tempfile.workspace = true
+tokio = { version = "1", features = ["rt-multi-thread"] }

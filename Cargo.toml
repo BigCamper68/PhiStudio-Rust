@@ -1,0 +1,43 @@
+[workspace]
+members = ["crates/phistudio-core", "crates/phistudio-prpr", "crates/phistudio-app", "crates/phistudio-audio"]
+exclude = ["vendor/egui-miniquad", "vendor/phira"]
+resolver = "2"
+
+[workspace.package]
+version = "1.27.0"
+edition = "2024"
+license = "GPL-3.0-only"
+rust-version = "1.88"
+
+[workspace.dependencies]
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["preserve_order", "float_roundtrip"] }
+thiserror = "2.0"
+tempfile = "3"
+async-trait = "0.1"
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "webp", "bmp"] }
+pollster = "0.4"
+macroquad = { git = "https://github.com/Mivik/prpr-macroquad", rev = "2150130", default-features = false }
+miniquad = { git = "https://github.com/Mivik/prpr-miniquad", rev = "138679c" }
+prpr = { path = "vendor/phira/prpr", default-features = false }
+prpr-l10n = { path = "vendor/phira/prpr-l10n" }
+sasa = { git = "https://github.com/Mivik/sasa", rev = "e76229b", default-features = false }
+phistudio-core = { path = "crates/phistudio-core" }
+phistudio-prpr = { path = "crates/phistudio-prpr" }
+phistudio-audio = { path = "crates/phistudio-audio" }
+
+# The editor must share prpr's GL context. Registry Macroquad/Miniquad would
+# otherwise create a second, incompatible runtime through the egui adapter.
+[patch.crates-io]
+macroquad = { git = "https://github.com/Mivik/prpr-macroquad", rev = "2150130" }
+miniquad = { git = "https://github.com/Mivik/prpr-miniquad", rev = "138679c" }
+egui-miniquad = { path = "vendor/egui-miniquad" }
+
+[profile.dev]
+debug = 1
+
+[profile.release]
+opt-level = 2
+lto = "thin"
+strip = true

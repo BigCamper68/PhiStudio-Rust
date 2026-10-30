@@ -1,0 +1,41 @@
+name: iOS device IPA
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ipa:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
+      - name: Rust toolchain
+        run: rustup update stable --no-self-update
+      - name: Verify native video encoder
+        run: python3 tools/verify-video-encoder.py
+      - name: Upload native video check
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PhiStudio-video-probe
+          path: |
+            artifacts/checks/native-video/result.txt
+            artifacts/checks/native-video/probe.log
+            artifacts/checks/native-video/native-avfoundation.mp4
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Build arm64 device IPA
+        run: python3 tools/build-ios.py
+      - name: Upload IPA and verification
+        uses: actions/upload-artifact@v4
+        with:
+          name: PhiStudio-iOS-arm64
+          path: |
+            artifacts/releases/ios/current/*.ipa
+            artifacts/releases/ios/current/ipa-verification.json
+            artifacts/releases/ios/current/SHA256SUMS.txt
+            artifacts/releases/ios/current/macho-load-commands.txt
+          if-no-files-found: error
+          retention-days: 7

@@ -1,0 +1,64 @@
+{
+  "source": "User-provided Phigros Note Skin.zip",
+  "archive_sha256": "946d471b57633783798466b1987709f8af72a0e23e6ef05728d75fb6d686a914",
+  "name": "Phigros Official",
+  "author": "PigeonGames",
+  "files": {
+    "click.ogg": {
+      "sha256": "9a42bfb84383e101bff07909ea43f3daf57f36097f8b9700fabf73c39b64b442",
+      "bytes": 5823
+    },
+    "click.png": {
+      "sha256": "5a6cc0d720490599954ba753ab1c24e08d88aabfb9d03f700ab69219d7180695",
+      "bytes": 1367
+    },
+    "click_mh.png": {
+      "sha256": "9ddd0a15051990caa696198b62c58a93ff9740a2972e34ecb76a5996ddbfe3b0",
+      "bytes": 6185
+    },
+    "drag.ogg": {
+      "sha256": "285c033d300dd9459b358255b9566cd6856ce54fa18650f38980c261680bfbec",
+      "bytes": 10693
+    },
+    "drag.png": {
+      "sha256": "66a9ac63b328e32737ce9f92082fea5948732c311dd034efe2b43e653db5f22b",
+      "bytes": 942
+    },
+    "drag_mh.png": {
+      "sha256": "a3b8913d8c5c5410bc45b4ecc629ca97e30fc3ae3a73f49c91964b612a0a62ea",
+      "bytes": 5072
+    },
+    "flick.ogg": {
+      "sha256": "15a08017883066a1d93f02e571062a2f3697f04c6c305200c51d2e2c7a2c6755",
+      "bytes": 10047
+    },
+    "flick.png": {
+      "sha256": "cd3f4c4a4204a5d3ddd52468a045c5ad4b9bee3e5f0e9584bacf931cbc9dc9a9",
+      "bytes": 3064
+    },
+    "flick_mh.png": {
+      "sha256": "2b2e2ca676195abb6f14a3b73d0a070f20839d7ccb2cd48ff71c5fb1df30437c",
+      "bytes": 11678
+    },
+    "hit_fx.png": {
+      "sha256": "fb4d3575bcfc5b225d2d665168484aaa58e0a45a51184a9a48db443416a8812c",
+      "bytes": 375731
+    },
+    "hold.ogg": {
+      "sha256": "9a42bfb84383e101bff07909ea43f3daf57f36097f8b9700fabf73c39b64b442",
+      "bytes": 5823
+    },
+    "hold.png": {
+      "sha256": "ad1f3c1178ca235969aea9298f3f7edf6eb88f13e4cff44d8e52eec2951b905a",
+      "bytes": 161946
+    },
+    "hold_mh.png": {
+      "sha256": "89922cd3422ba83db3d0542931cca5008da56414920eaabd717e704ba9cba748",
+      "bytes": 170848
+    },
+    "info.yml": {
+      "sha256": "77a40a39fdaa74b58e9a7db7f019c67318873688af0f786f428472edc8f672fc",
+      "bytes": 101
+    }
+  }
+}

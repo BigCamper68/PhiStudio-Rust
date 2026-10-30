@@ -1,0 +1,88 @@
+plugins { id 'com.android.application' }
+
+def nativeOutput = layout.buildDirectory.dir('rustJni')
+def ndkRoot = providers.environmentVariable('ANDROID_NDK_HOME')
+def noticesOutput = layout.buildDirectory.dir('generated/thirdPartyAssets')
+def buildRust = tasks.register('buildRust', Exec) {
+    workingDir rootProject.projectDir.parentFile
+    doFirst {
+        if (!ndkRoot.isPresent()) {
+            throw new GradleException('Set ANDROID_NDK_HOME to the Android NDK directory before building an APK.')
+        }
+    }
+    commandLine 'cargo', 'ndk', '-t', 'arm64-v8a', '--platform', '26',
+            '-o', nativeOutput.get().asFile.absolutePath, '--link-libcxx-shared',
+            'build', '--release', '--lib', '-p', 'phistudio-app', '--locked'
+}
+def syncNotices = tasks.register('syncNotices', Sync) {
+    into noticesOutput
+    from(new File(rootProject.projectDir.parentFile, 'licenses')) { into 'licenses' }
+    from(new File(rootProject.projectDir.parentFile, 'assets/runtime'))
+    from(new File(rootProject.projectDir.parentFile, 'LICENSE'))
+    from(new File(rootProject.projectDir.parentFile, 'THIRD_PARTY.md'))
+    from(new File(rootProject.projectDir.parentFile, 'assets/skins/phigros/SOURCE.json')) { into 'skin' }
+    from(new File(rootProject.projectDir.parentFile, 'assets/skins/phigros/info.yml')) { into 'skin' }
+    from(new File(rootProject.projectDir.parentFile, 'assets/fonts/SOURCE.json')) { into 'fonts' }
+    if (ndkRoot.isPresent()) {
+        from(new File(ndkRoot.get(), 'NOTICE')) { into 'ndk' }
+        from(new File(ndkRoot.get(), 'NOTICE.toolchain')) { into 'ndk' }
+    }
+}
+def verifyRustLibraries = tasks.register('verifyRustLibraries') {
+    dependsOn syncNotices
+    doLast {
+        ['libphistudio_app.so', 'libc++_shared.so'].each { name ->
+            def library = new File(nativeOutput.get().asFile, "arm64-v8a/${name}")
+            if (!library.isFile()) {
+                throw new GradleException("Missing ${name}. Run buildRust; skipRust only supports checking the Java host.")
+            }
+        }
+        if (!new File(noticesOutput.get().asFile, 'ndk/NOTICE').isFile()) {
+            throw new GradleException('NDK runtime notices are missing. Set ANDROID_NDK_HOME before packaging an APK.')
+        }
+    }
+}
+
+android {
+    namespace 'com.phistudio.rust'
+    compileSdk 35
+    buildToolsVersion '35.0.0'
+    if (ndkRoot.isPresent()) { ndkPath ndkRoot.get() }
+    defaultConfig {
+        applicationId 'com.phistudio.rust'
+        minSdk 26
+        targetSdk 35
+        versionCode 46
+        versionName '1.27.0'
+        ndk { abiFilters 'arm64-v8a' }
+    }
+    sourceSets.main.jniLibs.srcDirs = [nativeOutput]
+    sourceSets.main.assets.srcDirs += [noticesOutput]
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+            // Cargo's release profile already strips the Rust library. Keeping
+            // the NDK runtime intact also avoids invoking an x86 host strip tool.
+            keepDebugSymbols += ['**/*.so']
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    buildTypes {
+        release { minifyEnabled false }
+    }
+}
+
+// skipRust exists only for checking the small Java platform host without NDK.
+// An APK assembled with it has no Rust library and is not a runnable deliverable.
+tasks.named('preBuild').configure {
+    dependsOn syncNotices
+    if (!providers.gradleProperty('skipRust').isPresent()) { dependsOn buildRust }
+}
+tasks.configureEach {
+    if (name.startsWith('merge') && name.endsWith('NativeLibs')) {
+        dependsOn verifyRustLibraries
+    }
+}

@@ -1,0 +1,124 @@
+{
+  "formatVersion": 1,
+  "offset": -0.25,
+  "judgeLineList": [
+    {
+      "bpm": 120,
+      "notesAbove": [
+        {
+          "type": 1,
+          "time": 32,
+          "positionX": 2,
+          "speed": 1.2
+        },
+        {
+          "type": 2,
+          "time": 64,
+          "positionX": -3,
+          "speed": 0.8
+        },
+        {
+          "type": 3,
+          "time": 48,
+          "holdTime": 32,
+          "positionX": 1,
+          "speed": 5
+        },
+        {
+          "type": 4,
+          "time": 96,
+          "positionX": 0
+        },
+        {
+          "type": 1,
+          "time": -32
+        }
+      ],
+      "notesBelow": [
+        {
+          "type": 3,
+          "time": 16,
+          "holdTime": 0,
+          "positionX": 0
+        }
+      ],
+      "judgeLineMoveEvents": [
+        {
+          "startTime": -32,
+          "endTime": 32,
+          "start": 440520,
+          "end": 880260
+        },
+        {
+          "startTime": 32,
+          "endTime": 64,
+          "start": 440520,
+          "end": 880260
+        }
+      ],
+      "judgeLineRotateEvents": [
+        {
+          "startTime": 0,
+          "endTime": 32,
+          "start": 0,
+          "end": 30
+        },
+        {
+          "startTime": 32,
+          "endTime": 64,
+          "start": 30,
+          "end": 60
+        }
+      ],
+      "judgeLineDisappearEvents": [
+        {
+          "startTime": -64,
+          "endTime": -32,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "startTime": 0,
+          "endTime": 128,
+          "start": 1,
+          "end": 0.5
+        }
+      ],
+      "speedEvents": [
+        {
+          "startTime": 0,
+          "endTime": 32,
+          "value": 1
+        },
+        {
+          "startTime": 32,
+          "endTime": 64,
+          "value": 1
+        },
+        {
+          "startTime": 64,
+          "endTime": 128,
+          "value": -2
+        }
+      ]
+    },
+    {
+      "bpm": 240,
+      "notesAbove": [
+        {
+          "type": 1,
+          "time": 64,
+          "positionX": 1
+        }
+      ],
+      "judgeLineMoveEvents": [
+        {
+          "startTime": 0,
+          "endTime": 32,
+          "start": 440520,
+          "end": 880260
+        }
+      ]
+    }
+  ]
+}

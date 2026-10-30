@@ -1,0 +1,34 @@
+{
+  "files": {
+    "phigros.ttf": {
+      "sha256": "15d2d38a1041a99148ae9940c88833caea28291b311cbc61126325c9cca02dd2",
+      "size": 19616,
+      "repository": "https://github.com/TeamFlos/phira",
+      "revision": "0afd16621dd66557841a8cffe6813afff63335ec",
+      "path": "assets/phigros.ttf",
+      "git_blob": "d0d7101efbd73986221ba3e77bcd1c19ac8cb6ce",
+      "license": "GPL-3.0-only",
+      "copyright": "Copyright (c) 2023, Mivik"
+    },
+    "phira.ttf": {
+      "sha256": "64faa1f96a8293f64afde3e1d1ab7724485998836a7b8218865951eb193f7975",
+      "size": 12851472,
+      "release": "https://github.com/TeamFlos/phira/releases/tag/v0.8.2",
+      "path": "assets/font.ttf",
+      "family": "Ubuntu Regular",
+      "license": "Ubuntu Font Licence 1.0",
+      "copyright": "Copyright 2011 Canonical Ltd."
+    },
+    "NotoEmoji-Regular.ttf": {
+      "sha256": "415dc6290378574135b64c808dc640c1df7531973290c4970c51fdeb849cb0c5",
+      "size": 418804,
+      "package": "epaint 0.21.0",
+      "repository": "https://github.com/emilk/egui",
+      "revision": "0.21.0",
+      "path": "crates/epaint/fonts/NotoEmoji-Regular.ttf",
+      "license": "SIL Open Font License 1.1",
+      "license_path": "licenses/egui-fonts/OFL.txt"
+    }
+  },
+  "copied_from_java_reference": "bb2e9b34520a97b10e9012c26101aec061b9a004"
+}

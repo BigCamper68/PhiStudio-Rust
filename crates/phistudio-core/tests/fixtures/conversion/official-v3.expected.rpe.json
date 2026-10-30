@@ -1,0 +1,431 @@
+{
+  "BPMList": [
+    {
+      "bpm": 120,
+      "startTime": [
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "META": {
+    "RPEVersion": 123,
+    "background": "",
+    "backgroundDim": 0.6,
+    "charter": "",
+    "composer": "",
+    "id": "",
+    "level": "",
+    "name": "Untitled",
+    "offset": 126,
+    "song": ""
+  },
+  "judgeLineGroup": [
+    "Default"
+  ],
+  "judgeLineList": [
+    {
+      "Group": 0,
+      "Name": "Line 0",
+      "Texture": "line.png",
+      "bpmfactor": 1,
+      "eventLayers": [
+        {
+          "alphaEvents": [
+            {
+              "bezier": 0,
+              "bezierPoints": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "easingLeft": 0,
+              "easingRight": 1,
+              "easingType": 1,
+              "end": 127.5,
+              "endTime": [
+                4,
+                0,
+                1
+              ],
+              "linkgroup": 0,
+              "start": 255,
+              "startTime": [
+                0,
+                0,
+                1
+              ]
+            }
+          ],
+          "moveXEvents": [
+            {
+              "bezier": 0,
+              "bezierPoints": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "easingLeft": 0,
+              "easingRight": 1,
+              "easingType": 1,
+              "end": 675,
+              "endTime": [
+                1,
+                0,
+                1
+              ],
+              "linkgroup": 0,
+              "start": 0,
+              "startTime": [
+                0,
+                0,
+                1
+              ]
+            },
+            {
+              "bezier": 0,
+              "bezierPoints": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "easingLeft": 0,
+              "easingRight": 1,
+              "easingType": 1,
+              "end": 0,
+              "endTime": [
+                2,
+                0,
+                1
+              ],
+              "linkgroup": 0,
+              "start": 675,
+              "startTime": [
+                1,
+                0,
+                1
+              ]
+            }
+          ],
+          "moveYEvents": [
+            {
+              "bezier": 0,
+              "bezierPoints": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "easingLeft": 0,
+              "easingRight": 1,
+              "easingType": 1,
+              "end": 270.00000000000006,
+              "endTime": [
+                1,
+                0,
+                1
+              ],
+              "linkgroup": 0,
+              "start": 0,
+              "startTime": [
+                0,
+                0,
+                1
+              ]
+            },
+            {
+              "bezier": 0,
+              "bezierPoints": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "easingLeft": 0,
+              "easingRight": 1,
+              "easingType": 1,
+              "end": 0,
+              "endTime": [
+                2,
+                0,
+                1
+              ],
+              "linkgroup": 0,
+              "start": 270.00000000000006,
+              "startTime": [
+                1,
+                0,
+                1
+              ]
+            }
+          ],
+          "rotateEvents": [
+            {
+              "bezier": 0,
+              "bezierPoints": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "easingLeft": 0,
+              "easingRight": 1,
+              "easingType": 1,
+              "end": -60,
+              "endTime": [
+                2,
+                0,
+                1
+              ],
+              "linkgroup": 0,
+              "start": 0,
+              "startTime": [
+                0,
+                0,
+                1
+              ]
+            }
+          ],
+          "speedEvents": [
+            {
+              "end": 4.5,
+              "endTime": [
+                2,
+                0,
+                1
+              ],
+              "linkgroup": 0,
+              "start": 4.5,
+              "startTime": [
+                0,
+                0,
+                1
+              ]
+            },
+            {
+              "end": -9,
+              "endTime": [
+                4,
+                0,
+                1
+              ],
+              "linkgroup": 0,
+              "start": -9,
+              "startTime": [
+                2,
+                0,
+                1
+              ]
+            }
+          ]
+        }
+      ],
+      "father": -1,
+      "isCover": 1,
+      "notes": [
+        {
+          "above": 0,
+          "alpha": 255,
+          "endTime": [
+            0,
+            500001,
+            1000000
+          ],
+          "isFake": 0,
+          "positionX": 0,
+          "size": 1,
+          "speed": 1,
+          "startTime": [
+            0,
+            1,
+            2
+          ],
+          "type": 2,
+          "visibleTime": 999999,
+          "yOffset": 0
+        },
+        {
+          "above": 1,
+          "alpha": 255,
+          "endTime": [
+            1,
+            0,
+            1
+          ],
+          "isFake": 0,
+          "positionX": 151.875,
+          "size": 1,
+          "speed": 1.2,
+          "startTime": [
+            1,
+            0,
+            1
+          ],
+          "type": 1,
+          "visibleTime": 999999,
+          "yOffset": 0
+        },
+        {
+          "above": 1,
+          "alpha": 255,
+          "endTime": [
+            2,
+            1,
+            2
+          ],
+          "isFake": 0,
+          "positionX": 75.9375,
+          "size": 1,
+          "speed": 1,
+          "startTime": [
+            1,
+            1,
+            2
+          ],
+          "type": 2,
+          "visibleTime": 999999,
+          "yOffset": 0
+        },
+        {
+          "above": 1,
+          "alpha": 255,
+          "endTime": [
+            2,
+            0,
+            1
+          ],
+          "isFake": 0,
+          "positionX": -227.8125,
+          "size": 1,
+          "speed": 0.8,
+          "startTime": [
+            2,
+            0,
+            1
+          ],
+          "type": 4,
+          "visibleTime": 999999,
+          "yOffset": 0
+        },
+        {
+          "above": 1,
+          "alpha": 255,
+          "endTime": [
+            3,
+            0,
+            1
+          ],
+          "isFake": 0,
+          "positionX": 0,
+          "size": 1,
+          "speed": 1,
+          "startTime": [
+            3,
+            0,
+            1
+          ],
+          "type": 3,
+          "visibleTime": 999999,
+          "yOffset": 0
+        }
+      ],
+      "numOfNotes": 3,
+      "zOrder": 0
+    },
+    {
+      "Group": 0,
+      "Name": "Line 1",
+      "Texture": "line.png",
+      "bpmfactor": 1,
+      "eventLayers": [
+        {
+          "moveXEvents": [
+            {
+              "bezier": 0,
+              "bezierPoints": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "easingLeft": 0,
+              "easingRight": 1,
+              "easingType": 1,
+              "end": 337.5,
+              "endTime": [
+                0,
+                1,
+                2
+              ],
+              "linkgroup": 0,
+              "start": -337.5,
+              "startTime": [
+                0,
+                0,
+                1
+              ]
+            }
+          ],
+          "moveYEvents": [
+            {
+              "bezier": 0,
+              "bezierPoints": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "easingLeft": 0,
+              "easingRight": 1,
+              "easingType": 1,
+              "end": 0,
+              "endTime": [
+                0,
+                1,
+                2
+              ],
+              "linkgroup": 0,
+              "start": 0,
+              "startTime": [
+                0,
+                0,
+                1
+              ]
+            }
+          ]
+        }
+      ],
+      "father": -1,
+      "isCover": 1,
+      "notes": [
+        {
+          "above": 1,
+          "alpha": 255,
+          "endTime": [
+            1,
+            0,
+            1
+          ],
+          "isFake": 0,
+          "positionX": 75.9375,
+          "size": 1,
+          "speed": 1,
+          "startTime": [
+            1,
+            0,
+            1
+          ],
+          "type": 1,
+          "visibleTime": 999999,
+          "yOffset": 0
+        }
+      ],
+      "numOfNotes": 1,
+      "zOrder": 0
+    }
+  ]
+}

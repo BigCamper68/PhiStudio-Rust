@@ -1,0 +1,110 @@
+# Third-party software and assets
+
+PhiStudio Rust combines original editor code with the software and resources
+identified below. The application is distributed under **GPL-3.0-only**; the
+complete license is in [LICENSE](LICENSE). Separate dependency and asset
+licenses remain applicable. This document does not relicense third-party work.
+
+## Renderer and reference implementation
+
+- **Phira / prpr**, by Mivik and the Phira contributors, is used under
+  GPL-3.0-only. The parser, animation system, renderer, judgment logic, particles,
+  shaders and companion crates in `vendor/phira` come from
+  [TeamFlos/phira](https://github.com/TeamFlos/phira) at commit
+  `0afd16621dd66557841a8cffe6813afff63335ec`. Its license is
+  [vendor/phira/LICENSE](vendor/phira/LICENSE). `vendor/phira/UPSTREAM.json`
+  records the original Git blobs and SHA-256 hashes. The outer vendored workspace
+  member list is adjusted for this application; `UPSTREAM-Cargo.toml` preserves
+  the upstream file. Editor integration is in `crates/phistudio-prpr`.
+- **PhiStudio Java**, by BigCamper68 and its contributors, is an MIT-licensed
+  reference at commit `bb2e9b34520a97b10e9012c26101aec061b9a004` in
+  [BigCamper68/PhiStudio](https://github.com/BigCamper68/PhiStudio).
+  Conversion rules, selected authoring behavior and the demonstration fixture
+  derive from that reference. The original notice is retained in
+  [licenses/PhiStudio-Java-MIT.txt](licenses/PhiStudio-Java-MIT.txt).
+  Conversion fixture provenance is recorded in
+  `crates/phistudio-core/tests/fixtures/conversion/SOURCE.json`.
+  The Java project's license is unchanged.
+
+## UI, graphics and audio dependencies
+
+| Component | Source / version | License and retained notices |
+| --- | --- | --- |
+| Macroquad | [Mivik/prpr-macroquad](https://github.com/Mivik/prpr-macroquad), revision `2150130` | MIT OR Apache-2.0; consult the pinned source |
+| Miniquad | [Mivik/prpr-miniquad](https://github.com/Mivik/prpr-miniquad), revision `138679c` | MIT OR Apache-2.0; `licenses/Miniquad-LICENSE-MIT.txt` and `licenses/Miniquad-LICENSE-APACHE.txt` |
+| egui / epaint | [emilk/egui](https://github.com/emilk/egui), 0.21.0 | MIT OR Apache-2.0 for code; bundled fonts have separate terms below |
+| egui-miniquad | 0.14.0, vendored with local changes | MIT OR Apache-2.0; both license texts and `PHISTUDIO-PATCH.md` are in `vendor/egui-miniquad` |
+| RustFFT | [ejmahler/RustFFT](https://github.com/ejmahler/RustFFT), 6.4.1 | MIT OR Apache-2.0; MIT notice in `licenses/RustFFT-MIT.txt` |
+| sha2 | [RustCrypto/hashes](https://github.com/RustCrypto/hashes), 0.10.9 | MIT OR Apache-2.0; MIT notice in `licenses/sha2-MIT.txt` |
+| fastblur | [fschutt/fastblur](https://github.com/fschutt/fastblur), 0.1.1 | MIT; `licenses/fastblur-LICENSE.txt` |
+| fs2 | [danburkert/fs2-rs](https://github.com/danburkert/fs2-rs), 0.4.3 | MIT OR Apache-2.0; consult the pinned crate source |
+| chrono | [chronotope/chrono](https://github.com/chronotope/chrono), 0.4.45 | MIT OR Apache-2.0; consult the pinned crate source |
+| Oboe bindings | [katyo/oboe-rs](https://github.com/katyo/oboe-rs), 0.6.1 | Apache-2.0; consult the dependency source and its bundled Oboe notices |
+| sasa | [Mivik/sasa](https://github.com/Mivik/sasa), revision `e76229b` | The pinned manifest does not declare an SPDX license; consult its upstream source and notices |
+
+`Cargo.lock` records the complete resolved dependency graph, registry checksums
+and Git revisions, including transitive dependencies. This table highlights
+major integrations and is not a substitute for individual dependency licenses.
+
+Android `MainActivity` and `QuadNative` adapt the pinned Miniquad templates.
+Application-specific changes cover package and library names, storage, input,
+keyboard handling, display density, lifecycle, document pickers and safe areas.
+The vendored egui-miniquad adapter contains compatibility, buffer lifetime, touch
+input and DPI changes documented in its retained patch notice.
+
+The Gradle wrapper and build tooling use Gradle's Apache-2.0 licensed software.
+Android packages also include the selected NDK's runtime notices for the bundled
+C++ runtime. The Android and iOS packaging scripts include this document, the
+application license, and the retained `licenses` directory.
+
+## Fonts
+
+- **Ubuntu Regular**, copyright Canonical Ltd., is taken from the Phira 0.8.2
+  release and distributed under Ubuntu Font Licence 1.0. See
+  `licenses/Phira-Ubuntu-Font-Licence.txt`.
+- **PGR / phigros.ttf**, copyright Mivik, is taken from the pinned Phira source
+  under GPL-3.0-only.
+- **Noto Emoji**, used by the UI and as a native emoji fallback, is distributed
+  under SIL Open Font License 1.1. See `licenses/egui-fonts/OFL.txt`.
+- egui's other embedded fonts, including **Ubuntu Light**, **Hack**, and
+  **emoji-icon-font**, retain their own notices in `licenses/egui-fonts`.
+
+Exact source locations, revisions, hashes and copyright information for the
+application's font files are recorded in `assets/fonts/SOURCE.json`.
+
+## Phigros Official resource pack
+
+The images, sounds and metadata in `assets/skins/phigros` are identified by the
+supplied pack as **Phigros Official**, authored by **PigeonGames**. These files
+are retained unchanged. `assets/skins/phigros/SOURCE.json` records their hashes
+and original archive provenance; `info.yml` retains the pack attribution.
+
+These assets retain their original rights. Their inclusion does not place them
+under the application's GPL license or grant additional redistribution rights.
+No license grant for these assets is asserted by this document. No third-party
+music or illustration collection is bundled. User-imported charts and resources
+remain subject to their respective owners' terms.
+
+## Independently implemented features
+
+The audio-guide analyzer and project version-control implementation are original
+Rust code. They do not bundle a neural model or an external analysis program.
+Feature behavior was informed in part by
+[rpe-next](https://github.com/kclg-YSJ/rpe-next); no rpe-next source code or model
+weights are included. This reference does not imply that rpe-next is licensed
+under this project's GPL license.
+
+Application icon variants share the original PhiStudio Rust IPA artwork through
+`tools/icon_art.py`; they are not taken from a third-party icon pack.
+
+## Verification
+
+Run these commands from the repository root to verify retained source and asset
+provenance:
+
+```sh
+python3 tools/verify-prpr-source.py
+python3 tools/verify-note-skin.py
+python3 tools/verify-preview-assets.py
+python3 tools/generate-icons.py --check
+```

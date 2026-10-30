@@ -1,0 +1,34 @@
+{
+  "commit": "bb2e9b34520a97b10e9012c26101aec061b9a004",
+  "fixtures": {
+    "official-v1.json": {
+      "expected": "official-v1.expected.rpe.json",
+      "expected_sha256": "7b8bb1f995899754868a78fe5692733e5080877b275ee0e6cc7e355fd14cb4ca",
+      "source_sha256": "b12d18128a96117b7db8be04b857fa1c09330611810a56030f2f0fd2812ab835"
+    },
+    "official-v3.json": {
+      "expected": "official-v3.expected.rpe.json",
+      "expected_sha256": "911b72b15aae5d2f1c5adc284307fe2709220290d3ed54c3f5a00e5994d009fd",
+      "source_sha256": "4c22e7bda453c52665d21a5f3fa03af30341b50a9765be137a26a2d5638424fb"
+    },
+    "pec-minimum.pec": {
+      "expected": "pec-minimum.expected.rpe.json",
+      "expected_sha256": "0e542ef6c6de22ec5ab54fc1d0247d70a50665161acb5633cf75f22b6f9fbaf6",
+      "source_sha256": "070eb46430c8c699407df5689c7239f0fc45768b74a75cca407cbd470f2e9048"
+    },
+    "pec-overlap.pec": {
+      "expected": "pec-overlap.expected.rpe.json",
+      "expected_sha256": "7a3bba5279de8a83e5a562a2aa7bfe81285b9f9e792b33fb1f698c147707bac5",
+      "source_sha256": "b4ada6d784319342e488f625603f10540f3bdc32547f9ea11aba2f24f9a28765"
+    }
+  },
+  "java_sources": {
+    "app/src/main/java/com/xpe/mobile/model/BeatTime.java": "31db488f8acf5a773738b25d5501115195ceefc39dbe07852a76633a5ba39c94",
+    "app/src/main/java/com/xpe/mobile/model/ChartDocument.java": "d237f26d0e975a08daacb9fcc4b057545adb33736927b18c1309fa4e5d57cdc9",
+    "app/src/main/java/com/xpe/mobile/model/LineEvent.java": "88846bc6e72f5399570984b62d662736fc6f9a6748652f27253171ab9a1e1037",
+    "app/src/main/java/com/xpe/mobile/packageio/LegacyPecConverter.java": "a96090e752667e5a1e52f68d503dd4e0079c5ed5aec3447f60901ad51f0927c0",
+    "app/src/main/java/com/xpe/mobile/packageio/OfficialPhigrosConverter.java": "618f81ac71cc772b7a0e586cb622ea949a6d9cdadb57ff49c30883a922c8d9cc"
+  },
+  "json_dependency": "org.json:json:20240303",
+  "reference": "https://github.com/BigCamper68/PhiStudio"
+}

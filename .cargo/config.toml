@@ -1,0 +1,8 @@
+[net]
+git-fetch-with-cli = true
+
+[build]
+jobs = 4
+
+[target.aarch64-linux-android]
+rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384"]
