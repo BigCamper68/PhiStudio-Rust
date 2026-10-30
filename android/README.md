@@ -51,3 +51,24 @@ Project imports use Android's document picker and private working copies.
 Exports use the system destination picker. Editing, recovery and version history
 are stored privately; checking out a version does not publish it as the saved
 project until Save is pressed.
+
+## Signed builds in GitHub Actions
+
+Run **Actions → Android signed APK → Run workflow** on `main`. The workflow
+builds an unsigned release APK without signing credentials, then signs it in a
+separate hosted job using the `signing` environment. Download the
+`PhiStudio-Android-signed` artifact for the verified APK. Release attachments are
+not changed automatically.
+
+The environment contains `ANDROID_KEYSTORE_BASE64` and
+`ANDROID_KEYSTORE_PASSWORD` as secrets, plus `ANDROID_KEY_ALIAS` as a variable.
+Its deployment branch policy permits `main` only. Signing checks the expected
+certificate fingerprint, v2/v3 signatures, unchanged APK payload and 16 KiB ZIP
+alignment. Key files exist only in a temporary directory in the signing job;
+no application checkout or build scripts run there.
+
+Keep an independent backup of the keystore and password. GitHub secrets are
+usable by authorized workflows but cannot be downloaded through the normal
+Secrets interface. Changes to the signing workflow must be reviewed carefully:
+code with access to signing credentials can disclose them. Do not add untrusted
+pull-request triggers or upload signing directories as artifacts.

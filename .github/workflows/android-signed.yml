@@ -1,0 +1,153 @@
+name: Android signed APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-signed-main
+  cancel-in-progress: false
+
+env:
+  NDK_VERSION: 30.0.16248370
+  BUILD_TOOLS_VERSION: 35.0.0
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Prepare Java and Android tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;$BUILD_TOOLS_VERSION" "ndk;$NDK_VERSION"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+      - name: Prepare Rust
+        run: |
+          rustup update stable --no-self-update
+          rustup target add aarch64-linux-android
+          cargo install cargo-ndk --version 4.1.2 --locked
+      - name: Verify bundled sources and assets
+        run: |
+          python3 tools/verify-prpr-source.py
+          python3 tools/verify-note-skin.py
+          python3 tools/verify-preview-assets.py
+          python3 tools/generate-icons.py --check
+      - name: Build unsigned release APK
+        working-directory: android
+        run: ./gradlew :app:assembleRelease --no-daemon
+      - name: Upload unsigned build
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: PhiStudio-Android-unsigned-${{ github.sha }}
+          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: error
+          retention-days: 1
+
+  sign:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: signing
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      # No checkout or application build scripts run in this job.
+      - name: Download this run's unsigned APK
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: PhiStudio-Android-unsigned-${{ github.sha }}
+          path: unsigned
+      - name: Prepare signing tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "build-tools;$BUILD_TOOLS_VERSION"
+      - name: Sign and verify APK
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ vars.ANDROID_KEY_ALIAS }}
+        run: |
+          python3 - <<'PY'
+          import base64
+          import hashlib
+          import os
+          from pathlib import Path
+          import re
+          import subprocess
+          import tempfile
+          import zipfile
+
+          expected_certificate = '0711ce5197d30d09c71630447f8898fa9f195da36387b3f9fe385a084798a9d2'
+          key_data = base64.b64decode(os.environ.pop('ANDROID_KEYSTORE_BASE64'), validate=True)
+          password = os.environ.pop('ANDROID_KEYSTORE_PASSWORD')
+          alias = os.environ.pop('ANDROID_KEY_ALIAS')
+          if not key_data or not password or not alias:
+              raise SystemExit('Signing configuration is incomplete')
+          inputs = list(Path('unsigned').glob('*.apk'))
+          if len(inputs) != 1 or inputs[0].is_symlink():
+              raise SystemExit('Expected exactly one unsigned APK')
+          source = inputs[0]
+          sdk = Path(os.environ['ANDROID_HOME']) / 'build-tools' / os.environ['BUILD_TOOLS_VERSION']
+          badging = subprocess.check_output([sdk / 'aapt2', 'dump', 'badging', source], text=True)
+          if "package: name='com.phistudio.rust'" not in badging:
+              raise SystemExit('Unexpected application ID')
+          version = re.search(r"versionName='([A-Za-z0-9.+-]+)'", badging)
+          if version is None:
+              raise SystemExit('Invalid application version')
+          output = Path('signed') / f'PhiStudio-Rust-{version[1]}-signed.apk'
+          output.parent.mkdir()
+          with tempfile.TemporaryDirectory(prefix='phistudio-signing-', dir=os.environ['RUNNER_TEMP']) as directory:
+              key = Path(directory) / 'release.p12'
+              secret = Path(directory) / 'password.txt'
+              key.write_bytes(key_data)
+              secret.write_text(password + '\n')
+              key.chmod(0o600)
+              secret.chmod(0o600)
+              del key_data, password
+              subprocess.run([sdk / 'apksigner', 'sign', '--ks', key, '--ks-key-alias', alias,
+                              '--ks-pass', f'file:{secret}', '--min-sdk-version', '26',
+                              '--v1-signing-enabled', 'false', '--v2-signing-enabled', 'true',
+                              '--v3-signing-enabled', 'true', '--out', output, source], check=True)
+              verification = subprocess.check_output([sdk / 'apksigner', 'verify', '--verbose',
+                                                     '--print-certs', output], text=True)
+              fingerprints = re.findall(r'certificate SHA-256 digest: ([0-9a-fA-F]+)', verification)
+              if not fingerprints or any(value.lower() != expected_certificate for value in fingerprints):
+                  raise SystemExit('Unexpected signing certificate')
+              for scheme in ['v2', 'v3']:
+                  if not re.search(rf'Verified using {scheme} scheme.*: true', verification):
+                      raise SystemExit(f'Missing {scheme} signature')
+              subprocess.run([sdk / 'zipalign', '-c', '-P', '16', '4', output], check=True)
+              with zipfile.ZipFile(source) as original, zipfile.ZipFile(output) as signed:
+                  if original.namelist() != signed.namelist():
+                      raise SystemExit('Signing changed APK entries')
+                  for name in original.namelist():
+                      if original.read(name) != signed.read(name):
+                          raise SystemExit('Signing changed the application payload')
+          digest = hashlib.file_digest(output.open('rb'), 'sha256').hexdigest()
+          with Path(os.environ['GITHUB_STEP_SUMMARY']).open('a') as summary:
+              summary.write(f'APK: `{output.name}`\n\nSource: `{os.environ["GITHUB_SHA"]}`\n\n'
+                            f'SHA-256: `{digest}`\n\nCertificate SHA-256: `{expected_certificate}`\n')
+          print('APK signature, certificate, payload and alignment verified.')
+          PY
+      - name: Upload signed APK only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: PhiStudio-Android-signed
+          path: signed/*.apk
+          if-no-files-found: error
+          retention-days: 14
