@@ -137,3 +137,25 @@ fn rpe_flags_and_alpha_match_prpr_ranges_and_survive_unrelated_edits() {
     editor.undo();
     assert_eq!(editor.document().as_json(), &root);
 }
+
+#[test]
+fn official_noise_fields_keep_seconds_extensions_and_null_when_converted() {
+    let mut source: Value =
+        serde_json::from_str(include_str!("fixtures/conversion/official-v3.json")).unwrap();
+    for fields in [
+        Value::Null,
+        serde_json::json!([]),
+        serde_json::json!([{
+            "appearTime":1.125,"enableTime":2.25,"disableTime":3.5,"disappearTime":4.75,
+            "bottomLeftPercentage":{"x":0.2,"y":0.3},"topRightPercentage":{"x":0.8,"y":0.7},
+            "moveEvents":[{"time":2.25,"endPosition":{"x":0.5,"y":0.5},"easeTypeX":4,"easeTypeY":5}],
+            "futureExtension":{"keep":true}
+        }]),
+    ] {
+        source["blockAreaList"] = fields.clone();
+        let decoded = decode_chart(&source.to_string()).unwrap().document;
+        assert_eq!(decoded.as_json()["blockAreaList"], fields);
+        let reopened = decode_chart(&decoded.to_json().unwrap()).unwrap().document;
+        assert_eq!(reopened.as_json()["blockAreaList"], fields);
+    }
+}

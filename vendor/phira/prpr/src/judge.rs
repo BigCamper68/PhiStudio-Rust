@@ -410,6 +410,17 @@ impl Judge {
     }
 
     pub fn update(&mut self, res: &mut Resource, chart: &mut Chart, bad_notes: &mut Vec<BadNote>) {
+        self.update_with_touch_filter(res, chart, bad_notes, |_| {});
+    }
+
+    /// Integration hook after native input normalization, before note judgement.
+    pub fn update_with_touch_filter(
+        &mut self,
+        res: &mut Resource,
+        chart: &mut Chart,
+        bad_notes: &mut Vec<BadNote>,
+        filter: impl FnOnce(&mut Vec<Touch>),
+    ) {
         if res.config.autoplay() {
             self.auto_play_update(res, chart);
             return;
@@ -509,7 +520,7 @@ impl Judge {
                 }
             }
         }
-        let touches: Vec<Touch> = touches
+        let mut touches: Vec<Touch> = touches
             .into_values()
             .map(|mut it| {
                 it.time = if it.time.is_infinite() {
@@ -520,6 +531,7 @@ impl Judge {
                 it
             })
             .collect();
+        filter(&mut touches);
         // pos[line][touch]
         let mut pos = Vec::<Vec<Option<Point>>>::with_capacity(chart.lines.len());
         for id in 0..chart.lines.len() {

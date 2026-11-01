@@ -59,14 +59,37 @@ impl Preview {
                     .quad_gl
                     .viewport(self.playtest_viewport);
             }
+            let filter_touches = self.playtest.is_some() && self.noise_fields.enabled();
             let mut unused = vec![];
             let bad_notes = match &mut self.playtest {
                 Some(session) => &mut session.bad_notes,
                 None => &mut unused,
             };
-            self.judge
-                .update(&mut self.resource, &mut self.chart, bad_notes);
+            if filter_touches {
+                let aspect = self.resource.aspect_ratio;
+                self.judge.update_with_touch_filter(
+                    &mut self.resource,
+                    &mut self.chart,
+                    bad_notes,
+                    |touches| {
+                        self.noise_fields
+                            .filter_touches(touches, chart_seconds as f32, aspect, dt)
+                    },
+                );
+                self.judge
+                    .trackers
+                    .retain(|id, _| !self.noise_fields.suppressed(*id));
+            } else {
+                self.judge
+                    .update(&mut self.resource, &mut self.chart, bad_notes);
+            }
             unsafe { get_internal_gl() }.quad_gl.viewport(old);
+        }
+        if let Err(error) = self
+            .transport
+            .update_noise_filter(self.playtest.is_some() && self.noise_fields.touching(), dt)
+        {
+            self.audio_warning = Some(format!("Noise Field audio filter failed: {error:#}"));
         }
         self.resource.config.volume_sfx = sound_volume;
         if delay_sounds && self.offline_step.is_none() && self.transport.playing() && !seeking {
@@ -142,7 +165,10 @@ impl Preview {
         if source_ids {
             self.resource.config.chart_debug = false;
         }
+        let no_effect = self.resource.no_effect;
+        self.resource.no_effect |= !self.editor_options.preview_shaders;
         self.chart.render(&mut ui, &mut self.resource);
+        self.resource.no_effect = no_effect;
         if source_ids {
             self.resource.config.chart_debug = true;
         }
@@ -168,6 +194,14 @@ impl Preview {
         {
             self.resource.emitter.draw(dt);
         }
+        self.noise_fields.render(&mut self.resource, viewport);
+        self.resource.camera.render_target = Some(
+            self.resource
+                .chart_target
+                .as_ref()
+                .map_or(self.target, |t| t.output()),
+        );
+        set_camera(&self.resource.camera);
         self.pause_bounds = hud::pause_bounds(&self.resource);
         if self.editor_options.preview_hud {
             ui.text_painter = &mut self.text;

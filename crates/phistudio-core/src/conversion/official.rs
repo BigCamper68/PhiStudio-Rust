@@ -162,8 +162,8 @@ pub(super) fn convert(source: Value) -> Result<ChartDocument, ChartError> {
     }
     result["judgeLineList"] = json!(output);
     if let Some(noise) = source.get("blockAreaList") {
-        if !noise.is_array() {
-            return Err(invalid("blockAreaList must be an array"));
+        if !noise.is_array() && !noise.is_null() {
+            return Err(invalid("blockAreaList must be an array or null"));
         }
         result["blockAreaList"] = noise.clone();
     }

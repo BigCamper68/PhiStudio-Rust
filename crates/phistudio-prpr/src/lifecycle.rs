@@ -53,7 +53,10 @@ impl Preview {
             resource.background = source.resource.background.clone();
             resource.illustration = source.resource.illustration.clone();
         }
+        let mut noise_fields = noise_fields::NoiseFields::default();
+        noise_fields.load(document).await?;
         let mut preview = Self {
+            noise_fields,
             anchors,
             offline_step: None,
             resource_music: None,
@@ -118,6 +121,7 @@ impl Preview {
             options.use_rpe_170_speed,
         )
         .await?;
+        self.noise_fields.load(document).await?;
         // Keep the last valid chart if parsing fails, and let the UI report it.
         compatibility::apply(document, &mut chart);
         self.sound_schedule.ready = false;

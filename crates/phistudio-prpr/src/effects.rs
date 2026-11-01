@@ -80,8 +80,10 @@ pub(crate) async fn replace(
 }
 impl Preview {
     pub(crate) fn configure_effects(&mut self) {
-        let disabled = !self.editor_options.preview_shaders
-            || (self.chart.extra.effects.is_empty() && self.chart.extra.global_effects.is_empty());
+        let disabled = !self.noise_fields.enabled()
+            && (!self.editor_options.preview_shaders
+                || (self.chart.extra.effects.is_empty()
+                    && self.chart.extra.global_effects.is_empty()));
         if self.resource.no_effect != disabled {
             self.resource.no_effect = disabled;
             self.resource.config.disable_effect = disabled;
@@ -109,7 +111,13 @@ impl Preview {
             render_target: Some(target),
             ..Default::default()
         });
-        for effect in &mut self.chart.extra.global_effects {
+        for effect in self
+            .chart
+            .extra
+            .global_effects
+            .iter_mut()
+            .filter(|_| self.editor_options.preview_shaders)
+        {
             effect.update(&self.resource);
             effect.render(&mut self.resource);
         }

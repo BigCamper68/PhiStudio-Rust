@@ -9,6 +9,10 @@ impl Preview {
     pub fn set_playback(&mut self, seconds: f64, playing: bool, seek: bool) -> Result<()> {
         let seek = seek || (!self.transport.playing() && seconds != self.last_time);
         self.needs_seek |= seek;
+        if seek || !playing {
+            self.noise_fields.reset_input();
+            self.transport.reset_noise_filter()?;
+        }
         if self.playtest.is_none() && self.transport.playing() && !playing {
             // Editor pause/scrub discards live particles; resume starts fresh.
             self.clear_particles = true;

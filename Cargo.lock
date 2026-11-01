@@ -3061,6 +3061,7 @@ dependencies = [
  "prpr",
  "prpr-l10n",
  "sasa",
+ "serde",
  "serde_json",
  "serde_yaml",
  "tempfile",

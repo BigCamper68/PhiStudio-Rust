@@ -1,4 +1,4 @@
-//! Interactive practice uses the unchanged native input pump, Judge and HUD.
+//! Interactive practice uses the native input pump, Judge and HUD.
 use crate::{Preview, autoplay};
 use anyhow::{Result, ensure};
 use macroquad::prelude::*;
@@ -130,6 +130,10 @@ impl Preview {
         Ok(())
     }
     pub fn end_playtest(&mut self) {
+        self.noise_fields.reset_input();
+        if let Err(error) = self.transport.reset_noise_filter() {
+            self.audio_warning = Some(format!("Noise Field audio filter reset failed: {error:#}"));
+        }
         if let Some(session) = self.playtest.take() {
             for (line, index) in session.restored_fake {
                 if let Some(note) = self

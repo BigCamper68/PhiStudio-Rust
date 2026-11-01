@@ -15,7 +15,10 @@ licenses remain applicable. This document does not relicense third-party work.
   [vendor/phira/LICENSE](vendor/phira/LICENSE). `vendor/phira/UPSTREAM.json`
   records the original Git blobs and SHA-256 hashes. The outer vendored workspace
   member list is adjusted for this application; `UPSTREAM-Cargo.toml` preserves
-  the upstream file. Editor integration is in `crates/phistudio-prpr`.
+  the upstream file. Editor integration is in `crates/phistudio-prpr`. A local
+  Noise Field input-filter hook is documented in `vendor/phira/PHISTUDIO-PATCH.md`
+  and `vendor/phira/patches/noise-touch-filter.patch`. The source verifier reverses
+  that patch before checking the original upstream hashes in `UPSTREAM.json`.
 - **PhiStudio Java**, by BigCamper68 and its contributors, is an MIT-licensed
   reference at commit `bb2e9b34520a97b10e9012c26101aec061b9a004` in
   [BigCamper68/PhiStudio](https://github.com/BigCamper68/PhiStudio).
@@ -85,6 +88,18 @@ No license grant for these assets is asserted by this document. No third-party
 music or illustration collection is bundled. User-imported charts and resources
 remain subject to their respective owners' terms.
 
+## Noise Fields
+
+Noise Fields in `crates/phistudio-prpr/src/noise_fields` use shaders, material
+parameters and decoded textures extracted from the user-supplied Phigros Android
+build 160 XAPK. These game assets retain their original ownership; the project's
+GPL license does not relicense them. The geometry adapter was informed by
+[Phira PR #901](https://github.com/TeamFlos/phira/pull/901) at
+`0afa0fa11320a7c457f2fcce536c446df4b898ed` (2923fzyxfkj, GPL-3.0), then checked
+against the supplied build's `PreviewBlockControl` and `GetEase` ARM64 methods.
+The source manifest and adaptation details are in
+`crates/phistudio-prpr/src/noise_fields/SOURCE.json` and `docs/NOISE-FIELDS.md`.
+
 ## Independently implemented features
 
 The audio-guide analyzer and project version-control implementation are original
@@ -106,5 +121,6 @@ provenance:
 python3 tools/verify-prpr-source.py
 python3 tools/verify-note-skin.py
 python3 tools/verify-preview-assets.py
+python3 tools/verify-noise-fields.py
 python3 tools/generate-icons.py --check
 ```

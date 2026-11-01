@@ -2,7 +2,10 @@
 use anyhow::Result;
 use prpr::time::TimeManager;
 use sasa::{AudioClip, AudioManager, Music, MusicParams};
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{
+    Arc, Mutex, Weak,
+    atomic::{AtomicU32, Ordering},
+};
 
 static ACTIVE_MUSIC: Mutex<Weak<Mutex<Music>>> = Mutex::new(Weak::new());
 
@@ -12,6 +15,59 @@ pub(crate) fn suspend_audio() {
         && let Ok(mut music) = music.lock()
     {
         let _ = music.pause();
+    }
+}
+
+// Observe the actual backend rate without changing its PCM or timing.
+struct OutputRate(Weak<AtomicU32>);
+impl sasa::Renderer for OutputRate {
+    fn alive(&self) -> bool {
+        self.0.strong_count() != 0
+    }
+    fn render_mono(&mut self, rate: u32, _: &mut [f32]) {
+        if let Some(output) = self.0.upgrade() {
+            output.store(rate, Ordering::Relaxed);
+        }
+    }
+    fn render_stereo(&mut self, rate: u32, data: &mut [f32]) {
+        self.render_mono(rate, data);
+    }
+}
+
+struct NoiseLowPass {
+    cutoff: f32,
+    from: f32,
+    target: f32,
+    elapsed: f32,
+    coefficient: f32,
+}
+impl Default for NoiseLowPass {
+    fn default() -> Self {
+        Self {
+            cutoff: 22_000.,
+            from: 22_000.,
+            target: 22_000.,
+            elapsed: 0.1,
+            coefficient: 0.,
+        }
+    }
+}
+impl NoiseLowPass {
+    fn update(&mut self, blocked: bool, dt: f32, sample_rate: u32) -> f32 {
+        let target = if blocked { 1500. } else { 22_000. };
+        if target != self.target {
+            self.from = self.cutoff;
+            self.target = target;
+            self.elapsed = 0.;
+        }
+        self.elapsed = (self.elapsed + dt.max(0.)).min(0.1);
+        self.cutoff = self.from + (self.target - self.from) * (self.elapsed / 0.1);
+        // sasa exposes a one-pole coefficient, not Unity's cutoff-frequency DSP.
+        if self.cutoff == 22_000. {
+            0.
+        } else {
+            (-std::f32::consts::TAU * self.cutoff / sample_rate.max(1) as f32).exp()
+        }
     }
 }
 
@@ -26,6 +82,9 @@ pub(crate) struct Transport {
     cursor: f64,
     pending_start: Option<(f64, f64)>,
     last_chart: f64,
+    output_rate: Arc<AtomicU32>,
+    rate_observer_added: bool,
+    noise_filter: NoiseLowPass,
 }
 impl Transport {
     pub fn new() -> Self {
@@ -43,11 +102,19 @@ impl Transport {
             cursor: 0.,
             pending_start: None,
             last_chart: 0.,
+            output_rate: Arc::new(AtomicU32::new(48_000)),
+            rate_observer_added: false,
+            noise_filter: NoiseLowPass::default(),
         }
     }
     pub fn set_music(&mut self, audio: &mut AudioManager, clip: Option<AudioClip>) -> Result<()> {
         // Drop the previous renderer before replacing it. Revisions of the same
         // chart retain this music handle; only a resource change reloads music.
+        if !self.rate_observer_added {
+            audio.add_renderer(OutputRate(Arc::downgrade(&self.output_rate)))?;
+            self.rate_observer_added = true;
+        }
+        self.noise_filter = NoiseLowPass::default();
         self.clip = clip.clone();
         self.music = None;
         self.music_playing = false;
@@ -68,6 +135,33 @@ impl Transport {
             .map_err(|_| anyhow::anyhow!("Audio lifecycle lock failed"))? =
             self.music.as_ref().map_or_else(Weak::new, Arc::downgrade);
         self.position_music()?;
+        Ok(())
+    }
+    pub fn update_noise_filter(&mut self, blocked: bool, dt: f32) -> Result<()> {
+        let coefficient =
+            self.noise_filter
+                .update(blocked, dt, self.output_rate.load(Ordering::Relaxed));
+        if coefficient != self.noise_filter.coefficient {
+            if let Some(music) = &self.music {
+                music
+                    .lock()
+                    .map_err(|_| anyhow::anyhow!("Noise Field audio lock failed"))?
+                    .set_low_pass(coefficient)?;
+            }
+            self.noise_filter.coefficient = coefficient;
+        }
+        Ok(())
+    }
+    pub fn reset_noise_filter(&mut self) -> Result<()> {
+        if self.noise_filter.coefficient != 0.
+            && let Some(music) = &self.music
+        {
+            music
+                .lock()
+                .map_err(|_| anyhow::anyhow!("Noise Field audio lock failed"))?
+                .set_low_pass(0.)?;
+        }
+        self.noise_filter = NoiseLowPass::default();
         Ok(())
     }
     pub fn set_rate(&mut self, audio: &mut AudioManager, rate: f64) -> Result<()> {
@@ -112,7 +206,7 @@ impl Transport {
             .as_ref()
             .and_then(|m| m.lock().ok())
             .map(|mut m| serde_json::json!({"position":m.position(), "paused":m.paused()}));
-        serde_json::json!({"rate":self.clock.speed,"audio_seconds":self.audio_time(), "music":music,
+        serde_json::json!({"noise_cutoff_hz":self.noise_filter.cutoff,"rate":self.clock.speed,"audio_seconds":self.audio_time(), "music":music,
             "waiting_for_audio":self.pending_start.is_some()})
     }
     fn audio_time(&self) -> f64 {
@@ -233,6 +327,27 @@ fn audio_time(chart: f64, offset: f64) -> f64 {
 mod tests {
     use super::*;
     use std::{cell::Cell, rc::Rc};
+    #[test]
+    fn noise_filter_lerps_from_current_cutoff_and_restores_audio() {
+        let mut filter = NoiseLowPass::default();
+        assert_eq!(filter.update(false, 1., 48000), 0.);
+        let coefficient = filter.update(true, 0.05, 48000);
+        assert_eq!(filter.cutoff, 11750.);
+        assert!(coefficient > 0. && coefficient < 1.);
+        filter.update(false, 0.05, 48000);
+        assert_eq!(filter.cutoff, 16875.);
+        assert_eq!(filter.update(false, 0.05, 48000), 0.);
+        let coefficient = filter.update(true, 0.1, 48000);
+        assert_eq!(filter.cutoff, 1500.);
+        assert!((coefficient - (-std::f32::consts::TAU * 1500. / 48000.).exp()).abs() < 1e-6);
+        assert!(filter.update(true, 0., 96000) > coefficient);
+        let mut transport = Transport::new();
+        transport.noise_filter = filter;
+        transport.noise_filter.coefficient = coefficient;
+        transport.reset_noise_filter().unwrap();
+        assert_eq!(transport.noise_filter.cutoff, 22000.);
+        assert_eq!(transport.noise_filter.coefficient, 0.);
+    }
     #[test]
     fn rate_changes_keep_cursor_offset_pause_and_seek_on_original_clock() {
         let now = Rc::new(Cell::new(0.));

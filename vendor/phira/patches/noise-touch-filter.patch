@@ -1,0 +1,25 @@
+--- a/prpr/src/judge.rs
++++ b/prpr/src/judge.rs
+@@ -412,2 +412,13 @@
+     pub fn update(&mut self, res: &mut Resource, chart: &mut Chart, bad_notes: &mut Vec<BadNote>) {
++        self.update_with_touch_filter(res, chart, bad_notes, |_| {});
++    }
++
++    /// Integration hook after native input normalization, before note judgement.
++    pub fn update_with_touch_filter(
++        &mut self,
++        res: &mut Resource,
++        chart: &mut Chart,
++        bad_notes: &mut Vec<BadNote>,
++        filter: impl FnOnce(&mut Vec<Touch>),
++    ) {
+         if res.config.autoplay() {
+@@ -511,3 +522,3 @@
+         }
+-        let touches: Vec<Touch> = touches
++        let mut touches: Vec<Touch> = touches
+             .into_values()
+@@ -522,2 +533,3 @@
+             .collect();
++        filter(&mut touches);
+         // pos[line][touch]

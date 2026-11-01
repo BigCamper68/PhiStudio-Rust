@@ -89,6 +89,35 @@ async fn run() -> Result<()> {
             },
         })?;
     }
+    let mode = std::env::args().nth(2).unwrap_or_default();
+    if mode.starts_with("noise-") {
+        let mut raw = editor.document().as_json().clone();
+        let mut area = serde_json::json!({
+            "bottomLeftPercentage":{"x":0.2,"y":0.2}, "topRightPercentage":{"x":0.8,"y":0.8},
+            "appearTime":0., "enableTime":0., "disableTime":6., "disappearTime":6.
+        });
+        if mode == "noise-ready" {
+            area["enableTime"] = serde_json::json!(6.);
+            area["disableTime"] = serde_json::json!(7.);
+        }
+        if mode == "noise-enter" {
+            area["bottomLeftPercentage"]["y"] = serde_json::json!(0.55);
+            area["topRightPercentage"]["y"] = serde_json::json!(0.95);
+        }
+        if mode == "noise-latch" {
+            area["disableTime"] = serde_json::json!(1.8);
+            area["disappearTime"] = serde_json::json!(1.8);
+        }
+        let fields = if mode == "noise-subtract" {
+            let mut subtract = area.clone();
+            subtract["isSubtract"] = serde_json::json!(true);
+            serde_json::json!([area, subtract])
+        } else {
+            serde_json::json!([area])
+        };
+        raw["blockAreaList"] = fields;
+        editor = Editor::new(ChartDocument::from_value(raw)?);
+    }
     let original = editor.document().as_json().clone();
     let resources = tempfile::tempdir()?;
     let frames = 8 * 8_000_u32;
@@ -125,8 +154,7 @@ async fn run() -> Result<()> {
         },
         0,
     )?;
-    let mode = std::env::args().nth(2).unwrap_or_default();
-    if mode == "retina" {
+    if mode == "retina" || mode == "noise-retina" {
         preview.fit_display([2388., 1343.25], 16. / 9.);
     }
     for _ in 0..10 {
@@ -142,6 +170,8 @@ async fn run() -> Result<()> {
     let mut colors = vec![initial];
     let mut images = Vec::new();
     let mut previous_counts = [0; 4];
+    let mut noise_capture = false;
+    let mut noise_audio = Vec::new();
     for _ in 0..3 {
         preview.pump_playtest_input()?;
         next_frame().await;
@@ -162,6 +192,21 @@ async fn run() -> Result<()> {
         preview.set_playback(time, true, false)?;
         preview.render(time, preview.target_viewport());
         let counts = preview.playtest_report().unwrap().counts;
+        if mode.starts_with("noise-") {
+            let state = preview.playback_report();
+            if (elapsed > 2.1 && elapsed < 2.6) || (elapsed > 3.15 && elapsed < 3.3) {
+                noise_audio.push(serde_json::json!({"seconds":elapsed,"cutoff":state["transport"]["noise_cutoff_hz"]}));
+            }
+            if matches!(
+                mode.as_str(),
+                "noise-blocked" | "noise-latch" | "noise-retina"
+            ) && !noise_capture
+                && elapsed > 2.2
+            {
+                images.push(preview.snapshot());
+                noise_capture = true;
+            }
+        }
         if counts != previous_counts {
             let (mut color, image) = check_line_color(&preview, counts)?;
             color["seconds"] = serde_json::json!(time);
@@ -217,7 +262,7 @@ async fn run() -> Result<()> {
             std::fs::write(
                 output.join("report.json"),
                 serde_json::to_vec_pretty(
-                    &serde_json::json!({"score":report.score,"accuracy":report.accuracy,"counts":report.counts,"max_combo":report.max_combo,"total":report.total,"finished":report.finished,"line_colors":colors,"music_seconds":8,"last_note_seconds":4.5,"completion":timing}),
+                    &serde_json::json!({"score":report.score,"accuracy":report.accuracy,"counts":report.counts,"max_combo":report.max_combo,"total":report.total,"finished":report.finished,"line_colors":colors,"music_seconds":8,"last_note_seconds":4.5,"completion":timing,"noise_audio":noise_audio}),
                 )?,
             )?;
             break;

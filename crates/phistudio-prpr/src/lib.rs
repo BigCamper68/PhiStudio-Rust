@@ -1,11 +1,13 @@
 //! Adapter to the actual Phira prpr parser and renderer. No alternate chart
-//! evaluator lives here: animations, lines and notes go through upstream prpr.
+//! evaluator lives here: line/note animations go through upstream prpr.
+//! Noise Fields extend Preview with the supplied Phigros BlockRender passes.
 #[cfg(test)]
 mod authoring_tests;
 mod cover;
 mod inspection;
 mod lifecycle;
 mod media;
+mod noise_fields;
 mod sound_gain;
 pub use sound_gain::render_hitsound_gain;
 mod playback;
@@ -62,6 +64,7 @@ pub fn suspend_audio() {
 }
 
 pub struct Preview {
+    noise_fields: noise_fields::NoiseFields,
     anchors: anchors::Anchors,
     offline_step: Option<f32>,
     resource_music: Option<std::sync::Arc<std::sync::Mutex<sasa::Music>>>,

@@ -10,6 +10,7 @@ tempfile.workspace = true
 anyhow.workspace = true
 async-trait.workspace = true
 serde_json.workspace = true
+serde.workspace = true
 macroquad.workspace = true
 prpr.workspace = true
 prpr-l10n.workspace = true

@@ -1,0 +1,192 @@
+{
+  "source": "User-supplied com.pigeongames.phigros_160.xapk",
+  "xapk_sha256": "cec43c98fb791eb9fdf3fccb4928e8991df35b8a15277b0336a41801850e9d7a",
+  "ownership": "Extracted Phigros shaders and textures retain their original ownership; not relicensed as GPL.",
+  "original_files": {
+    "lib/arm64-v8a/libil2cpp.so": {
+      "size": 71736936,
+      "sha256": "c5f6d6b72658ab6d5f03d3d11a63b47778c54d4b93871422218d6a75f7b4a10f"
+    },
+    "assets/bin/Data/Managed/Metadata/global-metadata.dat": {
+      "size": 11287896,
+      "sha256": "5144b72bf0cc61a0836b405a750fa906f95660d15abd9e85ef7d2dbff1f90d02"
+    },
+    "assets/bin/Data/sharedassets12.assets (assembled splits)": {
+      "size": 24481540,
+      "sha256": "eecddaa39b8f3de7351b1fb2f74e4ba0180d01330a9ac6a1855f1b83210e7ae9"
+    },
+    "assets/bin/Data/level12 (assembled splits)": {
+      "size": 28312,
+      "sha256": "2752b849d88ed9a616b982d846192cca52d277efcd7a3676541c635cd8cbb7d7"
+    }
+  },
+  "unity_objects": {
+    "32": "Unlit/EdgeMask",
+    "33": "Unlit/SubtractBlockBlender",
+    "36": "Unlit/ActiveBlock",
+    "37": "Unlit/DisabledBlock",
+    "38": "Unlit/BlockCompose",
+    "5": "ActiveBlock material",
+    "6": "BlockCompose material",
+    "8": "DisabledBlock material",
+    "14": "FD_Noise_00000 texture",
+    "16": "PointNoise texture",
+    "29": "BlockNoise1 texture",
+    "263": "BlockRender prefab (edgeSize=1)",
+    "293": "PreviewBlockControl prefab (show/ready duration=0.5)",
+    "10": "ReadyBlock material (shine copied to ActiveBlock)",
+    "12": "TouchEffect material (touch properties copied to ActiveBlock)",
+    "22": "Round10_Blur4 texture",
+    "60": "Round10_Blur4 tight sprite geometry",
+    "273": "TouchBlockBehavior prefab (size=11.5, animationDuration=0.1)",
+    "153": "Disabled normal camera: culling mask=40960 (Disabled + Ready)",
+    "154": "Disabled subtract camera: culling mask=81920 (Disabled + Ready)",
+    "level12:201": "JudgeControl (blockTouchInsetScreenHeightRatio=0.05)",
+    "level12:195": "LevelControl (low-pass cutoff=1500 Hz, transition=0.1 seconds)"
+  },
+  "arm64_methods": {
+    "PreviewBlockControl.UpdateBlockActivation": "0x1CDE058",
+    "PreviewBlockControl.UpdateBlockAnimations": "0x1CDE204",
+    "PreviewBlockControl.UpdateScale": "0x1CDE590",
+    "PreviewBlockControl.UpdateRotation": "0x1CDE90C",
+    "PreviewBlockControl.UpdateMovement": "0x1CDEC1C",
+    "PreviewBlockControl.InterpolateScaleEvent": "0x1CDF080",
+    "PreviewBlockControl.CalculateEasedProgress": "0x1CDF1F0",
+    "GetEase.Instantiation": "0x1CCB468",
+    "GetEase.GetEaseWithProgress": "0x1CCB180",
+    "BlockRender.Start": "0x1D70604",
+    "BlockRender.RenderEffects": "0x1D71A20",
+    "PreviewBlockControl.DisabledBlockShow.MoveNext": "0x1CDF624",
+    "JudgeControl.CheckBlocks": "0x1D7480C",
+    "JudgeControl.ProcessBlockedTouches": "0x1D75AA4",
+    "JudgeControl.TryGetBlockingBlock": "0x1D75CE4",
+    "JudgeControl.IsPositionInsideOriginalBlock": "0x1D7628C",
+    "JudgeControl.IsPositionInsideBlock": "0x1D76388",
+    "JudgeControl.TryGetBlockTouchHalfSize": "0x1D76414",
+    "JudgeControl.AddBlockedTouchPosition": "0x1D76190",
+    "BlockRender.CopyReadyTouchParamsToActive": "0x1D71074",
+    "BlockRender.UpdateTouchPos": "0x1D717CC",
+    "BlockRender.BeginTouchBlockFrame": "0x1D71E40",
+    "BlockRender.UpdateTouchBlock": "0x1D71E90",
+    "BlockRender.EndTouchBlockFrame": "0x1D72050",
+    "TouchBlockBehavior.Animation.MoveNext": "0x1D72FA4",
+    "ProgressControl.SetLowPassFilter": "0x1D88E4C",
+    "ProgressControl.LerpLowPassFilter.MoveNext": "0x1D89438"
+  },
+  "geometry_reference": {
+    "repository": "https://github.com/2923fzyxfkj/phira",
+    "revision": "0afa0fa11320a7c457f2fcce536c446df4b898ed",
+    "path": "prpr/src/noise_area.rs",
+    "license": "GPL-3.0",
+    "author": "2923fzyxfkj"
+  },
+  "adaptations": [
+    "GLES3 syntax to GLES2; clip-space Macroquad vertex attributes; chart time in _BlockTime.",
+    "Active/ready/normal/subtract scalar masks packed in RGBA. Displacement uses Macroquad primary Texture; six extra samplers plus two reserved slots fit GLES2 eight-sampler limit.",
+    "Explicit texture LOD zero becomes ordinary sampling; imported textures have no mipmaps.",
+    "Texture PNG rows match Unity GPU orientation. Original material values and shader arithmetic retained.",
+    "Ten touch positions represented as separate vec4 uniforms selected by an equivalent GLES2 helper; Macroquad has no uniform-array descriptor.",
+    "Playtest filters normalized native touches through one documented prpr hook. Upstream judgement and score algorithms are retained.",
+    "Audio uses sasa one-pole low-pass with measured backend sample rate, 1500 Hz target and 0.1-second transition; Unity DSP waveform identity is not claimed."
+  ],
+  "files": {
+    "shaders/ActiveBlock_0.frag": {
+      "size": 22678,
+      "sha256": "458bbd3c8a48ca493c78d4a9bffc663428839f660ad1cbb3ab9d386f7ff91384"
+    },
+    "shaders/ActiveBlock_0.vert": {
+      "size": 1944,
+      "sha256": "0e9f04eea5469530f7999616452806332411d46a529e8e731cf656212e0f5328"
+    },
+    "shaders/BlockCompose_0.frag": {
+      "size": 2138,
+      "sha256": "53ca89fceee775cbc9857dc610a8cbb4200c28dcbc8553fd538ff1cbef77fb6a"
+    },
+    "shaders/BlockCompose_0.vert": {
+      "size": 941,
+      "sha256": "3a8ef629b45af659a33c64ad32c7401b42dc5f164e48c7ede8b53f4b24d34493"
+    },
+    "shaders/BlockCompose_1.frag": {
+      "size": 898,
+      "sha256": "93f8659b073017302611624dafba35b680f0bc001eb85145a6788ac35b15acf4"
+    },
+    "shaders/BlockCompose_1.vert": {
+      "size": 788,
+      "sha256": "53cf100f5199009b45cd3956b2c389b66e8cc58d64557dac67840600f44177e1"
+    },
+    "shaders/DisabledBlock_0.frag": {
+      "size": 2693,
+      "sha256": "dfc634951ae1afcefe65503e385f44b6f5fa6b43233fd52b84d1fa07ee9405fc"
+    },
+    "shaders/DisabledBlock_0.vert": {
+      "size": 1192,
+      "sha256": "2d2f1eb3d827f895c2e05bf26b9379bc2ef12778194d29e4131dc5a7387d45cd"
+    },
+    "shaders/EdgeMask_1.frag": {
+      "size": 2355,
+      "sha256": "e50106ac1b60d2be1a25c08e7c7d41cde30b2681a60fab0e9ae1f86506b57c37"
+    },
+    "shaders/EdgeMask_1.vert": {
+      "size": 788,
+      "sha256": "53cf100f5199009b45cd3956b2c389b66e8cc58d64557dac67840600f44177e1"
+    },
+    "shaders/SubtractBlockBlender_0.frag": {
+      "size": 1125,
+      "sha256": "70fb7b4f10293b29da1995d0659de7b29f5ee7cf018e0f3163787a3e26cd92a5"
+    },
+    "shaders/SubtractBlockBlender_0.vert": {
+      "size": 788,
+      "sha256": "53cf100f5199009b45cd3956b2c389b66e8cc58d64557dac67840600f44177e1"
+    },
+    "shaders/SubtractBlockBlender_1.frag": {
+      "size": 1581,
+      "sha256": "8a2f970375e19b740e48183c838bc478191e4db9f0684e739d3a14b9005a2d51"
+    },
+    "shaders/SubtractBlockBlender_1.vert": {
+      "size": 788,
+      "sha256": "53cf100f5199009b45cd3956b2c389b66e8cc58d64557dac67840600f44177e1"
+    },
+    "assets/BlockNoise1.png": {
+      "size": 59238,
+      "sha256": "bf216f44ac21bf2c4bffa5f8795fc7bc03c9701b1bf85ab4f406c5ec7642dbaa"
+    },
+    "assets/FD_Noise_00000.png": {
+      "size": 82887,
+      "sha256": "cb60d40405b9af2a3ddfd7c76ac046d32d217de11e86d5a716cb56f548fd7954"
+    },
+    "assets/PointNoise.png": {
+      "size": 5403,
+      "sha256": "afa450a810b74638b42592a1052578114752e5605ec5cd39fa0d04264a034abd"
+    },
+    "assets/Round10_Blur4.png": {
+      "size": 1074,
+      "sha256": "13c6ef3641945cc16977bf097a247e4b8ae3dd863ba9b786e2b417335ea5a42f"
+    },
+    "assets/hover-sprite.json": {
+      "size": 844,
+      "sha256": "041cb47a13bd89417092e975b3efbc616cf9102d25222f743cd1e31c47837027"
+    },
+    "assets/materials.json": {
+      "size": 10337,
+      "sha256": "8570e3ffb54aabb53abf3d76dde9f9af32945790739c910fe14443e4b191bf64"
+    }
+  },
+  "texture_settings": {
+    "BlockNoise1": {
+      "filter": "Point",
+      "wrap": "Mirror"
+    },
+    "PointNoise": {
+      "filter": "Point",
+      "wrap": "Repeat"
+    },
+    "FD_Noise_00000": {
+      "filter": "Point",
+      "wrap": "Mirror"
+    },
+    "Round10_Blur4": {
+      "filter": "Bilinear",
+      "wrap": "Clamp"
+    }
+  }
+}
