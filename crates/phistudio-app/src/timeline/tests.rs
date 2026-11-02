@@ -179,12 +179,12 @@ fn draft_moved_from_outside_viewport_is_painted_without_editing_the_chart() {
             .iter()
             .any(|s| matches!(&s.1,Shape::Mesh(m) if m.texture_id==egui::TextureId::User(77)))
     );
-    let grid = grid_input::geometry(app.grid_area, &app);
+    let grid = grid_input::geometry(app.timeline.area, &app);
     let selection = Selection {
         notes: vec![NoteId { line: 0, index: 0 }],
         events: vec![],
     };
-    app.drag = Some(Gesture::SelectionMove {
+    app.timeline.drag = Some(Gesture::SelectionMove {
         selection,
         stories: vec![],
         origin: pos2(0., 0.),
@@ -207,7 +207,7 @@ fn draft_moved_from_outside_viewport_is_painted_without_editing_the_chart() {
     );
     assert_eq!(app.editor.revision(), revision);
     assert_eq!(app.editor.document().as_json(), &before);
-    app.drag = None;
+    app.timeline.drag = None;
     assert!(
         !render(&mut app)
             .shapes

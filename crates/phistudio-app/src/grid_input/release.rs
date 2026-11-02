@@ -1,19 +1,19 @@
 use super::*;
 
 pub(super) fn finish(app: &mut Workbench) {
-    if app.navigation_axis.take() == Some(true)
-        && !std::mem::take(&mut app.grid_input.panel_navigation)
+    if app.timeline.navigation_axis.take() == Some(true)
+        && !std::mem::take(&mut app.timeline.input.panel_navigation)
     {
-        let step = 1350. / (app.lanes.max(2) - 1) as f64;
-        let nearest = (app.camera_x / step).round() * step;
-        app.camera_x = if app.camera_x.abs() < step * 0.45 {
+        let step = 1350. / (app.timeline.lanes.max(2) - 1) as f64;
+        let nearest = (app.timeline.camera_x / step).round() * step;
+        app.timeline.camera_x = if app.timeline.camera_x.abs() < step * 0.45 {
             0.
         } else {
             nearest
         };
     }
-    app.grid_input.pointer_active = false;
-    let gesture = app.drag.take();
+    app.timeline.input.pointer_active = false;
+    let gesture = app.timeline.drag.take();
     let preserve_properties_position = match gesture.as_ref() {
         Some(
             Gesture::Move { moved, .. }
@@ -27,7 +27,7 @@ pub(super) fn finish(app: &mut Workbench) {
         Some(Gesture::Noise(noise)) => noise.edits_existing(),
         _ => false,
     };
-    let properties_scroll = app.properties_scroll;
+    let properties_scroll = app.windows.scroll_to_properties;
     if let Some(gesture) = &gesture
         && crate::picking::finish_tap(app, gesture)
     {
@@ -70,7 +70,7 @@ pub(super) fn finish(app: &mut Workbench) {
                         app.toggle_event(id, additive);
                     }
                 }
-                app.playing = false;
+                app.transport.playing = false;
                 return;
             }
             if Rect::from_two_pos(origin, current).intersects(grid.rect)
@@ -93,7 +93,7 @@ pub(super) fn finish(app: &mut Workbench) {
                 stories.extend(app.story_selection());
             }
             app.set_object_selection(selection, stories);
-            app.playing = false;
+            app.transport.playing = false;
         }
         Some(Gesture::Erase {
             selection, stories, ..
@@ -112,7 +112,7 @@ pub(super) fn finish(app: &mut Workbench) {
                 Ok(changed) => {
                     if changed {
                         app.remember_anchor(anchor);
-                        app.playing = false;
+                        app.transport.playing = false;
                         app.select(None);
                     }
                     app.error = None;
@@ -144,16 +144,16 @@ pub(super) fn finish(app: &mut Workbench) {
             Intent::SelectEvent(id, additive) => app.toggle_event(id, additive),
             Intent::SelectShader(id) => crate::shader_ui::grid::select(app, id),
             Intent::SelectStory(id, additive) => {
-                app.playing = false;
+                app.transport.playing = false;
                 app.toggle_story(id, additive);
             }
             Intent::Place(kind) => {
-                app.playing = false;
+                app.transport.playing = false;
                 let start = grid.beat(origin.y);
                 add(app, kind, start, start, grid.note_x(origin.x));
             }
             Intent::Select(id, additive) => {
-                app.playing = false;
+                app.transport.playing = false;
                 app.toggle_note(id, additive);
             }
             Intent::Seek => {
@@ -168,7 +168,7 @@ pub(super) fn finish(app: &mut Workbench) {
             kind,
             ..
         }) => {
-            app.playing = false;
+            app.transport.playing = false;
             add(app, kind, start, end, x);
         }
         Some(Gesture::Event(gesture)) => crate::event_grid::finish(app, gesture),
@@ -189,7 +189,7 @@ pub(super) fn finish(app: &mut Workbench) {
                 ..
             },
         ) => {
-            app.playing = false;
+            app.transport.playing = false;
             app.execute(Command::UpdateNote { id, note: current });
         }
         _ => {}
@@ -197,6 +197,6 @@ pub(super) fn finish(app: &mut Workbench) {
     if preserve_properties_position {
         // Commits can remap source IDs and reselect the edited objects. Only an
         // explicit selection/creation should reveal Properties, not that remap.
-        app.properties_scroll = properties_scroll;
+        app.windows.scroll_to_properties = properties_scroll;
     }
 }

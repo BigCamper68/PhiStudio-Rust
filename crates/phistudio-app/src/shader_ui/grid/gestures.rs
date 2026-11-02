@@ -48,13 +48,13 @@ pub(crate) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2) -> Option<Gestur
         crate::picking::Hit::Shader(i) | crate::picking::Hit::Keyframe { index: i, .. } => i,
         _ => unreachable!(),
     });
-    let found = if app.tool == Tool::Select {
+    let found = if app.timeline.tool == Tool::Select {
         selected.filter(|i| hits(app, grid, pos).contains(i))
     } else {
         None
     }
     .or_else(|| hit(app, grid, pos));
-    if app.tool == Tool::Erase {
+    if app.timeline.tool == Tool::Erase {
         if !app.flush_shader_draft() {
             return None;
         }
@@ -75,7 +75,7 @@ pub(crate) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2) -> Option<Gestur
     let in_group = item
         .as_ref()
         .is_some_and(|id| app.shaders.selection.contains(id));
-    if app.tool == Tool::BoxSelect && !in_group {
+    if app.timeline.tool == Tool::BoxSelect && !in_group {
         return Some(Gesture::Shader(Box::new(ShaderGesture::Box {
             grid,
             keys: app.shaders.animation_track().is_some(),
@@ -89,7 +89,7 @@ pub(crate) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2) -> Option<Gestur
     } else {
         app.shaders.selected
     };
-    if app.tool != Tool::Event && !in_group && (found.is_none() || found != selected) {
+    if app.timeline.tool != Tool::Event && !in_group && (found.is_none() || found != selected) {
         return Some(Gesture::Tap {
             origin: pos,
             grid,
@@ -101,7 +101,7 @@ pub(crate) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2) -> Option<Gestur
         return None;
     }
     app.refresh_shaders();
-    let creating = app.tool == Tool::Event;
+    let creating = app.timeline.tool == Tool::Event;
     let keyframe = app
         .shaders
         .animation_track()
@@ -160,8 +160,8 @@ pub(crate) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2) -> Option<Gestur
     let db = (pos.y - grid.y(b.as_f64())).abs();
     let group = if !creating && in_group {
         selection::items(app, keyframe.is_some())
-            .into_iter()
             .filter(|(id, _)| app.shaders.selection.contains(id))
+            .map(|(id, raw)| (id, raw.clone()))
             .collect::<Vec<_>>()
     } else {
         vec![]
@@ -203,7 +203,7 @@ pub(crate) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2) -> Option<Gestur
 }
 
 pub(crate) fn select(app: &mut Workbench, id: Option<usize>) {
-    app.playing = false;
+    app.transport.playing = false;
     app.shaders.selection.clear();
     if let Some(name) = app.shaders.animation_track().map(str::to_owned) {
         if !app.apply_shader_animation() {
@@ -224,8 +224,8 @@ pub(crate) fn select(app: &mut Workbench, id: Option<usize>) {
         app.shaders.animation = None;
         app.shaders.track = None;
     }
-    app.show_context = true;
-    app.properties_scroll = true;
+    app.windows.sidebar = true;
+    app.windows.scroll_to_properties = true;
 }
 
 pub(crate) fn update(app: &mut Workbench, gesture: &mut ShaderGesture, pos: Pos2) {
@@ -387,8 +387,8 @@ pub(crate) fn finish(app: &mut Workbench, gesture: ShaderGesture) {
                     app.refresh_shaders();
                 }
             }
-            app.show_context = true;
-            app.properties_scroll = true;
+            app.windows.sidebar = true;
+            app.windows.scroll_to_properties = true;
         }
         ShaderGesture::Erase { ids, .. } => {
             if !ids.is_empty() {

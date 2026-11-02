@@ -32,8 +32,7 @@ impl Workbench {
             }
             self.advanced.right_mode = next;
             self.select(None);
-            self.drag = None;
-            self.grid_input.cancel();
+            self.timeline.cancel_gesture();
             self.shaders.track = None;
             self.shaders.page = ShaderPage::Effect;
             self.shaders.animation = None;
@@ -41,16 +40,16 @@ impl Workbench {
                 self.open_storyboard();
             }
             if next == RightMode::NoiseFields {
-                self.show_context = true;
-                self.show_edit = false;
-                self.compact_properties = false;
+                self.windows.sidebar = true;
+                self.windows.edit = false;
+                self.windows.floating_properties = false;
                 self.set_tool(crate::workbench::Tool::Select);
                 self.refresh_noise();
             }
             if next == RightMode::Shaders {
-                self.show_context = true;
-                self.show_edit = false;
-                self.compact_properties = false;
+                self.windows.sidebar = true;
+                self.windows.edit = false;
+                self.windows.floating_properties = false;
                 self.set_tool(crate::workbench::Tool::Select);
                 self.refresh_shaders();
             }
@@ -103,10 +102,10 @@ impl Workbench {
                 self.shaders.code_view = !self.shaders.code_view;
             }
             if ui
-                .selectable_label(self.show_context, crate::i18n::tr("Properties"))
+                .selectable_label(self.windows.sidebar, crate::i18n::tr("Properties"))
                 .clicked()
             {
-                self.show_context = !self.show_context;
+                self.windows.sidebar = !self.windows.sidebar;
             }
         });
     }

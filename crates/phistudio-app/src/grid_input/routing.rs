@@ -19,9 +19,9 @@ pub fn handle(
 ) {
     app.multi_line.base = Some(grid);
     if canceled {
-        app.grid_input.cycle = None;
-        app.drag = None;
-        app.grid_input.pointer_active = false;
+        app.timeline.input.cycle = None;
+        app.timeline.drag = None;
+        app.timeline.input.pointer_active = false;
         // A second finger promotes the draft to a pinch. Other cancellations
         // also stop playback intent, including suspend and canceled touches.
         if !events.iter().any(|e| {
@@ -33,25 +33,25 @@ pub fn handle(
                 }
             )
         }) {
-            app.playing = false;
+            app.transport.playing = false;
         }
     }
-    let mut suppress_pointer = app.grid_input.pinch.is_some();
+    let mut suppress_pointer = app.timeline.input.pinch.is_some();
     for event in events {
         match *event {
             Event::Touch { id, phase, pos, .. } => match phase {
                 TouchPhase::Start => {
-                    if app.grid_input.touches.is_empty() {
-                        app.grid_input.owns_touches = area.contains(pos) && eligible(pos);
+                    if app.timeline.input.touches.is_empty() {
+                        app.timeline.input.owns_touches = area.contains(pos) && eligible(pos);
                     }
-                    if app.grid_input.owns_touches {
-                        app.grid_input.touches.insert(id.0, pos);
-                        if app.grid_input.pinch.is_none()
-                            && let Some((center, distance)) = pair(&app.grid_input.touches)
+                    if app.timeline.input.owns_touches {
+                        app.timeline.input.touches.insert(id.0, pos);
+                        if app.timeline.input.pinch.is_none()
+                            && let Some((center, distance)) = pair(&app.timeline.input.touches)
                         {
-                            app.drag = None;
-                            app.grid_input.cycle = None;
-                            app.grid_input.pinch = Some(Pinch {
+                            app.timeline.drag = None;
+                            app.timeline.input.cycle = None;
+                            app.timeline.input.pinch = Some(Pinch {
                                 grid,
                                 center,
                                 distance,
@@ -61,30 +61,32 @@ pub fn handle(
                     }
                 }
                 TouchPhase::Move => {
-                    if let Some(point) = app.grid_input.touches.get_mut(&id.0) {
+                    if let Some(point) = app.timeline.input.touches.get_mut(&id.0) {
                         *point = pos;
                     }
                     if let (Some(pinch), Some((center, distance))) =
-                        (&app.grid_input.pinch, pair(&app.grid_input.touches))
+                        (&app.timeline.input.pinch, pair(&app.timeline.input.touches))
                     {
-                        app.zoom = (pinch.grid.zoom * distance / pinch.distance).clamp(24., 280.);
+                        app.timeline.zoom =
+                            (pinch.grid.zoom * distance / pinch.distance).clamp(24., 280.);
                         let anchor = pinch.grid.raw_beat(pinch.center.y);
                         app.set_grid_beat(
-                            (anchor - ((pinch.grid.baseline() - center.y) / app.zoom) as f64)
+                            (anchor
+                                - ((pinch.grid.baseline() - center.y) / app.timeline.zoom) as f64)
                                 .max(0.),
                         );
                     }
                 }
                 TouchPhase::End | TouchPhase::Cancel => {
                     if phase == TouchPhase::Cancel {
-                        app.drag = None;
-                        app.grid_input.pointer_active = false;
-                        app.playing = false;
+                        app.timeline.drag = None;
+                        app.timeline.input.pointer_active = false;
+                        app.transport.playing = false;
                     }
-                    app.grid_input.touches.remove(&id.0);
-                    if app.grid_input.touches.is_empty() {
-                        app.grid_input.pinch = None;
-                        app.grid_input.owns_touches = false;
+                    app.timeline.input.touches.remove(&id.0);
+                    if app.timeline.input.touches.is_empty() {
+                        app.timeline.input.pinch = None;
+                        app.timeline.input.owns_touches = false;
                     }
                 }
             },
@@ -109,44 +111,56 @@ pub fn handle(
                                 || modifiers.command,
                         );
                     }
-                } else if app.drag.is_some() || app.grid_input.pointer_active {
+                } else if app.timeline.drag.is_some() || app.timeline.input.pointer_active {
                     update(app, pos);
                     finish(app);
                 }
             }
             Event::PointerMoved(pos) if !suppress_pointer && !canceled => update(app, pos),
             Event::Zoom(factor) if factor.is_finite() && factor > 0. => {
-                if let Some(pos) = app.grid_hover.filter(|p| area.contains(*p) && eligible(*p)) {
+                if let Some(pos) = app
+                    .timeline
+                    .hover
+                    .filter(|p| area.contains(*p) && eligible(*p))
+                {
                     let anchor = grid.raw_beat(pos.y);
-                    app.zoom = (app.zoom * factor).clamp(24., 280.);
+                    app.timeline.zoom = (app.timeline.zoom * factor).clamp(24., 280.);
                     app.set_grid_beat(
-                        (anchor - ((grid.baseline() - pos.y) / app.zoom) as f64).max(0.),
+                        (anchor - ((grid.baseline() - pos.y) / app.timeline.zoom) as f64).max(0.),
                     );
-                    app.drag = None;
-                    app.grid_input.cycle = None;
-                    app.grid_input.pointer_active = false;
+                    app.timeline.drag = None;
+                    app.timeline.input.cycle = None;
+                    app.timeline.input.pointer_active = false;
                 }
             }
             Event::Scroll(delta)
                 if app
-                    .grid_hover
+                    .timeline
+                    .hover
                     .is_some_and(|p| area.contains(p) && eligible(p)) =>
             {
                 if app.advanced.right_mode == crate::advanced_ui::RightMode::Shaders
                     && delta.x.abs() > delta.y.abs()
                 {
-                    let keys = app.grid_hover.is_some_and(|p| grid.event_rect.contains(p));
+                    let keys = app
+                        .timeline
+                        .hover
+                        .is_some_and(|p| grid.event_rect.contains(p));
                     crate::shader_ui::layout::pan(app, grid, keys, -f64::from(delta.x));
                 } else if app.advanced.right_mode == crate::advanced_ui::RightMode::NoiseFields
                     && delta.x.abs() > delta.y.abs()
                 {
-                    let keys = app.grid_hover.is_some_and(|p| grid.event_rect.contains(p));
+                    let keys = app
+                        .timeline
+                        .hover
+                        .is_some_and(|p| grid.event_rect.contains(p));
                     if !keys {
                         crate::noise_ui::layout::pan(app, grid, -f64::from(delta.x));
                     }
                 } else if delta.x.abs() > delta.y.abs()
                     && app
-                        .grid_hover
+                        .timeline
+                        .hover
                         .is_some_and(|p| app.multi_active(grid.event_rect.contains(p)))
                 {
                     let i = usize::from(app.multi_line.events);
@@ -154,13 +168,14 @@ pub fn handle(
                 } else {
                     app.set_grid_beat(
                         (app.grid_beat()
-                            + (delta.y * app.options.scroll_speed) as f64 / app.zoom as f64)
+                            + (delta.y * app.options.scroll_speed) as f64
+                                / app.timeline.zoom as f64)
                             .max(0.),
                     );
                 }
-                app.drag = None;
-                app.grid_input.cycle = None;
-                app.grid_input.pointer_active = false;
+                app.timeline.drag = None;
+                app.timeline.input.cycle = None;
+                app.timeline.input.pointer_active = false;
             }
             _ => {}
         }

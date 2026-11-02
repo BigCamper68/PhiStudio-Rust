@@ -4,7 +4,7 @@ impl FileManager {
     pub(super) fn media(&mut self, app: &mut Workbench, kind: MediaKind, file: MediaFile) {
         let (sender, receiver) = mpsc::channel();
         self.worker = Some(receiver);
-        app.file_busy = true;
+        app.files.busy = true;
         app.error = None;
         app.status = kind.checking_message().into();
         std::thread::spawn(move || {
@@ -31,7 +31,7 @@ impl FileManager {
             movie: None,
             media: Some(kind),
         });
-        app.file_busy = true;
+        app.files.busy = true;
         Ok(())
     }
 
@@ -42,9 +42,8 @@ impl FileManager {
         name: String,
         remove_source: bool,
     ) {
-        app.playing = false;
-        app.drag = None;
-        app.grid_input.cancel();
+        app.transport.playing = false;
+        app.timeline.cancel_gesture();
         let projects = match self
             .root
             .clone()
@@ -59,7 +58,7 @@ impl FileManager {
         };
         let (sender, receiver) = mpsc::channel();
         self.worker = Some(receiver);
-        app.file_busy = true;
+        app.files.busy = true;
         app.status = "Importing…".into();
         std::thread::spawn(move || {
             let result = import_project(&path, &projects, &name, true)
@@ -88,7 +87,7 @@ impl FileManager {
             movie: None,
             media: None,
         });
-        app.file_busy = true;
+        app.files.busy = true;
         Ok(())
     }
 
@@ -105,9 +104,9 @@ impl FileManager {
             movie: None,
             media: None,
         });
-        app.file_busy = true;
-        app.playing = false;
-        app.drag = None;
+        app.files.busy = true;
+        app.transport.playing = false;
+        app.timeline.drag = None;
         Ok(())
     }
 }

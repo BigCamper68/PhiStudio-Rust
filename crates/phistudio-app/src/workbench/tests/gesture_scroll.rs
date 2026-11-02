@@ -71,8 +71,8 @@ fn grid_moves_and_interval_resizes_preserve_docked_and_floating_scroll() {
                     });
                 }
             }
-            app.compact_properties = floating;
-            app.tool = Tool::Select;
+            app.windows.floating_properties = floating;
+            app.timeline.tool = Tool::Select;
             let ctx = egui::Context::default();
             ctx.set_style(crate::theme::style());
             let size = Vec2::new(873., 393.);
@@ -98,7 +98,7 @@ fn grid_moves_and_interval_resizes_preserve_docked_and_floating_scroll() {
                 .unwrap()
                 .offset;
             assert!(before_offset.y < 1., "Initial scroll: {before_offset:?}");
-            assert!(!app.properties_scroll);
+            assert!(!app.windows.scroll_to_properties);
             let before = app.editor.document().as_json().clone();
             let grid = test_grid(&app);
             let (start, end) = if kind == "event" || kind == "story" {
@@ -135,7 +135,7 @@ fn grid_moves_and_interval_resizes_preserve_docked_and_floating_scroll() {
                 "No grid edit: {kind}"
             );
             assert!(
-                !app.properties_scroll,
+                !app.windows.scroll_to_properties,
                 "Gesture requested Properties: {kind}/{floating}"
             );
             for _ in 0..4 {

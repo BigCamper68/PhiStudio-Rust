@@ -112,22 +112,22 @@ impl LineEvent {
         if !value.is_object() {
             return Err(ChartError::Invalid("Event must be an object".into()));
         }
-        let mut data = value.clone();
+        let mut data = std::borrow::Cow::Borrowed(value);
         if data.get("start").is_none() {
-            data["start"] = json!(kind.default_value());
+            data.to_mut()["start"] = json!(kind.default_value());
         }
         if data.get("end").is_none() {
-            data["end"] = data["start"].clone();
+            data.to_mut()["end"] = data["start"].clone();
         }
         if kind == EventType::Speed {
             // Imported speed easing is renderer metadata, retained in the raw tree.
-            data["easingType"] = json!(1);
-            data["easingLeft"] = json!(0.);
-            data["easingRight"] = json!(1.);
-            data["bezier"] = json!(0);
-            data["bezierPoints"] = json!([0., 0., 0., 0.]);
+            data.to_mut()["easingType"] = json!(1);
+            data.to_mut()["easingLeft"] = json!(0.);
+            data.to_mut()["easingRight"] = json!(1.);
+            data.to_mut()["bezier"] = json!(0);
+            data.to_mut()["bezierPoints"] = json!([0., 0., 0., 0.]);
         }
-        Ok(serde_json::from_value(data)?)
+        Ok(Self::deserialize(data.as_ref())?)
     }
     pub fn validate(&self, kind: EventType) -> Result<(), ChartError> {
         let fail = |s: &str| Err(ChartError::Invalid(s.into()));

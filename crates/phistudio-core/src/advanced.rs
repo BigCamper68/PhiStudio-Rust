@@ -163,9 +163,7 @@ impl StoryEvent {
     ) -> Result<Value, ChartError> {
         self.validate(kind)?;
         let mut value = before.cloned().unwrap_or(json!({}));
-        let old = before
-            .map(|v| serde_json::from_value::<Self>(v.clone()))
-            .transpose()?;
+        let old = before.map(Self::deserialize).transpose()?;
         let old = old.map(|v| serde_json::to_value(v).unwrap());
         for (k, v) in serde_json::to_value(self)?.as_object().unwrap() {
             if old.as_ref().is_none_or(|o| o.get(k) != Some(v)) {
@@ -188,7 +186,7 @@ impl ChartDocument {
             None | Some(Value::Null) => Ok(vec![]),
             Some(Value::Array(v)) => v
                 .iter()
-                .map(|v| serde_json::from_value(v.clone()).map_err(Into::into))
+                .map(|v| StoryEvent::deserialize(v).map_err(Into::into))
                 .collect(),
             _ => Err(ChartError::Invalid(
                 "Storyboard track must be an array".into(),

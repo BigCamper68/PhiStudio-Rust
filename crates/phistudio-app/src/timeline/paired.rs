@@ -34,15 +34,14 @@ pub(crate) fn show(
         && response.dragged()
         && let Some(pos) = response.interact_pointer_pos()
     {
-        app.timeline_split =
+        app.timeline.split =
             ((pos.x - initial.full_rect().left()) / initial.full_rect().width()).clamp(0.35, 0.7);
-        app.drag = None;
-        app.grid_input.cancel();
+        app.timeline.cancel_gesture();
     }
     let grid = grid_input::geometry(area, app);
     header(app, ui, grid, frame);
-    app.grid_area = area;
-    app.grid_hover = ui.input(|i| i.pointer.hover_pos());
+    app.timeline.area = area;
+    app.timeline.hover = ui.input(|i| i.pointer.hover_pos());
     let mut events = ui.input(|i| i.events.clone());
     if ui.input(|i| i.modifiers.shift) {
         for event in &mut events {
@@ -66,25 +65,26 @@ pub(crate) fn show(
             canceled,
         );
     } else {
-        app.drag = None;
-        app.grid_input.cancel();
+        app.timeline.cancel_gesture();
     }
     let grid = grid_input::geometry(area, app);
     let p = ui.painter_at(frame);
     if app.options.preview_behind_grid {
         app.paint_grid_preview(&p, grid.full_rect());
     }
-    let first = (grid.raw_beat(grid.rect.bottom() + 12.) * app.division as f64).floor() as i64;
-    let count = (((grid.rect.height() + 24.) / grid.zoom) * app.division as f32).ceil() as i64 + 2;
+    let first =
+        (grid.raw_beat(grid.rect.bottom() + 12.) * app.timeline.division as f64).floor() as i64;
+    let count =
+        (((grid.rect.height() + 24.) / grid.zoom) * app.timeline.division as f32).ceil() as i64 + 2;
     let clip = Rect::from_min_max(
         pos2(frame.left(), grid.rect.top()),
         pos2(grid.event_rect.right(), grid.rect.bottom()),
     );
     let q = p.with_clip_rect(clip);
     for tick in first..first + count {
-        let beat = tick as f64 / app.division as f64;
+        let beat = tick as f64 / app.timeline.division as f64;
         let y = grid.y(beat);
-        let main = tick.rem_euclid(app.division as i64) == 0;
+        let main = tick.rem_euclid(app.timeline.division as i64) == 0;
         if !main && !app.options.minor_grid {
             continue;
         }

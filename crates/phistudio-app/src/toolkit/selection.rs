@@ -27,7 +27,7 @@ impl Workbench {
         self.advanced.story_selected = None;
         self.advanced.story = None;
         let selection = selection.normalized();
-        self.properties_scroll |= !selection.is_empty();
+        self.windows.scroll_to_properties |= !selection.is_empty();
         self.selected = selection.notes.first().copied();
         self.events.selected = if self.selected.is_none() {
             selection.events.first().copied()

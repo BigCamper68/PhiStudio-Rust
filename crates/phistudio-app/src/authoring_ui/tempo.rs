@@ -49,7 +49,7 @@ impl Workbench {
                 }
             });
         if ui.button(crate::i18n::tr("+ BPM change")).clicked() {
-            let at = Beat::from_grid(self.beat, self.division)
+            let at = Beat::from_grid(self.transport.beat, self.timeline.division)
                 .unwrap_or(Beat::ZERO)
                 .max(
                     rows.last()
@@ -63,7 +63,7 @@ impl Workbench {
                 index: None,
                 revision,
                 start: at.to_string(),
-                bpm: self.editor.document().tempo().bpm_at(self.beat),
+                bpm: self.editor.document().tempo().bpm_at(self.transport.beat),
             });
         }
         let Some(draft) = self.bpm_draft.as_mut() else {

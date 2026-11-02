@@ -84,7 +84,7 @@ impl FileManager {
             match receiver.try_recv() {
                 Ok(result) => {
                     self.worker = None;
-                    app.file_busy = false;
+                    app.files.busy = false;
                     match result {
                         Ok(WorkerResult::Workspace { session, result }) => {
                             app.workspace_result(session, result);
@@ -143,7 +143,7 @@ impl FileManager {
                         }
                         Ok(WorkerResult::Restored(library)) => {
                             app.library = Some(library);
-                            app.last_deleted = None;
+                            app.files.last_deleted = None;
                             app.error = None;
                             app.status = "Project restored".into();
                             self.recorded = None;
@@ -151,8 +151,8 @@ impl FileManager {
                         Ok(WorkerResult::Exported(package)) => {
                             #[cfg(not(any(target_os = "android", target_os = "ios")))]
                             {
-                                app.export_path = package.name.clone();
-                                app.export_package = Some(package);
+                                app.files.export_path = package.name.clone();
+                                app.files.export_package = Some(package);
                             }
                             #[cfg(any(target_os = "android", target_os = "ios"))]
                             if let Err(error) = self.pick_export(app, package) {
@@ -168,9 +168,9 @@ impl FileManager {
                             recovery,
                             error,
                         }) => {
-                            app.recovery_loading = false;
+                            app.files.recovery_loading = false;
                             app.library = Some(library);
-                            app.recovery = recovery;
+                            app.files.recovery = recovery;
                             app.error = error;
                             app.status = "Projects loaded".into();
                         }
@@ -193,15 +193,15 @@ impl FileManager {
                         }
                         Err(error) => {
                             app.line_tools.importing = false;
-                            app.recovery_loading = false;
+                            app.files.recovery_loading = false;
                             app.error = Some(error);
                         }
                     }
                 }
                 Err(mpsc::TryRecvError::Disconnected) => {
                     self.worker = None;
-                    app.file_busy = false;
-                    app.recovery_loading = false;
+                    app.files.busy = false;
+                    app.files.recovery_loading = false;
                     app.error = Some("File operation interrupted".into());
                 }
                 Err(mpsc::TryRecvError::Empty) => {}
@@ -218,7 +218,7 @@ impl FileManager {
             }
             let mut pending = self.pending.take().unwrap();
             if let Some(movie) = pending.movie.take() {
-                app.file_busy = false;
+                app.files.busy = false;
                 if result.canceled || result.error.is_some() {
                     app.video.completed = Some(movie);
                     app.video.open = true;
@@ -229,7 +229,7 @@ impl FileManager {
                 }
                 continue;
             }
-            app.file_busy = false;
+            app.files.busy = false;
             if let Some(error) = result.error {
                 app.error = Some(error);
             } else if pending.export.is_some() {
@@ -254,10 +254,10 @@ impl FileManager {
                 app.status = "File selection canceled".into();
             }
         }
-        if app.file_busy {
+        if app.files.busy {
             return;
         }
-        if let Some(request) = app.native_request.take() {
+        if let Some(request) = app.files.request.take() {
             self.request(app, request);
         }
     }

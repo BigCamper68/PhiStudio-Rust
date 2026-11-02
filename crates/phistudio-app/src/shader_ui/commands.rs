@@ -9,7 +9,7 @@ impl Workbench {
         match result {
             Ok(changed) => {
                 if changed {
-                    self.playing = false;
+                    self.transport.playing = false;
                     self.remember_anchor(self.anchor());
                 }
                 self.error = None;
@@ -76,7 +76,7 @@ impl Workbench {
         self.shaders.page = ShaderPage::Effect;
         self.shaders.key = None;
         self.refresh_shaders();
-        self.show_context = true;
+        self.windows.sidebar = true;
     }
 
     #[cfg(test)]
@@ -85,13 +85,17 @@ impl Workbench {
             return;
         }
         self.refresh_shaders();
-        let time = self.editor.document().tempo().seconds_at(self.beat);
+        let time = self
+            .editor
+            .document()
+            .tempo()
+            .seconds_at(self.transport.beat);
         let beat = self
             .shaders
             .tempo
             .as_ref()
-            .map_or(self.beat, |t| t.beat_at(time));
-        let start = Beat::from_grid(beat, self.division).unwrap_or(Beat::ZERO);
+            .map_or(self.transport.beat, |t| t.beat_at(time));
+        let start = Beat::from_grid(beat, self.timeline.division).unwrap_or(Beat::ZERO);
         let mut effect = ShaderEffect::new(
             start,
             start

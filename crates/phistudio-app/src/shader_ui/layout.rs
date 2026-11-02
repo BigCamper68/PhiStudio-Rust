@@ -90,7 +90,7 @@ impl Workbench {
         self.shaders.page = page;
         self.shaders.track = parameter;
         self.shaders.animation = None;
-        self.grid_input.cycle = None;
+        self.timeline.input.cycle = None;
         true
     }
     pub(super) fn jump_shader(&mut self, index: usize, grid: Grid) {
@@ -102,8 +102,7 @@ impl Workbench {
         self.shaders.offsets[0] = lane + 0.5 - f64::from(grid.rect.width() / EFFECT_WIDTH) / 2.;
         self.shaders.offsets[1] = 0.;
         self.set_grid_beat((self.shaders.effects[index].start.as_f64() - 1.).max(0.));
-        self.playing = false;
-        self.drag = None;
-        self.grid_input.cancel();
+        self.transport.playing = false;
+        self.timeline.cancel_gesture();
     }
 }

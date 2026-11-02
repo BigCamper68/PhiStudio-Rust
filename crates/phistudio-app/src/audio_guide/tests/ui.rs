@@ -201,7 +201,7 @@ fn attacks_remain_above_grid_strokes_including_the_current_beat() {
         frame(&mut app, &ctx, vec2(873., 393.), vec![]);
     }
     let out = frame(&mut app, &ctx, vec2(873., 393.), vec![]);
-    let grid = crate::grid_input::geometry(app.grid_area, &app);
+    let grid = crate::grid_input::geometry(app.timeline.area, &app);
     let marker_index = out.shapes.iter().position(|shape| matches!(&shape.1,
         egui::Shape::Path(path) if path.points.len() == 4 && path.fill == egui::Color32::from_rgb(100,207,230)
     )).unwrap();
@@ -261,7 +261,7 @@ fn attacks_draw_once_per_surface_regardless_of_overlaid_line_count() {
                 frame(&mut app, &ctx, size, vec![]);
             }
             let out = frame(&mut app, &ctx, size, vec![]);
-            let grid = crate::grid_input::geometry(app.grid_area, &app);
+            let grid = crate::grid_input::geometry(app.timeline.area, &app);
             let expected = if merged {
                 1
             } else {

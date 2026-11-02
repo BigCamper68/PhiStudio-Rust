@@ -35,9 +35,9 @@ impl Workbench {
         if !self.flush_shader_draft() {
             return;
         }
-        let return_beat = self.beat;
+        let return_beat = self.transport.beat;
         let start_beat = if self.options.playtest_from_cursor {
-            self.beat
+            self.transport.beat
         } else {
             0.
         };
@@ -53,11 +53,10 @@ impl Workbench {
             self.editor.document().tempo().seconds_at(start_beat),
         ));
         self.preview.fullscreen = false;
-        self.beat = start_beat;
-        self.playing = false;
-        self.drag = None;
-        self.grid_input.cancel();
-        self.timeline_scrub = false;
+        self.transport.beat = start_beat;
+        self.transport.playing = false;
+        self.timeline.cancel_gesture();
+        self.transport.scrubbing = false;
     }
     pub(crate) fn pause_playtest(&mut self) {
         if let Some(session) = &mut self.playtest.session
@@ -65,14 +64,14 @@ impl Workbench {
         {
             session.phase = Phase::Paused;
             session.deadline = None;
-            self.playing = false;
+            self.transport.playing = false;
         }
     }
     fn retry_playtest(&mut self) {
         if let Some(session) = &mut self.playtest.session {
             session.phase = Phase::Countdown;
             session.deadline = None;
-            self.beat = session.start_beat;
+            self.transport.beat = session.start_beat;
             self.playtest.command = Some(PlayCommand::Start(
                 self.editor
                     .document()
@@ -80,18 +79,17 @@ impl Workbench {
                     .seconds_at(session.start_beat),
             ));
             self.playtest.report = Default::default();
-            self.playing = false;
+            self.transport.playing = false;
         }
     }
     pub(crate) fn exit_playtest(&mut self) {
         if let Some(session) = self.playtest.session.take() {
-            self.beat = session.return_beat;
+            self.transport.beat = session.return_beat;
         }
         self.playtest.command = Some(PlayCommand::Exit);
-        self.playing = false;
-        self.drag = None;
-        self.grid_input.cancel();
-        self.timeline_scrub = false;
+        self.transport.playing = false;
+        self.timeline.cancel_gesture();
+        self.transport.scrubbing = false;
     }
     pub(crate) fn playtest_back(&mut self) -> bool {
         if let Some(session) = &self.playtest.session {
@@ -116,14 +114,14 @@ impl Workbench {
                 ui.checkbox(&mut self.options.playtest_from_cursor, crate::i18n::tr("Start from current cursor"));
                 ui.add(egui::Slider::new(&mut self.options.playtest_countdown, 1..=3).text(crate::i18n::tr("Countdown (seconds)")));
                 ui.small(crate::i18n::tr("Tap, hold, drag and flick on the fullscreen chart. Tap the HUD pause area to pause."));
-                if ui.add_enabled(!self.file_busy && self.editor.document().note_count() > 0, egui::Button::new(crate::i18n::tr("Start Playtest"))).clicked() { self.start_playtest(); }
+                if ui.add_enabled(!self.files.busy && self.editor.document().note_count() > 0, egui::Button::new(crate::i18n::tr("Start Playtest"))).clicked() { self.start_playtest(); }
             });
         if !open {
             self.playtest.setup = false;
         }
     }
     pub(crate) fn playtest_ui(&mut self, ctx: &egui::Context) {
-        self.grid_area = Rect::NOTHING;
+        self.timeline.area = Rect::NOTHING;
         self.pixels_per_point = ctx.pixels_per_point();
         if self.close_requested {
             self.exit_playtest();
@@ -154,7 +152,7 @@ impl Workbench {
         if let Some(session) = &mut self.playtest.session {
             if session.phase == Phase::Playing && self.playtest.report.finished {
                 session.phase = Phase::Results;
-                self.playing = false;
+                self.transport.playing = false;
             }
             if session.phase == Phase::Countdown {
                 let until = session
@@ -162,7 +160,7 @@ impl Workbench {
                     .get_or_insert(now + self.options.playtest_countdown as f64);
                 if now >= *until {
                     session.phase = Phase::Playing;
-                    self.playing = true;
+                    self.transport.playing = true;
                 }
             }
         }
@@ -301,7 +299,7 @@ mod tests {
                 );
                 app.start_playtest();
                 app.playtest.session.as_mut().unwrap().phase = Phase::Playing;
-                app.playing = true;
+                app.transport.playing = true;
                 let original = app.editor.document().as_json().clone();
                 let ctx = egui::Context::default();
                 let mut router = crate::touch::TouchRouter::default();
@@ -329,7 +327,10 @@ mod tests {
                     "This is the editor's second-finger pointer cancellation"
                 );
                 let _ = ctx.run(raw(events), |ctx| app.ui(ctx, pointer_canceled));
-                assert!(app.playing, "A {fingers}-finger chord paused Playtest");
+                assert!(
+                    app.transport.playing,
+                    "A {fingers}-finger chord paused Playtest"
+                );
                 assert!(
                     app.playtest
                         .session
@@ -347,7 +348,7 @@ mod tests {
                         0.1,
                     );
                     let _ = ctx.run(raw(e), |ctx| app.ui(ctx, c));
-                    assert!(app.playing);
+                    assert!(app.transport.playing);
                 }
                 let (e, c) = router.event_with_context(
                     &ctx,
@@ -357,7 +358,10 @@ mod tests {
                     0.2,
                 );
                 let _ = ctx.run(raw(e), |ctx| app.ui(ctx, c));
-                assert!(!app.playing, "OS touch cancellation must still pause");
+                assert!(
+                    !app.transport.playing,
+                    "OS touch cancellation must still pause"
+                );
                 assert_eq!(app.editor.document().as_json(), &original);
                 assert!(!app.editor.can_undo());
             }
@@ -402,20 +406,20 @@ mod tests {
             phistudio_core::ChartDocument::empty("Practice", 120.).unwrap(),
             None,
         );
-        app.beat = 12.;
+        app.transport.beat = 12.;
         app.options.playtest_from_cursor = true;
         let original = app.editor.document().as_json().clone();
         app.start_playtest();
         assert!(app.playtest.active());
-        assert!(!app.playing);
+        assert!(!app.transport.playing);
         assert!(matches!(app.playtest.command, Some(PlayCommand::Start(6.))));
         app.pause_playtest();
-        assert!(!app.playing);
+        assert!(!app.transport.playing);
         app.retry_playtest();
-        assert_eq!(app.beat, 12.);
-        app.beat = 19.;
+        assert_eq!(app.transport.beat, 12.);
+        app.transport.beat = 19.;
         app.exit_playtest();
-        assert_eq!(app.beat, 12.);
+        assert_eq!(app.transport.beat, 12.);
         assert!(!app.playtest.active());
         assert_eq!(app.editor.document().as_json(), &original);
         assert!(!app.editor.can_undo());

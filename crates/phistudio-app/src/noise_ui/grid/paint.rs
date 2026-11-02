@@ -38,7 +38,7 @@ pub(crate) fn paint(app: &Workbench, painter: &egui::Painter, grid: Grid) {
             galley,
         );
     }
-    if let Some(Gesture::Noise(gesture)) = &app.drag {
+    if let Some(Gesture::Noise(gesture)) = &app.timeline.drag {
         match &**gesture {
             NoiseGesture::Box {
                 origin,
@@ -205,7 +205,7 @@ fn paint_surface(app: &Workbench, painter: &egui::Painter, grid: Grid, view: Vie
         *raw = &d.raw;
     }
     if active
-        && let Some(Gesture::Noise(gesture)) = &app.drag
+        && let Some(Gesture::Noise(gesture)) = &app.timeline.drag
         && let NoiseGesture::Edit(d) = &**gesture
     {
         for (index, _, value) in &d.companions {
@@ -231,7 +231,7 @@ fn paint_surface(app: &Workbench, painter: &egui::Painter, grid: Grid, view: Vie
     let spans = spans(app, &values, view);
     for (i, raw) in values.iter().enumerate() {
         if active
-            && let Some(Gesture::Noise(g)) = &app.drag
+            && let Some(Gesture::Noise(g)) = &app.timeline.drag
             && let NoiseGesture::Erase { ids, .. } = &**g
             && ids.contains(&i)
         {

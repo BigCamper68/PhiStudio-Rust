@@ -110,7 +110,7 @@ fn choose_page(app: &mut Workbench, ctx: &egui::Context, size: egui::Vec2, page:
         ShaderPage::Animation => "Animation",
         ShaderPage::Tempo => "FX BPM",
     };
-    app.properties_scroll = true;
+    app.windows.scroll_to_properties = true;
     for _ in 0..20 {
         frame(app, ctx, size, vec![]);
     }

@@ -105,12 +105,12 @@ impl Workbench {
         self.audio_notes.line = self.line;
         self.audio_notes.error = None;
         self.audio_guide.show = false;
-        self.show_settings = false;
+        self.windows.settings = false;
         if self.audio_notes.start.is_empty() {
-            self.audio_notes.start = Beat::from_grid(self.beat.max(0.), 1000000)
+            self.audio_notes.start = Beat::from_grid(self.transport.beat.max(0.), 1000000)
                 .unwrap_or(Beat::ZERO)
                 .to_string();
-            self.audio_notes.end = Beat::from_grid(self.beat.max(0.) + 8., 1000000)
+            self.audio_notes.end = Beat::from_grid(self.transport.beat.max(0.) + 8., 1000000)
                 .unwrap_or(Beat::ONE)
                 .to_string();
         }
@@ -145,7 +145,7 @@ impl Workbench {
         let beat = |v: f64| Beat::from_grid(v.max(0.), 1000000).map_err(|e| e.to_string());
         let range = match self.audio_notes.range {
             Range::Song => [Beat::ZERO, beat(end)?],
-            Range::Cursor => [beat(self.beat)?, beat(end)?],
+            Range::Cursor => [beat(self.transport.beat)?, beat(end)?],
             Range::Visible => {
                 let g = self
                     .multi_line
@@ -351,8 +351,8 @@ impl Workbench {
                 .multi_line
                 .base
                 .map_or(1., |g| ((g.baseline() - g.rect.center().y) / g.zoom) as f64);
-            self.beat = (item.note.start_time.as_f64() - offset).max(0.);
-            self.camera_x = if item.note.x.abs() > 675. {
+            self.transport.beat = (item.note.start_time.as_f64() - offset).max(0.);
+            self.timeline.camera_x = if item.note.x.abs() > 675. {
                 item.note.x
             } else {
                 0.

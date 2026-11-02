@@ -95,7 +95,7 @@ fn structural_actions_follow_line_identity_and_restore_multi_view_with_history_j
 #[test]
 fn texture_selection_preserves_drafted_fields_and_only_apply_records_chart_history() {
     let mut app = app();
-    app.show_line_properties = true;
+    app.windows.line_properties = true;
     let raw = app.editor.document().as_json().clone();
     let ctx = Context::default();
     for _ in 0..4 {
@@ -124,7 +124,7 @@ fn texture_selection_preserves_drafted_fields_and_only_apply_records_chart_histo
 #[test]
 fn stale_texture_selection_cannot_edit_another_revision_or_project() {
     let mut app = app();
-    app.show_line_properties = true;
+    app.windows.line_properties = true;
     let ctx = Context::default();
     for _ in 0..4 {
         frame(&mut app, &ctx, vec2(873., 393.));
@@ -151,7 +151,7 @@ fn stale_texture_selection_cannot_edit_another_revision_or_project() {
 #[test]
 fn touching_a_visual_texture_tile_stages_it_without_editing_the_chart() {
     let mut app = app();
-    app.show_line_properties = true;
+    app.windows.line_properties = true;
     let raw = app.editor.document().as_json().clone();
     let ctx = Context::default();
     let size = vec2(873., 393.);
@@ -203,7 +203,7 @@ fn line_properties_and_texture_picker_fit_compact_screens_in_every_language() {
         for size in [vec2(873., 393.), vec2(582., 262.)] {
             let mut app = app();
             app.options.language = language;
-            app.show_line_properties = true;
+            app.windows.line_properties = true;
             let raw = app.editor.document().as_json().clone();
             let ctx = Context::default();
             ctx.set_style(crate::theme::style());
@@ -256,7 +256,7 @@ fn line_properties_and_texture_picker_fit_compact_screens_in_every_language() {
                 assert_eq!(state.offset.x, 0.);
             }
             app.back();
-            assert!(!app.line_tools.show && app.show_line_properties);
+            assert!(!app.line_tools.show && app.windows.line_properties);
             assert_eq!(app.editor.document().as_json(), &raw);
             assert!(!app.editor.is_dirty());
         }

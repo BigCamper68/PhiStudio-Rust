@@ -6,8 +6,8 @@ fn storyboard_and_shaders_share_touch_pan_and_pinch_anchors() {
     for mode in [RightMode::Events, RightMode::Storyboard, RightMode::Shaders] {
         let mut app = app();
         app.advanced.right_mode = mode;
-        app.beat = 4.;
-        app.playing = true;
+        app.transport.beat = 4.;
+        app.transport.playing = true;
         let original = app.editor.document().as_json().clone();
         let grid =
             crate::grid_input::geometry(Rect::from_min_max(pos2(0., 80.), pos2(900., 700.)), &app);
@@ -26,8 +26,8 @@ fn storyboard_and_shaders_share_touch_pan_and_pinch_anchors() {
             |_| true,
             false,
         );
-        assert!(app.playing && !app.is_scrubbing());
-        assert!((app.beat - 5.).abs() < 0.001);
+        assert!(app.transport.playing && !app.is_scrubbing());
+        assert!((app.transport.beat - 5.).abs() < 0.001);
         let grid =
             crate::grid_input::geometry(Rect::from_min_max(pos2(0., 80.), pos2(900., 700.)), &app);
         let mut router = crate::touch::TouchRouter::default();
@@ -39,13 +39,13 @@ fn storyboard_and_shaders_share_touch_pan_and_pinch_anchors() {
         ] {
             let (events, canceled) = router.event(phase, id, pos);
             crate::grid_input::handle(&mut app, &events, grid, area, |_| true, canceled);
-            assert!(app.playing && app.is_scrubbing());
+            assert!(app.transport.playing && app.is_scrubbing());
         }
         let (events, canceled) = router.event(egui::TouchPhase::End, 2, b + vec2(80., 40.));
         crate::grid_input::handle(&mut app, &events, grid, area, |_| true, canceled);
-        assert!(app.playing && !app.is_scrubbing());
+        assert!(app.transport.playing && !app.is_scrubbing());
         assert_eq!(app.editor.document().as_json(), &original);
-        results.push((app.beat, app.zoom));
+        results.push((app.transport.beat, app.timeline.zoom));
     }
     assert_eq!(results[0], results[1]);
     assert_eq!(results[1], results[2]);

@@ -2,7 +2,7 @@ use super::*;
 
 impl Workbench {
     pub(crate) fn edit_window(&mut self, ctx: &egui::Context) {
-        if !self.show_edit || self.show_projects {
+        if !self.windows.edit || self.show_projects {
             return;
         }
         let mut open = true;
@@ -30,7 +30,7 @@ impl Workbench {
                     )
                     .touch_show(ui, |ui| self.edit_actions(ui));
             });
-        self.show_edit = open;
+        self.windows.edit = open;
     }
 
     pub(super) fn edit_actions(&mut self, ui: &mut egui::Ui) {
@@ -126,7 +126,7 @@ impl Workbench {
                 self.transform_selection(Transform::ReverseTime);
             }
             if ui.button(crate::i18n::tr("Quantize")).clicked() {
-                self.transform_selection(Transform::Quantize(self.division));
+                self.transform_selection(Transform::Quantize(self.timeline.division));
             }
         });
         if ui

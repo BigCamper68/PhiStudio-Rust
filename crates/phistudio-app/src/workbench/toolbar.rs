@@ -46,7 +46,7 @@ impl Workbench {
                                     .add_enabled(
                                         shaders || tool != Tool::Event || self.events.layer < 4,
                                         egui::SelectableLabel::new(
-                                            self.tool == tool,
+                                            self.timeline.tool == tool,
                                             RichText::new(crate::i18n::tr(label)).color(color),
                                         ),
                                     )
@@ -57,7 +57,7 @@ impl Workbench {
                             }
                             ui.separator();
                             if ui.button(crate::i18n::tr("Grid")).clicked() {
-                                self.show_grid_settings = !self.show_grid_settings;
+                                self.windows.grid = !self.windows.grid;
                             }
                             if noise {
                                 self.noise_toolbar(ui);
@@ -68,7 +68,7 @@ impl Workbench {
                                 return;
                             }
                             if ui.button(crate::i18n::tr("Edit")).clicked() {
-                                self.show_edit = !self.show_edit;
+                                self.windows.edit = !self.windows.edit;
                             }
                             if ui.button(crate::i18n::tr("Tools")).clicked() {
                                 self.tools.show = !self.tools.show;
@@ -88,8 +88,11 @@ impl Workbench {
                 ui.horizontal(|ui| {
                     ui.small(
                         RichText::new({
-                            let __i18n_arg_0 =
-                                &(self.editor.document().tempo().seconds_at(self.beat));
+                            let __i18n_arg_0 = &(self
+                                .editor
+                                .document()
+                                .tempo()
+                                .seconds_at(self.transport.beat));
                             let __i18n_arg_1 = &(crate::i18n::tr(
                                 if self.advanced.right_mode
                                     == crate::advanced_ui::RightMode::Shaders

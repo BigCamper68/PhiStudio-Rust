@@ -45,7 +45,7 @@ fn background_preview_uses_brightness_and_replaces_docked_and_floating_preview()
                 .iter()
                 .all(|v| v.color == egui::Color32::from_white_alpha(alpha))
         );
-        assert!(app.grid_area.contains(app.preview.rect.center()));
+        assert!(app.timeline.area.contains(app.preview.rect.center()));
         let grid = app.multi_line.base.unwrap();
         let surface = grid.full_rect();
         assert!(
@@ -86,7 +86,7 @@ fn background_preview_uses_brightness_and_replaces_docked_and_floating_preview()
         app.options.preview_behind_grid = false;
         app.preview.floating = false;
         frame(&mut app, &ctx, size, vec![], false);
-        assert!(app.preview.rect.left() > app.grid_area.right());
+        assert!(app.preview.rect.left() > app.timeline.area.right());
         assert_eq!(app.editor.document().as_json(), &original);
     }
 }
@@ -95,7 +95,7 @@ fn background_preview_uses_brightness_and_replaces_docked_and_floating_preview()
 fn real_properties_keep_their_position_after_a_fast_fling_settles() {
     for floating in [false, true] {
         let mut app = Workbench::new(ChartDocument::empty("Fling", 120.).unwrap(), None);
-        app.compact_properties = floating;
+        app.windows.floating_properties = floating;
         app.select_event(Some(phistudio_core::EventId {
             line: 0,
             layer: 0,
@@ -149,15 +149,15 @@ fn real_properties_keep_their_position_after_a_fast_fling_settles() {
 fn a_floating_window_consumes_taps_over_the_grid() {
     let mut app = Workbench::new(ChartDocument::empty("Test", 120.).unwrap(), None);
     app.preview.floating = true;
-    app.show_context = false;
-    app.tool = Tool::Place(NoteKind::Tap);
+    app.windows.sidebar = false;
+    app.timeline.tool = Tool::Place(NoteKind::Tap);
     let ctx = egui::Context::default();
     let size = Vec2::new(873., 393.);
     for _ in 0..3 {
         frame(&mut app, &ctx, size, vec![], false);
     }
     let pos = app.preview.rect.center();
-    assert!(app.grid_area.contains(pos));
+    assert!(app.timeline.area.contains(pos));
     frame(
         &mut app,
         &ctx,
@@ -213,15 +213,15 @@ fn selecting_objects_scrolls_to_properties_and_floating_forms_remove_docked_cont
             .collect::<Vec<_>>()
     };
     assert_eq!(headers(&mut app).len(), 1);
-    app.compact_properties = true;
+    app.windows.floating_properties = true;
     for _ in 0..3 {
         frame(&mut app, &ctx, size, vec![], false);
     }
     let labels = headers(&mut app);
     assert_eq!(labels.len(), 1, "Properties must be drawn once");
     assert!(labels[0] < 600., "Docked form remained visible");
-    app.compact_properties = false;
-    app.properties_scroll = true;
+    app.windows.floating_properties = false;
+    app.windows.scroll_to_properties = true;
     for _ in 0..3 {
         frame(&mut app, &ctx, size, vec![], false);
     }

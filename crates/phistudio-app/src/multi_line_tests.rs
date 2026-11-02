@@ -148,7 +148,7 @@ fn cross_column_box_copy_paste_move_and_erase_are_sparse_single_undo_actions() {
     );
     assert_eq!(app.selection().notes.len(), 2);
     app.copy_selection(false);
-    app.beat = 5.;
+    app.transport.beat = 5.;
     let raw = app.editor.document().as_json().clone();
     let count = app.editor.history_cursor();
     app.paste_selection(false, false);
@@ -157,7 +157,7 @@ fn cross_column_box_copy_paste_move_and_erase_are_sparse_single_undo_actions() {
     assert_eq!(app.editor.document().notes(1).len(), 2);
     app.history_step(false);
     assert_eq!(app.editor.document().as_json(), &raw);
-    app.beat = 0.;
+    app.transport.beat = 0.;
     app.set_tool(Tool::Erase);
     let a = pos2(panels[0].1.x(0.), g.y(2.));
     let b = pos2(panels[1].1.x(0.), g.y(2.));
@@ -446,7 +446,7 @@ fn event_creation_hold_resize_and_horizontal_navigation_use_the_owning_panel() {
     app.multi_line.events = true;
     app.select(None);
     let start = grid(&app).rect.center();
-    let camera = app.camera_x;
+    let camera = app.timeline.camera_x;
     input(
         &mut app,
         vec![
@@ -456,7 +456,7 @@ fn event_creation_hold_resize_and_horizontal_navigation_use_the_owning_panel() {
         ],
     );
     assert_ne!(
-        app.camera_x, camera,
+        app.timeline.camera_x, camera,
         "Normal notes camera must still pan while events use columns"
     );
     assert_eq!(app.multi_line.offsets[1], 0.);
@@ -482,7 +482,7 @@ fn touch_taps_create_in_two_columns_and_vertical_swipes_do_not_place_notes() {
     for _ in 0..4 {
         run(&mut app, vec![], false);
     }
-    let g = grid_input::geometry(app.grid_area, &app);
+    let g = grid_input::geometry(app.timeline.area, &app);
     let panels = app.line_panels(g, false);
     let mut router = crate::touch::TouchRouter::default();
     for (i, (_, panel)) in panels.iter().enumerate() {
@@ -620,7 +620,7 @@ fn storyboard_multi_box_group_move_copy_delete_and_undo_keep_source_lines() {
     assert_eq!(app.story_selection().len(), 2);
     app.copy_selection(false);
     assert_eq!(app.tools.clipboard.as_ref().unwrap().len(), 2);
-    app.beat = 8.;
+    app.transport.beat = 8.;
     app.paste_selection(false, false);
     for line in [0, 1] {
         assert_eq!(
@@ -700,7 +700,7 @@ fn storyboard_erase_across_columns_and_horizontal_navigation_use_the_shared_view
     let panels = app.line_panels(g, true);
     let a = pos2(panels[0].1.event_rect.center().x, g.y(5.));
     let b = a - vec2(70., 0.);
-    let beat = app.beat;
+    let beat = app.transport.beat;
     input(
         &mut app,
         vec![
@@ -710,6 +710,6 @@ fn storyboard_erase_across_columns_and_horizontal_navigation_use_the_shared_view
         ],
     );
     assert!(app.multi_line.offsets[1] > 0.);
-    assert_eq!(app.beat, beat);
+    assert_eq!(app.transport.beat, beat);
     assert_eq!(app.editor.document().as_json(), &source);
 }

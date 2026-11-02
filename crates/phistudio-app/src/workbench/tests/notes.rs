@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn canceling_a_creation_gesture_leaves_the_chart_unchanged() {
     let mut app = Workbench::new(ChartDocument::empty("Test", 120.).unwrap(), None);
-    app.drag = Some(timeline::Gesture::Create {
+    app.timeline.drag = Some(timeline::Gesture::Create {
         start: Beat::ZERO,
         end: Beat::ONE,
         x: 0.,
@@ -20,15 +20,15 @@ fn canceling_a_creation_gesture_leaves_the_chart_unchanged() {
         vec![],
         true,
     );
-    assert!(app.drag.is_none());
+    assert!(app.timeline.drag.is_none());
     assert!(!app.editor.is_dirty());
 }
 
 #[test]
 fn placement_swipe_scrolls_and_a_batched_tap_uses_its_down_position() {
     let mut app = Workbench::new(ChartDocument::empty("Test", 120.).unwrap(), None);
-    app.tool = Tool::Place(NoteKind::Tap);
-    app.beat = 8.;
+    app.timeline.tool = Tool::Place(NoteKind::Tap);
+    app.transport.beat = 8.;
     let grid = test_grid(&app);
     let down = egui::pos2(grid.x(135.), grid.y(10.));
     // A far-away hover from the previous frame must never become the down origin.
@@ -58,13 +58,13 @@ fn placement_swipe_scrolls_and_a_batched_tap_uses_its_down_position() {
     );
     assert_eq!(app.editor.document().note_count(), 1);
     assert!(!app.editor.is_dirty());
-    assert!((app.beat - 9.).abs() < 1e-9);
+    assert!((app.transport.beat - 9.).abs() < 1e-9);
 }
 
 #[test]
 fn moving_requires_selection_and_commits_the_final_release_once() {
     let mut app = Workbench::new(ChartDocument::empty("Test", 120.).unwrap(), None);
-    app.beat = 1.;
+    app.transport.beat = 1.;
     let start = Beat::new(2, 1, 3).unwrap();
     let end = Beat::new(3, 2, 3).unwrap();
     app.execute(Command::AddNote {
@@ -101,7 +101,7 @@ fn moving_requires_selection_and_commits_the_final_release_once() {
 #[test]
 fn hold_tap_has_a_positive_grid_duration_and_cancel_never_commits() {
     let mut app = Workbench::new(ChartDocument::empty("Test", 120.).unwrap(), None);
-    app.tool = Tool::Place(NoteKind::Hold);
+    app.timeline.tool = Tool::Place(NoteKind::Hold);
     let grid = test_grid(&app);
     let pos = egui::pos2(grid.x(0.), grid.y(2.));
     grid_events(&mut app, &[pointer(pos, true), pointer(pos, false)], false);
@@ -119,8 +119,8 @@ fn hold_tap_has_a_positive_grid_duration_and_cancel_never_commits() {
 #[test]
 fn pinch_cancels_hold_keeps_its_chart_anchor_and_blocks_the_remaining_finger() {
     let mut app = Workbench::new(ChartDocument::empty("Test", 120.).unwrap(), None);
-    app.beat = 8.;
-    app.tool = Tool::Place(NoteKind::Hold);
+    app.transport.beat = 8.;
+    app.timeline.tool = Tool::Place(NoteKind::Hold);
     let mut router = crate::touch::TouchRouter::default();
     let a = egui::pos2(220., 180.);
     let b = egui::pos2(320., 180.);
@@ -134,7 +134,7 @@ fn pinch_cancels_hold_keeps_its_chart_anchor_and_blocks_the_remaining_finger() {
         let (events, canceled) = router.event(phase, id, pos);
         grid_events(&mut app, &events, canceled);
     }
-    assert!((app.zoom - 192.).abs() < 1e-5);
+    assert!((app.timeline.zoom - 192.).abs() < 1e-5);
     assert!((test_grid(&app).raw_beat(180.) - anchor).abs() < 1e-6);
     for (phase, id, pos) in [
         (egui::TouchPhase::End, 1, a),
@@ -145,7 +145,7 @@ fn pinch_cancels_hold_keeps_its_chart_anchor_and_blocks_the_remaining_finger() {
         grid_events(&mut app, &events, canceled);
     }
     assert_eq!(app.editor.document().note_count(), 0);
-    assert!(app.drag.is_none());
+    assert!(app.timeline.drag.is_none());
 }
 
 #[test]

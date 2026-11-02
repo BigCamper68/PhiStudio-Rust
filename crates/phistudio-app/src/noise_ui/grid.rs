@@ -203,7 +203,7 @@ pub(crate) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2, additive: bool) 
         .copied()
         .find(|i| app.noise.selection.contains(i))
         .or_else(|| ids.last().copied());
-    if app.tool == Tool::Erase {
+    if app.timeline.tool == Tool::Erase {
         if !app.flush_noise_draft() {
             return None;
         }
@@ -213,7 +213,7 @@ pub(crate) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2, additive: bool) 
             last: pos,
         })));
     }
-    if app.tool == Tool::BoxSelect {
+    if app.timeline.tool == Tool::BoxSelect {
         if !app.flush_noise_draft() {
             return None;
         }
@@ -224,7 +224,7 @@ pub(crate) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2, additive: bool) 
             additive,
         })));
     }
-    let creating = app.tool == Tool::Event;
+    let creating = app.timeline.tool == Tool::Event;
     let selected = if app.noise.animation {
         app.noise.key_selected
     } else {
@@ -646,7 +646,7 @@ pub(crate) fn finish(app: &mut Workbench, gesture: NoiseGesture) {
                 }
                 app.noise.selection = selected;
                 app.refresh_noise();
-                app.show_context = true;
+                app.windows.sidebar = true;
             }
         }
         NoiseGesture::Erase { ids, .. } => {

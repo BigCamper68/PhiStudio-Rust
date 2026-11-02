@@ -13,32 +13,25 @@ impl Item {
         }
     }
 }
-pub(super) fn items(app: &Workbench, keys: bool) -> Vec<(Item, Value)> {
-    let names = if keys {
-        app.shaders
-            .parameters
-            .iter()
-            .map(|p| Some(p.name.as_str()))
-            .collect()
+pub(super) fn items(app: &Workbench, keys: bool) -> impl Iterator<Item = (Item, &Value)> {
+    let count = if keys {
+        app.shaders.parameters.len()
     } else {
-        vec![None]
+        1
     };
-    names
-        .into_iter()
-        .flat_map(|name| {
-            rows_for(app, name)
-                .into_iter()
-                .enumerate()
-                .map(move |(index, raw)| (Item::new(name, index), raw))
-        })
-        .collect()
+    (0..count).flat_map(move |n| {
+        let name = keys.then(|| app.shaders.parameters[n].name.as_str());
+        rows_for(app, name)
+            .iter()
+            .enumerate()
+            .map(move |(index, raw)| (Item::new(name, index), raw))
+    })
 }
 pub(super) fn box_hits(app: &Workbench, grid: Grid, keys: bool, area: Rect) -> BTreeSet<Item> {
     items(app, keys)
-        .into_iter()
         .filter_map(|(item, raw)| {
-            let col = row_column(app, grid, item.parameter.as_deref(), item.index, &raw)?;
-            let rect = interval(app, grid, col, &raw, keys)?;
+            let col = row_column(app, grid, item.parameter.as_deref(), item.index, raw)?;
+            let rect = interval(app, grid, col, raw, keys)?;
             (rect.intersects(grid.rect) && area.intersects(rect.intersect(grid.rect)))
                 .then_some(item)
         })
@@ -97,7 +90,7 @@ pub(super) fn commit_group(app: &mut Workbench, values: Vec<(Item, Value)>) -> b
         match app.editor.execute_batch("Edit shader effect", commands) {
             Ok(changed) => {
                 if changed {
-                    app.playing = false;
+                    app.transport.playing = false;
                     app.remember_anchor(anchor);
                 }
                 true
@@ -140,7 +133,7 @@ pub(super) fn delete_group(app: &mut Workbench, ids: BTreeSet<Item>) {
         let anchor = app.anchor();
         match app.editor.execute_batch("Erase shader effects", commands) {
             Ok(true) => {
-                app.playing = false;
+                app.transport.playing = false;
                 app.remember_anchor(anchor);
                 app.shaders.selected = None;
             }
@@ -166,13 +159,12 @@ pub(in crate::shader_ui) fn selection_key(app: &mut Workbench, key: egui::Key) -
     app.refresh_shaders();
     let keys = app.shaders.animation_track().is_some();
     let values = items(app, keys)
-        .into_iter()
         .filter(|(id, _)| app.shaders.selection.contains(id))
         .collect::<Vec<_>>();
     if matches!(key, Key::C | Key::X | Key::D) {
         app.shaders.selection_clipboard = values
             .into_iter()
-            .map(|(id, value)| (id.parameter, value))
+            .map(|(id, value)| (id.parameter, value.clone()))
             .collect();
     }
     if matches!(key, Key::Delete | Key::X) {
@@ -236,7 +228,7 @@ pub(in crate::shader_ui) fn selection_key(app: &mut Workbench, key: egui::Key) -
         let anchor = app.anchor();
         match app.editor.execute_batch("Add shader effect", commands) {
             Ok(true) => {
-                app.playing = false;
+                app.transport.playing = false;
                 app.remember_anchor(anchor);
             }
             Ok(false) => {}

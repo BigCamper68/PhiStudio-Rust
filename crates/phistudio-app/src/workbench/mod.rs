@@ -1,3 +1,6 @@
+mod document_view;
+mod state;
+use state::{FileWorkflow, TimelineState, TransportState, Windows};
 mod dialogs;
 mod document;
 mod editing;
@@ -37,13 +40,11 @@ pub struct NoteDraft {
     revision: u64,
 }
 
-struct NoteCache {
-    revision: u64,
-    notes: Arc<Vec<(usize, Note)>>,
-    index: crate::note_index::NoteIndex,
-}
-
 pub struct Workbench {
+    pub(crate) timeline: TimelineState,
+    pub(crate) transport: TransportState,
+    pub(crate) windows: Windows,
+    pub(crate) files: FileWorkflow,
     pub(crate) line_tools: crate::line_tools::State,
     pub(crate) multi_line: crate::multi_line::MultiLine,
     pub(crate) audio_guide: crate::audio_guide::Guide,
@@ -61,84 +62,38 @@ pub struct Workbench {
     pub(crate) asset_revision: u64,
     pub(crate) playtest: crate::playtest_ui::PlaytestState,
     pub(crate) theme_role: usize,
-    pub(crate) properties_scroll: bool,
     pub(crate) palette: Option<crate::color_ui::ColorPicker>,
     pub(crate) skins: crate::skins_ui::SkinsState,
-    pub(crate) camera_x: f64,
-    pub(crate) navigation_axis: Option<bool>,
     pub(crate) advanced: crate::advanced_ui::AdvancedState,
     pub(crate) story_tools: crate::story_tools::StoryToolsState,
     pub editor: Editor,
     pub(crate) options: phistudio_core::EditorOptions,
     pub(crate) inspector: crate::inspector::InspectorState,
-    pub(crate) show_edit: bool,
     pub project_options: phistudio_core::ProjectOptions,
     pub line: usize,
     pub selected: Option<NoteId>,
     pub(crate) tools: crate::toolkit::ToolsState,
-    pub tool: Tool,
-    pub beat: f64,
-    pub lanes: usize,
-    pub division: i32,
-    pub zoom: f32,
-    pub timeline_split: f32,
-    pub playing: bool,
-    pub(crate) music_volume: f32,
-    pub(crate) hitsound_volume: f32,
-    pub(crate) show_settings: bool,
     pub skin: Option<phistudio_prpr::EditorSkin>,
     pub(crate) note_highlights: std::collections::BTreeSet<NoteId>,
-    pub grid_area: egui::Rect,
-    pub grid_hover: Option<egui::Pos2>,
-    pub grid_input: crate::grid_input::GridInput,
-    pub drag: Option<timeline::Gesture>,
     pub draft: Option<NoteDraft>,
     pub events: crate::authoring_ui::EventState,
     pub(crate) line_draft: Option<crate::authoring_ui::LineDraft>,
     pub(crate) bpm_draft: Option<crate::authoring_ui::BpmDraft>,
-    pub(crate) show_line_properties: bool,
-    pub(crate) show_bpm: bool,
     pub file: Option<PathBuf>,
     pub status: String,
     pub error: Option<String>,
     pub render_error: Option<String>,
     pub resource_warning: Option<String>,
-    pub path_input: String,
-    pub package_dialog: bool,
-    pub pending_open: Option<PathBuf>,
-    pub show_help: bool,
     pub pixels_per_point: f32,
     pub session: u64,
     pub close_requested: bool,
     pub close_confirmed: bool,
-    pub(crate) compact_properties: bool,
-    show_grid_settings: bool,
-    pub(crate) show_context: bool,
-    pub file_busy: bool,
-    pub native_request: Option<crate::files::FileRequest>,
-    pub imported_project: Option<phistudio_core::ImportedProject>,
     pub managed_storage: bool,
     pub library: Option<phistudio_core::ProjectLibrary>,
     pub(crate) project_covers: Option<crate::covers::Covers>,
     pub show_projects: bool,
-    pub(crate) new_chart: Option<project_dialogs::NewChart>,
-    pub(crate) export_package: Option<phistudio_core::ProjectExport>,
-    #[cfg(not(any(target_os = "android", target_os = "ios")))]
-    pub(crate) export_path: String,
-    pub(crate) timeline_scrub: bool,
-    pub(crate) music_duration: Option<f64>,
-    seek_extent: Option<(u64, f64)>,
-    pub recovery: Option<phistudio_core::RecoverySnapshot>,
-    pub recovery_loading: bool,
-    pub(crate) media_dialog: Option<crate::media::MediaKind>,
-    #[cfg(not(any(target_os = "android", target_os = "ios")))]
-    pub(crate) media_path: String,
-    pub(crate) delete_project: Option<(PathBuf, String)>,
-    pub(crate) last_deleted: Option<phistudio_core::TrashedProject>,
     asset_directory: Option<PathBuf>,
-    pending_asset_directory: Option<PathBuf>,
-    note_cache: std::collections::BTreeMap<usize, NoteCache>,
-    line_cache: Option<summaries::LineCache>,
+    view: document_view::DocumentView,
 }
 
 fn sidebar_widths(screen_width: f32) -> std::ops::RangeInclusive<f32> {
@@ -159,6 +114,10 @@ impl Workbench {
             ),
         };
         Self {
+            timeline: TimelineState::default(),
+            transport: TransportState::default(),
+            windows: Windows::default(),
+            files: FileWorkflow::default(),
             multi_line: Default::default(),
             audio_guide: Default::default(),
             audio_notes: Default::default(),
@@ -171,11 +130,8 @@ impl Workbench {
             asset_revision: 0,
             playtest: Default::default(),
             theme_role: 0,
-            properties_scroll: false,
             palette: None,
             skins: Default::default(),
-            camera_x: 0.,
-            navigation_axis: None,
             advanced: crate::advanced_ui::AdvancedState {
                 playback_rate: 1.,
                 ..Default::default()
@@ -188,75 +144,32 @@ impl Workbench {
             editor: Editor::new(document),
             options: phistudio_core::EditorOptions::default(),
             inspector: crate::inspector::InspectorState::default(),
-            show_edit: false,
             project_options,
             line: 0,
             selected: None,
             tools: crate::toolkit::ToolsState::default(),
-            tool: Tool::Select,
-            beat: 0.,
-            division: 4,
-            lanes: 11,
-            zoom: 96.,
-            timeline_split: 0.54,
-            playing: false,
-            music_volume: 1.,
-            hitsound_volume: 1.,
-            show_settings: false,
             skin: None,
             note_highlights: Default::default(),
-            grid_area: egui::Rect::NOTHING,
-            grid_hover: None,
-            grid_input: crate::grid_input::GridInput::default(),
-            drag: None,
             draft: None,
             events: crate::authoring_ui::EventState::default(),
             line_draft: None,
             line_tools: crate::line_tools::State::default(),
             bpm_draft: None,
-            show_line_properties: false,
-            show_bpm: false,
             file,
             status: "Select a note or a placement tool".into(),
             error,
             render_error: None,
             resource_warning: None,
-            path_input: String::new(),
-            package_dialog: false,
-            pending_open: None,
-            show_help: false,
             pixels_per_point: 1.,
             session: 0,
             close_requested: false,
             close_confirmed: false,
-            compact_properties: false,
-            show_grid_settings: false,
-            show_context: true,
-            file_busy: false,
-            native_request: None,
-            imported_project: None,
             managed_storage: false,
             library: None,
             project_covers: None,
             show_projects: false,
-            new_chart: None,
-            export_package: None,
-            #[cfg(not(any(target_os = "android", target_os = "ios")))]
-            export_path: String::new(),
-            timeline_scrub: false,
-            seek_extent: None,
-            music_duration: None,
-            recovery: None,
-            recovery_loading: false,
-            media_dialog: None,
-            #[cfg(not(any(target_os = "android", target_os = "ios")))]
-            media_path: String::new(),
-            delete_project: None,
-            last_deleted: None,
             asset_directory: None,
-            pending_asset_directory: None,
-            note_cache: Default::default(),
-            line_cache: None,
+            view: Default::default(),
         }
     }
 
@@ -287,24 +200,24 @@ impl Workbench {
                 self.preview.drag = None;
                 self.preview.touches.clear();
                 self.preview.blocked = false;
-                self.playing = false;
+                self.transport.playing = false;
             }
             self.fullscreen_preview(ctx);
             return;
         }
         self.line = self.line.min(self.editor.document().line_count() - 1);
         if !self.editor.is_dirty()
-            && let Some(path) = self.pending_open.take()
+            && let Some(path) = self.files.pending_open.take()
         {
             self.load(path);
         }
         self.pixels_per_point = ctx.pixels_per_point();
         if canceled {
-            if self.timeline_scrub {
-                self.playing = false;
+            if self.transport.scrubbing {
+                self.transport.playing = false;
             }
-            self.timeline_scrub = false;
-            self.drag = None;
+            self.transport.scrubbing = false;
+            self.timeline.drag = None;
             self.draft = None;
         }
         if self.show_projects {
@@ -332,3 +245,6 @@ impl Workbench {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod performance;

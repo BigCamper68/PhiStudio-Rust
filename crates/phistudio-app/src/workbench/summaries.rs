@@ -3,27 +3,9 @@ use super::Workbench;
 use phistudio_core::LineSummary;
 use std::sync::Arc;
 
-pub(super) struct LineCache {
-    session: u64,
-    revision: u64,
-    lines: Arc<Vec<LineSummary>>,
-}
-
 impl Workbench {
     pub(crate) fn line_summaries(&mut self) -> Arc<Vec<LineSummary>> {
-        let revision = self.editor.revision();
-        if self
-            .line_cache
-            .as_ref()
-            .is_none_or(|cache| cache.session != self.session || cache.revision != revision)
-        {
-            self.line_cache = Some(LineCache {
-                session: self.session,
-                revision,
-                lines: Arc::new(self.editor.document().lines()),
-            });
-        }
-        Arc::clone(&self.line_cache.as_ref().unwrap().lines)
+        self.view.summaries(&self.editor, self.session)
     }
 }
 
@@ -36,8 +18,8 @@ mod tests {
     fn invalidates_after_edits_undo_redo_and_replacing_a_project() {
         let mut app = Workbench::new(ChartDocument::empty("First", 120.).unwrap(), None);
         let initial = app.line_summaries();
-        app.beat = 24.;
-        app.playing = true;
+        app.transport.beat = 24.;
+        app.transport.playing = true;
         assert!(Arc::ptr_eq(&initial, &app.line_summaries()));
 
         app.execute(Command::AddNote {

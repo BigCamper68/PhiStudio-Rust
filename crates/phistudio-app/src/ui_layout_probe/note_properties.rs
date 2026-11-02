@@ -86,7 +86,7 @@ pub(super) async fn run(
         )
         .await?;
     app.options.preview_behind_grid = true;
-    app.show_context = false;
+    app.windows.sidebar = false;
     let mut cases = vec![];
     for multi in [false, true] {
         app.multi_line.enabled = multi;
@@ -117,8 +117,8 @@ pub(super) async fn run(
         cases.push(serde_json::json!({"multiple":multi,"surface":[surface.left(),surface.top(),surface.width(),surface.height()],"preview":[app.preview.rect.left(),app.preview.rect.top(),app.preview.rect.width(),app.preview.rect.height()]}));
     }
     app.multi_line.enabled = false;
-    app.show_context = true;
-    app.compact_properties = true;
+    app.windows.sidebar = true;
+    app.windows.floating_properties = true;
     for language in [Language::English, Language::Russian, Language::Japanese] {
         app.options.language = language;
         capture(
@@ -131,9 +131,9 @@ pub(super) async fn run(
         )
         .await?;
     }
-    app.compact_properties = false;
+    app.windows.floating_properties = false;
     app.select(None);
-    app.show_settings = true;
+    app.windows.settings = true;
     app.options.language = Language::Russian;
     for (i, fraction) in [0.45, 0.60].into_iter().enumerate() {
         capture(

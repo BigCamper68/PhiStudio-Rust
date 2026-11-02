@@ -47,7 +47,7 @@ fn left_columns_keep_their_width_and_move_on_the_configurable_grid() {
     let original = app.editor.document().as_json().clone();
     let grid = canvas(&app);
     let col = surface::column(&app, grid, false, 0.);
-    app.lanes = 5;
+    app.timeline.lanes = 5;
     assert_eq!(surface::column(&app, canvas(&app), false, 0.), col);
     let grid = canvas(&app);
     let from = pos2(col.center().x, grid.y(2.));
@@ -200,7 +200,7 @@ fn canceled_gestures_leave_both_shader_and_uniform_data_unchanged() {
             false,
         );
         route(&mut app, grid, &[], true);
-        assert!(app.drag.is_none());
+        assert!(app.timeline.drag.is_none());
         assert_eq!(app.editor.document().as_json(), &original);
         assert_eq!(app.editor.history_rows().len(), count);
     }
@@ -306,11 +306,11 @@ fn erasing_across_parameter_columns_and_tapping_the_divider_never_edit_notes() {
 fn horizontal_shader_navigation_keeps_the_note_camera_and_empty_selection_clears_parameters() {
     let mut app = app();
     animated(&mut app);
-    app.camera_x = 17.25;
+    app.timeline.camera_x = 17.25;
     let grid = canvas(&app);
     let from = pos2(grid.rect.right() - 20., grid.y(2.));
     drag(&mut app, grid, from, from - vec2(104., 0.));
-    assert_eq!(app.camera_x, 17.25);
+    assert_eq!(app.timeline.camera_x, 17.25);
     assert!((app.shaders.offsets[0] - 2.).abs() < 0.001);
     app.set_tool(Tool::BoxSelect);
     drag(

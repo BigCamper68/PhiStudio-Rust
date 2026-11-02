@@ -9,7 +9,7 @@ fn x_scale_handles_preview_commit_and_cancel_share_one_grid_transaction() {
     ] {
         for cancel in [false, true] {
             let mut app = group_app();
-            app.tool = Tool::Select;
+            app.timeline.tool = Tool::Select;
             app.tools.scale_anchor = anchor_mode;
             app.set_selection(phistudio_core::tools::Selection {
                 notes: (0..3).map(|index| NoteId { line: 0, index }).collect(),
@@ -29,7 +29,7 @@ fn x_scale_handles_preview_commit_and_cancel_share_one_grid_transaction() {
                 false,
             );
             assert!(matches!(
-                app.drag,
+                app.timeline.drag,
                 Some(crate::grid_input::Gesture::SelectionScale { moved: true, .. })
             ));
             assert_eq!(*app.editor.document().as_json(), before);

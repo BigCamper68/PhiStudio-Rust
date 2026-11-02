@@ -8,16 +8,8 @@ impl Workbench {
             || self.playtest.setup
             || self.playtest.active()
             || self.palette.is_some()
-            || self.file_busy
+            || self.files.modal_open()
             || self.show_projects
-            || self.media_dialog.is_some()
-            || self.delete_project.is_some()
-            || self.new_chart.is_some()
-            || self.export_package.is_some()
-            || self.recovery.is_some()
-            || self.package_dialog
-            || self.pending_open.is_some()
-            || self.imported_project.is_some()
             || self.close_requested
     }
 
@@ -28,16 +20,16 @@ impl Workbench {
                 .preferences(self.editor.document().line_count()),
             version: 1,
             video: self.video.settings.clone(),
-            lanes: self.lanes,
-            division: self.division,
-            zoom: self.zoom,
-            timeline_split: self.timeline_split,
-            sidebar: self.show_context,
+            lanes: self.timeline.lanes,
+            division: self.timeline.division,
+            zoom: self.timeline.zoom,
+            timeline_split: self.timeline.split,
+            sidebar: self.windows.sidebar,
             floating_preview: self.preview.floating,
-            floating_properties: self.compact_properties,
-            grid_window: self.show_grid_settings,
-            music_volume: self.music_volume,
-            hitsound_volume: self.hitsound_volume,
+            floating_properties: self.windows.floating_properties,
+            grid_window: self.windows.grid,
+            music_volume: self.transport.music_volume,
+            hitsound_volume: self.transport.hitsound_volume,
             options: self.options.clone(),
         }
         .normalized()
@@ -48,16 +40,16 @@ impl Workbench {
         self.multi_line
             .apply_preferences(&value.multi_line, self.editor.document().line_count());
         self.video.settings = value.video;
-        self.lanes = value.lanes;
-        self.division = value.division;
-        self.zoom = value.zoom;
-        self.timeline_split = value.timeline_split;
-        self.show_context = value.sidebar;
+        self.timeline.lanes = value.lanes;
+        self.timeline.division = value.division;
+        self.timeline.zoom = value.zoom;
+        self.timeline.split = value.timeline_split;
+        self.windows.sidebar = value.sidebar;
         self.preview.floating = value.floating_preview;
-        self.compact_properties = value.floating_properties;
-        self.show_grid_settings = value.grid_window;
-        self.music_volume = value.music_volume;
-        self.hitsound_volume = value.hitsound_volume;
+        self.windows.floating_properties = value.floating_properties;
+        self.windows.grid = value.grid_window;
+        self.transport.music_volume = value.music_volume;
+        self.transport.hitsound_volume = value.hitsound_volume;
         self.options = value.options;
     }
 
@@ -72,22 +64,21 @@ impl Workbench {
             self.close_fullscreen_preview();
             return;
         }
-        self.drag = None;
-        self.grid_input.cancel();
-        self.playing = false;
-        if self.file_busy {
+        self.timeline.cancel_gesture();
+        self.transport.playing = false;
+        if self.files.busy {
             return;
         }
-        if self.recovery.is_some() {
+        if self.files.recovery.is_some() {
             return;
         }
-        if self.media_dialog.take().is_some() || self.delete_project.take().is_some() {
+        if self.files.media.take().is_some() || self.files.delete_project.take().is_some() {
             return;
         }
         if std::mem::take(&mut self.line_tools.show) {
             return;
         }
-        if self.export_package.take().is_some() || self.new_chart.take().is_some() {
+        if self.files.export_package.take().is_some() || self.files.new_chart.take().is_some() {
             return;
         }
         if self.workspace.view.take().is_some() {
@@ -97,18 +88,19 @@ impl Workbench {
         if std::mem::take(&mut self.show_projects) {
             return;
         }
-        if std::mem::take(&mut self.package_dialog) || self.imported_project.take().is_some() {
+        if std::mem::take(&mut self.files.package_dialog)
+            || self.files.imported_project.take().is_some()
+        {
             return;
         }
-        if self.pending_open.take().is_some() {
-            self.pending_asset_directory = None;
+        if self.files.cancel_pending_open() {
             return;
         }
         if self.close_advanced_window() {
             return;
         }
-        if self.show_edit {
-            self.show_edit = false;
+        if self.windows.edit {
+            self.windows.edit = false;
             return;
         }
         if self.inspector.close_top_window() {
@@ -128,19 +120,10 @@ impl Workbench {
         if std::mem::take(&mut self.multi_line.show) {
             return;
         }
-        if self.show_settings {
-            self.show_settings = false;
-        } else if self.show_help {
-            self.show_help = false;
-        } else if self.show_bpm {
-            self.show_bpm = false;
-        } else if self.show_line_properties {
-            self.show_line_properties = false;
-        } else if self.compact_properties {
-            self.compact_properties = false;
-        } else if self.show_grid_settings {
-            self.show_grid_settings = false;
-        } else if self.preview.floating {
+        if self.windows.close_auxiliary() {
+            return;
+        }
+        if self.preview.floating {
             self.preview.floating = false;
         } else if !self.noise_back() && !self.shader_back() {
             self.close_requested = true;

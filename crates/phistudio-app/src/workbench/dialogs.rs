@@ -13,7 +13,7 @@ impl Workbench {
         self.audio_guide_window(ctx);
         self.audio_notes_window(ctx);
         self.multi_line_window(ctx);
-        if !self.show_projects && self.show_settings {
+        if !self.show_projects && self.windows.settings {
             let mut open = true;
             crate::i18n::window("Settings")
                 .open(&mut open)
@@ -34,7 +34,7 @@ impl Workbench {
                             self.settings_ui(ui);
                         });
                 });
-            self.show_settings &= open;
+            self.windows.settings &= open;
         }
         if !self.show_projects && self.preview.floating && !self.options.preview_behind_grid {
             let mut open = true;
@@ -45,7 +45,7 @@ impl Workbench {
                 .show(ctx, |ui| self.preview_panel(ui));
             self.preview.floating = open;
         }
-        if !self.show_projects && self.show_grid_settings {
+        if !self.show_projects && self.windows.grid {
             let mut open = true;
             crate::i18n::window("Grid")
                 .open(&mut open)
@@ -60,7 +60,7 @@ impl Workbench {
                                 ui.horizontal_wrapped(|ui| {
                                     for count in [3, 5, 7, 9, 11, 13, 17, 21, 25, 33] {
                                         ui.selectable_value(
-                                            &mut self.lanes,
+                                            &mut self.timeline.lanes,
                                             count,
                                             count.to_string(),
                                         );
@@ -72,7 +72,7 @@ impl Workbench {
                             ui.horizontal_wrapped(|ui| {
                                 for count in [1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64] {
                                     ui.selectable_value(
-                                        &mut self.division,
+                                        &mut self.timeline.division,
                                         count,
                                         count.to_string(),
                                     );
@@ -91,19 +91,19 @@ impl Workbench {
                                 ui.separator();
                             }
                             ui.add(
-                                egui::Slider::new(&mut self.zoom, 24. ..=280.).text(crate::i18n::tr("px / beat")),
+                                egui::Slider::new(&mut self.timeline.zoom, 24. ..=280.).text(crate::i18n::tr("px / beat")),
                             );
                             if ui.button(crate::i18n::tr("Reset zoom")).clicked() {
-                                self.zoom = 96.;
+                                self.timeline.zoom = 96.;
                             }
                             ui.small(crate::i18n::tr(if self.advanced.right_mode == crate::advanced_ui::RightMode::Shaders {
                                 "Pinch to zoom. Swipe to scrub time. Draw upwards with + Shader or + Keyframe."
                             } else { "Pinch to zoom and pan. Swipe to scroll. Tap to place a note." }));
                         });
                 });
-            self.show_grid_settings = open;
+            self.windows.grid = open;
         }
-        if !self.show_projects && self.compact_properties {
+        if !self.show_projects && self.windows.floating_properties {
             let mut open = true;
             crate::i18n::window(
                 if self.advanced.right_mode == crate::advanced_ui::RightMode::NoiseFields {
@@ -133,7 +133,7 @@ impl Workbench {
             })
             .show(ctx, |ui| {
                 ui.set_enabled(!self.modal_open());
-                let reset = std::mem::take(&mut self.properties_scroll);
+                let reset = std::mem::take(&mut self.windows.scroll_to_properties);
                 let mut scroll = egui::ScrollArea::vertical();
                 if reset {
                     scroll = scroll.vertical_scroll_offset(0.);
@@ -159,14 +159,14 @@ impl Workbench {
                     });
             });
             if !open {
-                self.properties_scroll = true;
+                self.windows.scroll_to_properties = true;
             }
-            self.compact_properties = open;
+            self.windows.floating_properties = open;
         }
         if !self.show_projects {
             self.authoring_windows(ctx);
         }
-        if let Some(project) = &self.imported_project {
+        if let Some(project) = &self.files.imported_project {
             let mut selected = None;
             let mut cancel = false;
             crate::i18n::window("Choose a chart")
@@ -211,14 +211,14 @@ impl Workbench {
                     }
                 });
             if let Some(index) = selected {
-                let project = self.imported_project.take().unwrap();
-                self.pending_asset_directory = Some(project.assets);
+                let project = self.files.imported_project.take().unwrap();
+                self.files.pending_asset_directory = Some(project.assets);
                 self.open(project.charts[index].path.clone());
             } else if cancel {
-                self.imported_project = None;
+                self.files.imported_project = None;
             }
         }
-        if self.package_dialog {
+        if self.files.package_dialog {
             crate::i18n::window("Import ZIP/PEZ package")
                 .collapsible(false)
                 .resizable(false)
@@ -226,17 +226,19 @@ impl Workbench {
                 .show(ctx, |ui| {
                     ui.set_min_width(360.);
                     ui.label(crate::i18n::tr("Package path"));
-                    ui.add(egui::TextEdit::singleline(&mut self.path_input).desired_width(360.));
+                    ui.add(
+                        egui::TextEdit::singleline(&mut self.files.path_input).desired_width(360.),
+                    );
                     ui.small(crate::i18n::tr(
                         "ZIP/PEZ packages include the chart, music and artwork.",
                     ));
                     ui.horizontal(|ui| {
                         if ui.button(crate::i18n::tr("Import package")).clicked()
-                            && !self.path_input.trim().is_empty()
+                            && !self.files.path_input.trim().is_empty()
                         {
-                            let path = PathBuf::from(self.path_input.trim());
-                            self.package_dialog = false;
-                            self.native_request = Some(crate::files::FileRequest::ImportPath {
+                            let path = PathBuf::from(self.files.path_input.trim());
+                            self.files.package_dialog = false;
+                            self.files.request = Some(crate::files::FileRequest::ImportPath {
                                 name: path
                                     .file_name()
                                     .unwrap_or_default()
@@ -246,12 +248,17 @@ impl Workbench {
                             });
                         }
                         if ui.button(crate::i18n::tr("Cancel")).clicked() {
-                            self.package_dialog = false;
+                            self.files.package_dialog = false;
                         }
                     });
                 });
         }
-        if let Some(path) = self.pending_open.clone().filter(|_| !self.package_dialog) {
+        if let Some(path) = self
+            .files
+            .pending_open
+            .clone()
+            .filter(|_| !self.files.package_dialog)
+        {
             crate::i18n::window("Unsaved changes")
                 .collapsible(false)
                 .resizable(false)
@@ -267,16 +274,16 @@ impl Workbench {
                         .button(RichText::new(crate::i18n::tr("Discard and open")).color(flick()))
                         .clicked()
                     {
-                        self.native_request = Some(crate::files::FileRequest::DiscardAndOpen(path));
+                        self.files.request = Some(crate::files::FileRequest::DiscardAndOpen(path));
                     }
                     if ui.button(crate::i18n::tr("Keep editing")).clicked() {
-                        self.pending_open = None;
-                        self.pending_asset_directory = None;
+                        self.files.pending_open = None;
+                        self.files.pending_asset_directory = None;
                     }
                 });
         }
-        if self.show_help {
-            crate::i18n::window("PhiStudio Rust · Help").open(&mut self.show_help).default_width(440.).show(ctx,|ui| {
+        if self.windows.help {
+            crate::i18n::window("PhiStudio Rust · Help").open(&mut self.windows.help).default_width(440.).show(ctx,|ui| {
                 egui::ScrollArea::vertical().id_source("help-scroll").max_height((ctx.screen_rect().height()-110.).max(80.)).touch_show(ui,|ui|{
                 ui.label(crate::i18n::tr("Tap / Flick / Drag: tap to place, swipe to scroll. Hold: drag upward. Select: tap an object, then drag to move it; drag the endpoints to resize a Hold. Repeated taps on overlapping objects cycle from front to back. Two fingers: zoom and pan. Mouse wheel: scroll. Ctrl+wheel: zoom."));
                 ui.separator();
@@ -294,7 +301,7 @@ impl Workbench {
                 });
             });
         }
-        if self.close_requested && !self.package_dialog {
+        if self.close_requested && !self.files.package_dialog {
             crate::i18n::window("Quit the editor?")
                 .collapsible(false)
                 .resizable(false)

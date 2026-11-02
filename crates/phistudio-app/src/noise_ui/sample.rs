@@ -63,8 +63,16 @@ impl Workbench {
             ((rect.bottom() - pos.y) / rect.height()) as f64,
         ];
         for (axis, count, snap) in [
-            (0, self.lanes.saturating_sub(1).max(1), self.options.snap_x),
-            (1, self.division.max(1) as usize, self.options.snap_time),
+            (
+                0,
+                self.timeline.lanes.saturating_sub(1).max(1),
+                self.options.snap_x,
+            ),
+            (
+                1,
+                self.timeline.division.max(1) as usize,
+                self.options.snap_time,
+            ),
         ] {
             if snap {
                 p[axis] = (p[axis] * count as f64).round() / count as f64;

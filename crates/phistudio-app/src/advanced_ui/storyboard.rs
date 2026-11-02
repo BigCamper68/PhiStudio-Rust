@@ -12,8 +12,8 @@ impl Workbench {
         self.advanced.story_selected = id;
         self.advanced.story_selection = id.into_iter().collect();
         if let Some(id) = id {
-            self.show_context = true;
-            self.properties_scroll = true;
+            self.windows.sidebar = true;
+            self.windows.scroll_to_properties = true;
             self.load_story(id.line, id.kind, Some(id.index));
         }
     }
@@ -57,7 +57,8 @@ impl Workbench {
                     .cloned()
             })
             .unwrap_or_else(|| {
-                let start = Beat::from_grid(self.beat.max(0.), self.division).unwrap_or(Beat::ZERO);
+                let start = Beat::from_grid(self.transport.beat.max(0.), self.timeline.division)
+                    .unwrap_or(Beat::ZERO);
                 StoryEvent::new(kind, start, start.checked_add(Beat::ONE).unwrap_or(start))
             });
         self.advanced.story = Some(StoryDraft {

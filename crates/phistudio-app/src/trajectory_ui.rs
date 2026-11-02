@@ -393,7 +393,7 @@ impl Workbench {
                     self.remember_trajectory_parameters(&state.spec, &state.name);
                     match edit.apply(&mut self.editor) {
                         Ok(selection) => {
-                            self.playing = false;
+                            self.transport.playing = false;
                             self.remember_anchor(self.anchor());
                             if !selection.is_empty() {
                                 self.set_selection(selection);
@@ -430,7 +430,7 @@ impl Workbench {
                             Ok(_) => {
                                 state.selected = None;
                                 state.preview = None;
-                                self.playing = false;
+                                self.transport.playing = false;
                                 if delete {
                                     self.set_selection(Default::default());
                                 }

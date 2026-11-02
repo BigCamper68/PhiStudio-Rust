@@ -55,11 +55,7 @@ impl Preview {
         unsafe { get_internal_gl() }.flush();
         let next = render_target(w, h);
         let retired = std::mem::replace(&mut self.target, next);
-        if let Some((target, _)) = &mut self.picking {
-            let next = render_target(w, h);
-            let old = std::mem::replace(target, next);
-            old.delete();
-        }
+        self.picking.resize(w, h);
         self.resource.last_vp = (0, 0, 0, 0);
         let viewport = self.target_viewport();
         self.resource.update_size(viewport);

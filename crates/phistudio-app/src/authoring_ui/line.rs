@@ -162,8 +162,7 @@ impl Workbench {
         if before != self.line {
             self.select(None);
             self.line_draft = None;
-            self.drag = None;
-            self.grid_input.cancel();
+            self.timeline.cancel_gesture();
         }
     }
 

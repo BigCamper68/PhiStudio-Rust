@@ -99,7 +99,7 @@ pub(super) async fn run(
         ],
     )?;
     app.advanced.right_mode = RightMode::NoiseFields;
-    app.show_context = true;
+    app.windows.sidebar = true;
     preview
         .replace_chart(app.editor.document(), None, &app.project_options)
         .await?;
@@ -150,13 +150,13 @@ pub(super) async fn run(
     get_screen_data().export_png(out.join("palette.png").to_str().unwrap());
     app.palette = None;
     app.options.language = Language::Russian;
-    let grid = crate::grid_input::geometry(app.grid_area, app);
+    let grid = crate::grid_input::geometry(app.timeline.area, app);
     ensure!(
         app.jump_noise_field(2, grid),
         "Failed to reveal the selected Noise Field"
     );
     ensure!(
-        (app.beat - 321.).abs() < 0.001,
+        (app.transport.beat - 321.).abs() < 0.001,
         "Field list did not seek to the selected lifetime"
     );
     for _ in 0..5 {
@@ -171,7 +171,7 @@ pub(super) async fn run(
     app.noise.track = Track::Scale;
     app.select_noise(Some(1), false);
     app.set_grid_beat(0.);
-    app.lanes = 11;
+    app.timeline.lanes = 11;
     app.noise.offset = 0.;
     for _ in 0..5 {
         paint(gui, app, preview, 330.)?;
@@ -179,7 +179,7 @@ pub(super) async fn run(
     }
     paint(gui, app, preview, 330.)?;
     get_screen_data().export_png(out.join("vertical-grid-11.png").to_str().unwrap());
-    app.lanes = 5;
+    app.timeline.lanes = 5;
     app.noise.offset = 0.;
     for _ in 0..5 {
         paint(gui, app, preview, 330.)?;
@@ -217,7 +217,7 @@ pub(super) async fn run(
         paint(gui, app, preview, 330.)?;
         next_frame().await;
     }
-    let grid = crate::grid_input::geometry(app.grid_area, app);
+    let grid = crate::grid_input::geometry(app.timeline.area, app);
     let x = grid.rect.left() + 4.5 * 52.;
     let press = |p, pressed| egui::Event::PointerButton {
         pos: p,
@@ -236,7 +236,10 @@ pub(super) async fn run(
         false,
     );
     paint(gui, app, preview, 330.)?;
-    ensure!(app.drag.is_some(), "Resize ghost was lost before release");
+    ensure!(
+        app.timeline.drag.is_some(),
+        "Resize ghost was lost before release"
+    );
     get_screen_data().export_png(out.join("field-upper-resize-ghost.png").to_str().unwrap());
     crate::grid_input::handle(
         app,
@@ -257,7 +260,7 @@ pub(super) async fn run(
     }
     paint(gui, app, preview, 330.)?;
     get_screen_data().export_png(out.join("new-native-keyframe.png").to_str().unwrap());
-    let grid = crate::grid_input::geometry(app.grid_area, app);
+    let grid = crate::grid_input::geometry(app.timeline.area, app);
     let x = grid.event_rect.left() + grid.event_rect.width() / 8.;
     let a = pos2(x, grid.y(0.75));
     let b = pos2(x, grid.y(1.25));
@@ -270,7 +273,10 @@ pub(super) async fn run(
         false,
     );
     paint(gui, app, preview, 330.)?;
-    ensure!(app.drag.is_some(), "Native key endpoint resize was lost");
+    ensure!(
+        app.timeline.drag.is_some(),
+        "Native key endpoint resize was lost"
+    );
     get_screen_data().export_png(out.join("native-upper-resize-ghost.png").to_str().unwrap());
     crate::grid_input::handle(
         app,
@@ -433,7 +439,7 @@ pub(super) async fn live(
         for index in [0, 1] {
             app.select_noise(Some(index), false);
             app.open_noise_preview_editor();
-            app.beat = 2.;
+            app.transport.beat = 2.;
             for _ in 0..4 {
                 paint(gui, app, preview, 330.)?;
                 next_frame().await;
@@ -476,7 +482,7 @@ pub(super) async fn live(
                     .to_str()
                     .unwrap(),
             );
-            app.beat = 20.;
+            app.transport.beat = 20.;
             paint(gui, app, preview, 330.)?;
             let outside = preview.snapshot();
             preview.set_noise_field_override(None);

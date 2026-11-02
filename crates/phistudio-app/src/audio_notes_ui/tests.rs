@@ -231,7 +231,7 @@ fn expanded_generator_controls_keep_custom_ranges_and_large_seeds_inside_compact
 fn generator_launch_from_settings_replaces_settings_and_preserves_the_document() {
     let mut app = app();
     app.audio_notes.close();
-    app.show_settings = true;
+    app.windows.settings = true;
     let before = app.editor.document().as_json().clone();
     let ctx = egui::Context::default();
     ctx.set_style(crate::theme::style());
@@ -307,7 +307,7 @@ fn generator_launch_from_settings_replaces_settings_and_preserves_the_document()
     click(&mut app, &ctx, p);
     let p = find(&mut app, &ctx, "Generate notes from markers…");
     click(&mut app, &ctx, p);
-    assert!(app.audio_notes.show && !app.show_settings && !app.audio_guide.show);
+    assert!(app.audio_notes.show && !app.windows.settings && !app.audio_guide.show);
     assert_eq!(app.editor.document().as_json(), &before);
 }
 
@@ -644,7 +644,7 @@ fn preview_audio_is_passive_and_stops_on_stale_input_close_or_fake_notes() {
         Ok(())
     };
     assert_eq!(app.audition_audio_notes(0., false, play).unwrap(), 0);
-    app.playing = true;
+    app.transport.playing = true;
     assert_eq!(
         app.audition_audio_notes(0.3, false, |k| {
             heard.push(k);

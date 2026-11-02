@@ -3,7 +3,7 @@ fn run(files: &mut crate::files::FileManager, app: &mut Workbench, job: Workspac
     app.workspace_request(job);
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(8);
     files.update(app);
-    while app.file_busy || app.workspace.loading {
+    while app.files.busy || app.workspace.loading {
         assert!(
             std::time::Instant::now() < deadline,
             "file worker timed out"
@@ -310,7 +310,11 @@ fn checking_out_another_projects_version_keeps_the_existing_save_discard_decisio
     assert_eq!(app.file.as_ref(), Some(&loc.chart));
     assert_eq!(app.editor.document().as_json(), &before);
     assert!(app.editor.is_dirty());
-    let pending = app.pending_open.clone().expect("Save/Discard was bypassed");
+    let pending = app
+        .files
+        .pending_open
+        .clone()
+        .expect("Save/Discard was bypassed");
     app.discard_and_open(pending);
     assert_eq!(app.editor.document().name(), "Other");
     assert!(app.editor.is_dirty());

@@ -5,10 +5,9 @@ impl Workbench {
         if !self.flush_shader_draft() {
             return;
         }
-        self.playing = false;
-        self.drag = None;
-        self.grid_input.cancel();
-        self.timeline_scrub = false;
+        self.transport.playing = false;
+        self.timeline.cancel_gesture();
+        self.transport.scrubbing = false;
         let name = self
             .project_options
             .display_field(self.editor.document(), "name");
@@ -23,7 +22,7 @@ impl Workbench {
                     .seconds_at(n.start_time.as_f64().max(n.end_time.as_f64()))
             })
             .fold(0., f64::max);
-        self.video.settings.end = self.music_duration.unwrap_or(last + 1.);
+        self.video.settings.end = self.transport.music_duration.unwrap_or(last + 1.);
         self.video.open = true;
         self.video.error = None;
         self.video.message = None;
@@ -75,7 +74,7 @@ impl Workbench {
                         .id_source("mp4-settings-scroll")
                         .max_height((ctx.screen_rect().height() - 190.).max(80.))
                         .touch_show(ui, |ui| {
-                            video_settings(ui, &mut self.video, self.music_duration)
+                            video_settings(ui, &mut self.video, self.transport.music_duration)
                         });
                 }
                 if let Some(file) = &self.video.completed {
@@ -124,7 +123,7 @@ impl Workbench {
                         if ui.button(tr("Save MP4…")).clicked() {
                             #[cfg(any(target_os = "android", target_os = "ios"))]
                             {
-                                self.native_request = Some(crate::files::FileRequest::SaveMovie);
+                                self.files.request = Some(crate::files::FileRequest::SaveMovie);
                             }
                             #[cfg(not(any(target_os = "android", target_os = "ios")))]
                             {

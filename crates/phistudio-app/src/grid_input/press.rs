@@ -1,10 +1,10 @@
 use super::*;
 
 pub(super) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2, additive: bool) {
-    app.grid_input.pointer_active = true;
-    app.navigation_axis = None;
-    app.grid_input.panel_navigation = false;
-    app.grid_input.panel_offset = app.multi_line.offsets[usize::from(app.multi_line.events)];
+    app.timeline.input.pointer_active = true;
+    app.timeline.navigation_axis = None;
+    app.timeline.input.panel_navigation = false;
+    app.timeline.input.panel_offset = app.multi_line.offsets[usize::from(app.multi_line.events)];
     if grid.rect.contains(pos) {
         app.tools.scope = crate::toolkit::Scope::Notes;
     } else if grid.event_rect.contains(pos) {
@@ -18,32 +18,32 @@ pub(super) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2, additive: bool) 
         if let Gesture::Box { grid, .. } | Gesture::Erase { grid, .. } = &mut gesture {
             *grid = app.multi_base(*grid);
         }
-        app.drag = Some(gesture);
+        app.timeline.drag = Some(gesture);
         return;
     }
     if (grid.rect.contains(pos) || grid.event_rect.contains(pos))
         && app.advanced.right_mode == crate::advanced_ui::RightMode::NoiseFields
     {
-        app.drag = crate::noise_ui::grid::begin_dual(app, grid, pos, additive);
+        app.timeline.drag = crate::noise_ui::grid::begin_dual(app, grid, pos, additive);
         return;
     }
     if (grid.rect.contains(pos) || grid.event_rect.contains(pos))
         && app.advanced.right_mode == crate::advanced_ui::RightMode::Shaders
     {
-        app.drag = crate::shader_ui::grid::begin_dual(app, grid, pos);
+        app.timeline.drag = crate::shader_ui::grid::begin_dual(app, grid, pos);
         return;
     }
     if app.advanced.right_mode.dedicated() && pos.x >= grid.rect.left() {
         // The divider is a navigation control, never an underlying note surface.
-        app.drag = None;
+        app.timeline.drag = None;
         return;
     }
     if grid.event_rect.contains(pos)
         && crate::story_grid::active(app)
-        && app.tool != Tool::Erase
-        && app.tool != Tool::BoxSelect
+        && app.timeline.tool != Tool::Erase
+        && app.timeline.tool != Tool::BoxSelect
     {
-        app.drag = Some(crate::story_grid::begin(app, grid.events(), pos, additive));
+        app.timeline.drag = Some(crate::story_grid::begin(app, grid.events(), pos, additive));
         return;
     }
     let pending = |intent| Gesture::Tap {
@@ -54,7 +54,7 @@ pub(super) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2, additive: bool) 
     };
     let gesture = if pos.x < grid.rect.left() {
         pending(Intent::Seek)
-    } else if app.tool == Tool::BoxSelect {
+    } else if app.timeline.tool == Tool::BoxSelect {
         let selected = app.selection();
         let note = grid.rect.contains(pos)
             && pick(app, grid, pos)
@@ -80,7 +80,7 @@ pub(super) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2, additive: bool) 
                 additive,
             }
         }
-    } else if app.tool == Tool::Erase {
+    } else if app.timeline.tool == Tool::Erase {
         Gesture::Erase {
             stories: if crate::story_grid::active(app) {
                 crate::story_grid::hits(app, grid.events(), pos)
@@ -96,9 +96,9 @@ pub(super) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2, additive: bool) 
     } else if grid.event_rect.contains(pos) {
         app.tools.scope = crate::toolkit::Scope::Events;
         let picked = crate::event_grid::pick(app, grid.events(), pos).map(|(id, _)| id);
-        if additive && app.tool != Tool::Event {
+        if additive && app.timeline.tool != Tool::Event {
             pending(Intent::SelectEvent(picked, true))
-        } else if app.tool != Tool::Event
+        } else if app.timeline.tool != Tool::Event
             && picked.is_some_and(|id| app.selection().events.binary_search(&id).is_ok())
             && app.selection().len() + app.story_selection().len() > 1
         {
@@ -107,7 +107,7 @@ pub(super) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2, additive: bool) 
             crate::event_grid::begin(app, grid.events(), pos)
         }
     } else {
-        match app.tool {
+        match app.timeline.tool {
             Tool::BoxSelect | Tool::Erase => pending(Intent::Pan),
             Tool::Place(NoteKind::Hold) => {
                 let start = grid.beat(pos.y);
@@ -174,5 +174,5 @@ pub(super) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2, additive: bool) 
     if let Gesture::Box { grid, .. } | Gesture::Erase { grid, .. } = &mut gesture {
         *grid = app.multi_base(*grid);
     }
-    app.drag = Some(gesture);
+    app.timeline.drag = Some(gesture);
 }

@@ -7,25 +7,33 @@ use super::*;
 impl Workbench {
     pub(crate) fn grid_beat(&self) -> f64 {
         if self.advanced.right_mode == RightMode::Shaders {
-            self.shaders.tempo.as_ref().map_or(self.beat, |tempo| {
-                tempo.beat_at(self.editor.document().tempo().seconds_at(self.beat))
-            })
+            self.shaders
+                .tempo
+                .as_ref()
+                .map_or(self.transport.beat, |tempo| {
+                    tempo.beat_at(
+                        self.editor
+                            .document()
+                            .tempo()
+                            .seconds_at(self.transport.beat),
+                    )
+                })
         } else {
-            self.beat
+            self.transport.beat
         }
     }
     pub(crate) fn grid_bpm(&self) -> f64 {
         if self.advanced.right_mode == RightMode::Shaders {
             self.shaders.tempo.as_ref().map_or_else(
-                || self.editor.document().tempo().bpm_at(self.beat),
+                || self.editor.document().tempo().bpm_at(self.transport.beat),
                 |t| t.bpm_at(self.grid_beat()),
             )
         } else {
-            self.editor.document().tempo().bpm_at(self.beat)
+            self.editor.document().tempo().bpm_at(self.transport.beat)
         }
     }
     pub(crate) fn set_grid_beat(&mut self, beat: f64) {
-        self.beat = if self.advanced.right_mode == RightMode::Shaders {
+        self.transport.beat = if self.advanced.right_mode == RightMode::Shaders {
             self.shaders.tempo.as_ref().map_or(beat, |tempo| {
                 self.editor
                     .document()
@@ -84,11 +92,10 @@ impl Workbench {
             self.shaders.tempo_rows = None;
         }
         self.shaders.code_view = false;
-        self.drag = None;
-        self.grid_input.cancel();
+        self.timeline.cancel_gesture();
         self.set_tool(crate::workbench::Tool::Select);
-        self.show_context = true;
-        self.properties_scroll = true;
+        self.windows.sidebar = true;
+        self.windows.scroll_to_properties = true;
     }
     pub(crate) fn shader_back(&mut self) -> bool {
         if self.advanced.right_mode != RightMode::Shaders {
@@ -136,8 +143,7 @@ impl Workbench {
             }
             if changed {
                 self.shaders.offsets[0] = x - 1.;
-                self.drag = None;
-                self.grid_input.cancel();
+                self.timeline.cancel_gesture();
             }
         });
         crate::timeline::navigation_row(ui, "shader-preset-navigation", |ui| {
@@ -232,7 +238,7 @@ impl Workbench {
                     }
                 });
             if jump && let Some(index) = selected {
-                self.jump_shader(index, crate::grid_input::geometry(self.grid_area, self));
+                self.jump_shader(index, crate::grid_input::geometry(self.timeline.area, self));
             }
         });
         crate::timeline::navigation_row(ui, "shader-parameter-navigation", |ui| {
@@ -264,7 +270,7 @@ impl Workbench {
                         ShaderPage::Parameters
                     };
                     self.shader_navigate(page, Some(name.clone()));
-                    let grid = crate::grid_input::geometry(self.grid_area, self).events();
+                    let grid = crate::grid_input::geometry(self.timeline.area, self).events();
                     if let Some(index) = self.shaders.parameters.iter().position(|p| p.name == name)
                     {
                         let visible =

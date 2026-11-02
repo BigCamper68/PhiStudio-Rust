@@ -1,6 +1,6 @@
 # iOS build
 
-PhiStudio Rust 1.27.0 / build 46 targets physical arm64 iPhone and iPad devices
+PhiStudio Rust 1.30.1 / build 62 targets physical arm64 iPhone and iPad devices
 running iOS/iPadOS 16.0 or newer. The application opens in landscape.
 
 ## Build

@@ -1,10 +1,12 @@
 //! ID-buffer picking uses the original chart/note renderer, including Holds,
 //! parent transforms, distance controls, clipping, textures and render order.
+mod state;
 use crate::Preview;
 use anyhow::Result;
 use macroquad::prelude::*;
 use phistudio_core::{ChartDocument, NoteId};
 use prpr::core::{Anim, JudgeLineKind};
+pub(super) use state::PickingState;
 use std::collections::{BTreeMap, VecDeque};
 const VERTEX: &str = r#"#version 100
 attribute vec3 position;attribute vec2 texcoord;attribute vec4 color0;
@@ -29,7 +31,7 @@ pub(crate) fn source_map(doc: &ChartDocument, chart: &prpr::core::Chart) -> Vec<
     let mut bpm = chart.bpm_list.borrow_mut();
     for (line, parsed) in chart.lines.iter().enumerate() {
         let mut sources: BTreeMap<_, VecDeque<_>> = BTreeMap::new();
-        for (index, n) in doc.notes(line) {
+        for (index, n) in doc.iter_notes(line) {
             let kind = match n.kind {
                 phistudio_core::NoteKind::Tap => 1,
                 phistudio_core::NoteKind::Hold => 2,
@@ -88,7 +90,7 @@ impl Preview {
     /// Test the actual postprocessed pixels. Binary masks avoid decoding or
     /// approximating arbitrary GLSL distortion/color functions on the CPU.
     fn pick_with_effects(&mut self, point: [f32; 2], radius: [f32; 2]) -> Result<Option<NoteId>> {
-        let mut candidates = self.pick_visible_ids.clone();
+        let mut candidates = self.picking.visible_ids.clone();
         if candidates.is_empty() {
             return Ok(None);
         }
@@ -137,7 +139,7 @@ impl Preview {
                     candidates.drain(..middle);
                 }
             }
-            self.source_ids.get(candidates[0]).copied().flatten()
+            self.picking.sources.get(candidates[0]).copied().flatten()
         })();
         paints.restore(&self.chart);
         self.resource.camera = camera;
@@ -212,14 +214,8 @@ impl Preview {
             .map(|l| l.notes.len())
             .sum::<usize>();
         anyhow::ensure!(count < 0xFF_FFFE, "Too many notes for preview picking");
-        if self.picking.is_none() {
-            let [w, h] = self.render_size();
-            self.picking = Some((
-                render_target(w, h),
-                load_material(VERTEX, FRAGMENT, MaterialParams::default())?,
-            ));
-        }
-        let (target, material) = self.picking.unwrap();
+        let size = self.render_size();
+        let (target, material) = self.picking.target(size)?;
         let mut camera = self.resource.camera;
         camera.render_target = Some(target);
         let viewport = camera.viewport.unwrap_or(self.target_viewport());
@@ -260,26 +256,7 @@ impl Preview {
         unsafe { get_internal_gl() }.flush();
         gl_use_default_material();
         let image = target.texture.get_texture_data();
-        self.pick_visible_lines.clear();
-        let mut visible = vec![false; count];
-        for p in image.bytes.as_chunks::<4>().0.iter() {
-            let id = u32::from(p[0]) | (u32::from(p[1]) << 8) | (u32::from(p[2]) << 16);
-            if id > 0
-                && let Some(hit) = visible.get_mut(id as usize - 1)
-            {
-                *hit = true;
-            }
-        }
-        self.pick_visible_ids = visible
-            .iter()
-            .enumerate()
-            .filter_map(|(i, v)| v.then_some(i))
-            .collect();
-        for i in &self.pick_visible_ids {
-            if let Some(Some(note)) = self.source_ids.get(*i) {
-                self.pick_visible_lines.insert(note.line);
-            }
-        }
+        self.picking.record_visible(&image.bytes, count);
         let mut colors = colors.into_iter();
         for (line, (kind, x, y)) in self.chart.lines.iter_mut().zip(lines) {
             line.kind = kind;
@@ -313,7 +290,7 @@ impl Preview {
                     | (u32::from(image.bytes[at + 1]) << 8)
                     | (u32::from(image.bytes[at + 2]) << 16);
                 if id > 0
-                    && let Some(Some(note)) = self.source_ids.get(id as usize - 1)
+                    && let Some(Some(note)) = self.picking.sources.get(id as usize - 1)
                     && best.is_none_or(|(d, _)| distance < d)
                 {
                     best = Some((distance, *note));
@@ -356,7 +333,7 @@ impl Preview {
     }
     pub fn visible_note_lines(&mut self) -> Result<std::collections::BTreeSet<usize>> {
         self.pick_unshaded([0.5, 0.5], [0., 0.])?;
-        Ok(self.pick_visible_lines.clone())
+        Ok(self.picking.visible_lines.clone())
     }
 }
 

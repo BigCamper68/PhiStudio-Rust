@@ -130,7 +130,7 @@ pub async fn run() -> Result<()> {
     let before = app.editor.document().to_json()?;
     let revision = app.editor.revision();
     let original = std::fs::read(&chart)?;
-    app.music_duration = Some(3.65);
+    app.transport.music_duration = Some(3.65);
     app.open_video();
     app.video.settings = phistudio_core::video::VideoSettings {
         width: 640,

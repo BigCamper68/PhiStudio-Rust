@@ -95,7 +95,7 @@ pub(super) async fn run(
                 language.code(),
                 if event { "event" } else { "note" }
             );
-            app.compact_properties = false;
+            app.windows.floating_properties = false;
             for width in [190., 220., 400.] {
                 for _ in 0..5 {
                     paint(gui, app, preview, width)?;
@@ -103,7 +103,7 @@ pub(super) async fn run(
                 }
                 capture(out, &format!("{label}-docked-{width}"));
             }
-            app.compact_properties = true;
+            app.windows.floating_properties = true;
             for _ in 0..5 {
                 floating(gui, app, preview)?;
                 next_frame().await;

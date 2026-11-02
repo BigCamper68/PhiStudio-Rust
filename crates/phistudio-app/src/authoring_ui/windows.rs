@@ -2,7 +2,7 @@ use super::*;
 
 impl Workbench {
     pub fn authoring_windows(&mut self, ctx: &egui::Context) {
-        if self.show_line_properties {
+        if self.windows.line_properties {
             let mut open = true;
             crate::i18n::window("Judge line properties")
                 .open(&mut open)
@@ -24,9 +24,9 @@ impl Workbench {
                         .max_height(ui.available_height())
                         .touch_show_y(ui, |ui| self.line_properties_ui(ui));
                 });
-            self.show_line_properties = open;
+            self.windows.line_properties = open;
         }
-        if self.show_bpm {
+        if self.windows.bpm {
             let mut open = true;
             crate::i18n::window("BPM timeline")
                 .open(&mut open)
@@ -39,7 +39,7 @@ impl Workbench {
                         .max_height((ctx.screen_rect().height() - 135.).max(80.))
                         .touch_show(ui, |ui| self.bpm_ui(ui));
                 });
-            self.show_bpm = open;
+            self.windows.bpm = open;
         }
         self.line_texture_window(ctx);
     }

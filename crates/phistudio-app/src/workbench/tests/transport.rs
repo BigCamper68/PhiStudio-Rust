@@ -5,9 +5,9 @@ fn event_grid_pan_retains_playback_and_reserved_layers_remain_read_only() {
     for layer in [0, 4] {
         let mut app = Workbench::new(ChartDocument::empty("Events", 120.).unwrap(), None);
         app.events.layer = layer;
-        app.tool = Tool::Select;
-        app.beat = 8.;
-        app.playing = true;
+        app.timeline.tool = Tool::Select;
+        app.transport.beat = 8.;
+        app.transport.playing = true;
         let original = app.editor.document().as_json().clone();
         let grid = test_grid(&app).events();
         let p = egui::pos2(grid.rect.center().x, grid.y(9.));
@@ -16,11 +16,11 @@ fn event_grid_pan_retains_playback_and_reserved_layers_remain_read_only() {
             &[pointer(p, true), pointer(p + egui::vec2(0., 96.), false)],
             false,
         );
-        assert!(app.playing);
-        assert_eq!(app.beat, 9.);
-        assert!(!app.grid_input.is_scrubbing());
+        assert!(app.transport.playing);
+        assert_eq!(app.transport.beat, 9.);
+        assert!(!app.timeline.input.is_scrubbing());
         if layer == 4 {
-            app.tool = Tool::Event;
+            app.timeline.tool = Tool::Event;
             grid_events(&mut app, &[pointer(p, true), pointer(p, false)], false);
         }
         assert_eq!(app.editor.document().as_json(), &original);
@@ -30,8 +30,8 @@ fn event_grid_pan_retains_playback_and_reserved_layers_remain_read_only() {
 #[test]
 fn touches_scroll_sidebar_and_floating_properties_without_scrubbing_the_chart() {
     let mut app = Workbench::new(ChartDocument::empty("Panel input", 120.).unwrap(), None);
-    app.compact_properties = true;
-    app.playing = true;
+    app.windows.floating_properties = true;
+    app.transport.playing = true;
     app.select_event(Some(phistudio_core::EventId {
         line: 0,
         layer: 0,
@@ -79,9 +79,9 @@ fn touches_scroll_sidebar_and_floating_properties_without_scrubbing_the_chart() 
             "Panel at {start:?} blocked its touch: {before} -> {after}"
         );
         assert_eq!(app.editor.document().as_json(), &original);
-        assert!(app.playing);
-        assert_eq!(app.beat, 0.);
-        assert!(!app.grid_input.is_scrubbing());
+        assert!(app.transport.playing);
+        assert_eq!(app.transport.beat, 0.);
+        assert!(!app.timeline.input.is_scrubbing());
         router.cancel();
     }
 }
@@ -97,15 +97,15 @@ fn playback_swipes_resume_at_the_final_release_and_paused_swipes_stay_paused() {
         for was_playing in [false, true] {
             for direction in [-1., 1.] {
                 let mut app = Workbench::new(ChartDocument::empty("Scrub", 120.).unwrap(), None);
-                app.tool = tool;
-                app.beat = 8.;
-                app.playing = was_playing;
+                app.timeline.tool = tool;
+                app.transport.beat = 8.;
+                app.transport.playing = was_playing;
                 let original = app.editor.document().as_json().clone();
                 let grid = test_grid(&app);
                 let down = egui::pos2(grid.x(0.), 180.);
                 grid_events(&mut app, &[pointer(down, true)], false);
-                assert!(app.grid_input.is_scrubbing());
-                assert_eq!(app.playing, was_playing);
+                assert!(app.timeline.input.is_scrubbing());
+                assert_eq!(app.transport.playing, was_playing);
                 grid_events(
                     &mut app,
                     &[egui::Event::PointerMoved(
@@ -113,16 +113,16 @@ fn playback_swipes_resume_at_the_final_release_and_paused_swipes_stay_paused() {
                     )],
                     false,
                 );
-                assert!(app.grid_input.is_scrubbing());
+                assert!(app.timeline.input.is_scrubbing());
                 // The release has a newer coordinate than the last move.
                 grid_events(
                     &mut app,
                     &[pointer(down + egui::vec2(0., 144. * direction), false)],
                     false,
                 );
-                assert!(!app.grid_input.is_scrubbing());
-                assert_eq!(app.playing, was_playing);
-                assert!((app.beat - (8. + 1.5 * direction as f64)).abs() < 1e-9);
+                assert!(!app.timeline.input.is_scrubbing());
+                assert_eq!(app.transport.playing, was_playing);
+                assert!((app.transport.beat - (8. + 1.5 * direction as f64)).abs() < 1e-9);
                 assert_eq!(app.editor.document().as_json(), &original);
                 assert!(!app.editor.can_undo());
             }
@@ -133,8 +133,8 @@ fn playback_swipes_resume_at_the_final_release_and_paused_swipes_stay_paused() {
 #[test]
 fn ruler_seeks_and_batched_swipes_keep_playback_but_note_edits_stop_it() {
     let mut app = Workbench::new(ChartDocument::empty("Scrub", 120.).unwrap(), None);
-    app.beat = 8.;
-    app.playing = true;
+    app.transport.beat = 8.;
+    app.transport.playing = true;
     let grid = test_grid(&app);
     let ruler = egui::pos2(grid.rect.left() - 5., grid.y(10.));
     grid_events(
@@ -142,29 +142,29 @@ fn ruler_seeks_and_batched_swipes_keep_playback_but_note_edits_stop_it() {
         &[pointer(ruler, true), pointer(ruler, false)],
         false,
     );
-    assert_eq!(app.beat, 10.);
-    assert!(app.playing && !app.grid_input.is_scrubbing());
+    assert_eq!(app.transport.beat, 10.);
+    assert!(app.transport.playing && !app.timeline.input.is_scrubbing());
     let down = egui::pos2(300., 180.);
     let up = down + egui::vec2(0., 96.);
     grid_events(&mut app, &[pointer(down, true), pointer(up, false)], false);
-    assert_eq!(app.beat, 11.);
-    assert!(app.playing && !app.grid_input.is_scrubbing());
-    app.tool = Tool::Place(NoteKind::Tap);
+    assert_eq!(app.transport.beat, 11.);
+    assert!(app.transport.playing && !app.timeline.input.is_scrubbing());
+    app.timeline.tool = Tool::Place(NoteKind::Tap);
     grid_events(
         &mut app,
         &[pointer(down, true), pointer(down, false)],
         false,
     );
-    assert!(!app.playing && !app.grid_input.is_scrubbing());
+    assert!(!app.transport.playing && !app.timeline.input.is_scrubbing());
     assert_eq!(app.editor.document().note_count(), 1);
 }
 
 #[test]
 fn pinch_during_playback_resumes_after_the_last_finger_without_committing_a_hold() {
     let mut app = Workbench::new(ChartDocument::empty("Pinch", 120.).unwrap(), None);
-    app.beat = 8.;
-    app.playing = true;
-    app.tool = Tool::Place(NoteKind::Hold);
+    app.transport.beat = 8.;
+    app.transport.playing = true;
+    app.timeline.tool = Tool::Place(NoteKind::Hold);
     let mut router = crate::touch::TouchRouter::default();
     for (phase, id, pos) in [
         (egui::TouchPhase::Start, 1, egui::pos2(220., 180.)),
@@ -174,11 +174,11 @@ fn pinch_during_playback_resumes_after_the_last_finger_without_committing_a_hold
     ] {
         let (events, canceled) = router.event(phase, id, pos);
         grid_events(&mut app, &events, canceled);
-        assert!(app.playing && app.grid_input.is_scrubbing());
+        assert!(app.transport.playing && app.timeline.input.is_scrubbing());
     }
     let (events, canceled) = router.event(egui::TouchPhase::End, 2, egui::pos2(420., 220.));
     grid_events(&mut app, &events, canceled);
-    assert!(app.playing && !app.grid_input.is_scrubbing());
+    assert!(app.transport.playing && !app.timeline.input.is_scrubbing());
     assert!(!app.editor.can_undo());
     assert_eq!(app.editor.document().note_count(), 0);
 }
@@ -187,21 +187,21 @@ fn pinch_during_playback_resumes_after_the_last_finger_without_committing_a_hold
 fn canceling_or_explicitly_pausing_a_scrub_does_not_restart_playback() {
     for cancel in [false, true] {
         let mut app = Workbench::new(ChartDocument::empty("Cancel", 120.).unwrap(), None);
-        app.playing = true;
+        app.transport.playing = true;
         let down = egui::pos2(300., 180.);
         grid_events(&mut app, &[pointer(down, true)], false);
-        assert!(app.grid_input.is_scrubbing());
+        assert!(app.timeline.input.is_scrubbing());
         if cancel {
             grid_events(&mut app, &[pointer(down, false)], true);
         } else {
-            app.playing = false; // An explicit pause while the finger is down.
+            app.transport.playing = false; // An explicit pause while the finger is down.
             grid_events(
                 &mut app,
                 &[pointer(down + egui::vec2(0., 96.), false)],
                 false,
             );
         }
-        assert!(!app.playing && !app.grid_input.is_scrubbing());
+        assert!(!app.transport.playing && !app.timeline.input.is_scrubbing());
         assert!(!app.editor.can_undo());
     }
 }
@@ -209,13 +209,13 @@ fn canceling_or_explicitly_pausing_a_scrub_does_not_restart_playback() {
 #[test]
 fn releasing_after_a_tool_clears_the_draft_never_leaves_transport_blocked() {
     let mut app = Workbench::new(ChartDocument::empty("Tool change", 120.).unwrap(), None);
-    app.playing = true;
+    app.transport.playing = true;
     let down = egui::pos2(300., 180.);
     grid_events(&mut app, &[pointer(down, true)], false);
-    assert!(app.grid_input.is_scrubbing());
-    app.drag = None;
+    assert!(app.timeline.input.is_scrubbing());
+    app.timeline.drag = None;
     grid_events(&mut app, &[pointer(down, false)], false);
-    assert!(!app.grid_input.is_scrubbing() && app.playing);
+    assert!(!app.timeline.input.is_scrubbing() && app.transport.playing);
 }
 
 #[test]
@@ -228,7 +228,7 @@ fn header_seek_preserves_playback_intent_and_uses_the_release_position() {
             .unwrap(),
             None,
         );
-        app.playing = playing;
+        app.transport.playing = playing;
         let ctx = egui::Context::default();
         let render = |app: &mut Workbench, events| {
             let mut rect = egui::Rect::NOTHING;
@@ -261,9 +261,9 @@ fn header_seek_preserves_playback_intent_and_uses_the_release_position() {
             ],
         );
         assert!(app.is_scrubbing());
-        assert_eq!(app.playing, playing);
+        assert_eq!(app.transport.playing, playing);
         render(&mut app, vec![egui::Event::PointerMoved(point(0.5))]);
-        assert!((app.beat - 32.).abs() < 0.001);
+        assert!((app.transport.beat - 32.).abs() < 0.001);
         render(
             &mut app,
             vec![
@@ -273,11 +273,11 @@ fn header_seek_preserves_playback_intent_and_uses_the_release_position() {
             ],
         );
         assert!(!app.is_scrubbing());
-        assert_eq!(app.playing, playing);
+        assert_eq!(app.transport.playing, playing);
         assert!(
-            (app.beat - 51.2).abs() < 0.001,
+            (app.transport.beat - 51.2).abs() < 0.001,
             "Final release position lost: {}",
-            app.beat
+            app.transport.beat
         );
     }
 }
@@ -303,9 +303,9 @@ fn header_notes_button_switches_full_music_and_note_ranges_without_editing() {
             },
         });
         app.editor.mark_saved();
-        app.music_duration = Some(180.);
-        app.beat = 150.; // Toggling the range must preserve an outro cursor.
-        app.playing = true;
+        app.transport.music_duration = Some(180.);
+        app.transport.beat = 150.; // Toggling the range must preserve an outro cursor.
+        app.transport.playing = true;
         assert!(!app.options.seek_notes_only);
         assert_eq!(app.seek_max(), 188.);
         let original = app.editor.document().as_json().clone();
@@ -349,8 +349,8 @@ fn header_notes_button_switches_full_music_and_note_ranges_without_editing() {
             );
             assert_eq!(app.options.seek_notes_only, enabled);
             assert_eq!(app.seek_max(), if enabled { 64. } else { 188. });
-            assert_eq!(app.beat, 150.);
-            assert!(app.playing);
+            assert_eq!(app.transport.beat, 150.);
+            assert!(app.transport.playing);
         }
         app.options.seek_notes_only = true;
         let saved = app.preferences();
@@ -366,12 +366,12 @@ fn header_notes_button_switches_full_music_and_note_ranges_without_editing() {
 #[test]
 fn vertical_navigation_ignores_horizontal_jitter_and_horizontal_navigation_snaps() {
     let mut app = Workbench::new(ChartDocument::empty("Camera", 120.).unwrap(), None);
-    app.tool = Tool::Select;
-    app.beat = 10.;
+    app.timeline.tool = Tool::Select;
+    app.transport.beat = 10.;
     let grid = test_grid(&app);
     let start = egui::pos2(grid.rect.center().x, 200.);
     for direction in [-1., 1.] {
-        let before = app.beat;
+        let before = app.transport.beat;
         grid_events(&mut app, &[pointer(start, true)], false);
         for i in 1..=15 {
             let pos =
@@ -383,10 +383,10 @@ fn vertical_navigation_ignores_horizontal_jitter_and_horizontal_navigation_snaps
             &[pointer(start + egui::vec2(7., direction * 110.), false)],
             false,
         );
-        assert_eq!(app.camera_x, 0.);
-        assert_ne!(app.beat, before);
+        assert_eq!(app.timeline.camera_x, 0.);
+        assert_ne!(app.transport.beat, before);
     }
-    let beat = app.beat;
+    let beat = app.transport.beat;
     grid_events(
         &mut app,
         &[
@@ -397,11 +397,11 @@ fn vertical_navigation_ignores_horizontal_jitter_and_horizontal_navigation_snaps
         ],
         false,
     );
-    assert_eq!(app.beat, beat);
-    let step = 1350. / (app.lanes - 1) as f64;
-    assert!((app.camera_x / step - (app.camera_x / step).round()).abs() < 1e-8);
-    assert_ne!(app.camera_x, 0.);
-    let camera = app.camera_x;
+    assert_eq!(app.transport.beat, beat);
+    let step = 1350. / (app.timeline.lanes - 1) as f64;
+    assert!((app.timeline.camera_x / step - (app.timeline.camera_x / step).round()).abs() < 1e-8);
+    assert_ne!(app.timeline.camera_x, 0.);
+    let camera = app.timeline.camera_x;
     let start = test_grid(&app).event_rect.center();
     grid_events(
         &mut app,
@@ -413,7 +413,7 @@ fn vertical_navigation_ignores_horizontal_jitter_and_horizontal_navigation_snaps
         false,
     );
     assert_eq!(
-        app.camera_x, camera,
+        app.timeline.camera_x, camera,
         "Event swipes must not move the note camera"
     );
 }
@@ -437,16 +437,16 @@ fn preview_note_navigation_finds_offscreen_source_and_selects_correct_line() {
     assert!(!app.preview.fullscreen);
     assert_eq!(app.line, 1);
     assert_eq!(app.selected, Some(NoteId { line: 1, index: 0 }));
-    assert_eq!(app.camera_x, 1800.);
-    assert_eq!(app.beat, 79.);
+    assert_eq!(app.timeline.camera_x, 1800.);
+    assert_eq!(app.transport.beat, 79.);
 }
 
 #[test]
 fn horizontal_lock_keeps_camera_and_vertical_navigation_available() {
     let mut app = Workbench::new(ChartDocument::empty("Lock", 120.).unwrap(), None);
     app.options.lock_horizontal = true;
-    app.camera_x = 405.;
-    app.beat = 10.;
+    app.timeline.camera_x = 405.;
+    app.transport.beat = 10.;
     let start = test_grid(&app).rect.center();
     grid_events(
         &mut app,
@@ -457,8 +457,8 @@ fn horizontal_lock_keeps_camera_and_vertical_navigation_available() {
         ],
         false,
     );
-    assert_eq!(app.camera_x, 405.);
-    assert_eq!(app.beat, 10.);
+    assert_eq!(app.timeline.camera_x, 405.);
+    assert_eq!(app.transport.beat, 10.);
     grid_events(
         &mut app,
         &[
@@ -468,6 +468,6 @@ fn horizontal_lock_keeps_camera_and_vertical_navigation_available() {
         ],
         false,
     );
-    assert_eq!(app.camera_x, 405.);
-    assert!(app.beat > 10.);
+    assert_eq!(app.timeline.camera_x, 405.);
+    assert!(app.transport.beat > 10.);
 }

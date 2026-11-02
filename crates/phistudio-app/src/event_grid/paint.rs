@@ -62,12 +62,12 @@ pub fn paint(app: &mut Workbench, painter: &egui::Painter, grid: Grid) {
         }
     }
     for (id, event) in app.event_rows().iter() {
-        if let Some(Gesture::Erase { selection, .. }) = &app.drag
+        if let Some(Gesture::Erase { selection, .. }) = &app.timeline.drag
             && selection.events.binary_search(id).is_ok()
         {
             continue;
         }
-        let mut group_preview = match &app.drag {
+        let mut group_preview = match &app.timeline.drag {
             Some(Gesture::SelectionMove {
                 selection, beats, ..
             }) if selection.events.binary_search(id).is_ok() => {
@@ -88,7 +88,7 @@ pub fn paint(app: &mut Workbench, painter: &egui::Painter, grid: Grid) {
                 id: drag_id,
                 current,
                 ..
-            })) = &app.drag
+            })) = &app.timeline.drag
             && *drag_id != *id
             && app.editor.document().xy_pair(*drag_id).ok() == Some(*id)
         {
@@ -97,7 +97,7 @@ pub fn paint(app: &mut Workbench, painter: &egui::Painter, grid: Grid) {
             paired.end_time = current.end_time;
             group_preview = Some(paired);
         }
-        let visual = match &app.drag {
+        let visual = match &app.timeline.drag {
             Some(Gesture::Event(EventGesture::Edit {
                 id: drag_id,
                 current,
@@ -117,7 +117,7 @@ pub fn paint(app: &mut Workbench, painter: &egui::Painter, grid: Grid) {
     }
     if let Some(Gesture::Event(EventGesture::Create {
         line, kind, event, ..
-    })) = &app.drag
+    })) = &app.timeline.drag
         && *line == app.line
     {
         draw(

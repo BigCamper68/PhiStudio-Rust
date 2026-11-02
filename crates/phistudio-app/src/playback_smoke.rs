@@ -48,7 +48,8 @@ impl Smoke {
         if let Some((phase, position)) = self.pending_touch.take() {
             if phase == egui::TouchPhase::Start {
                 let target = app.editor.document().tempo().beat_at(2.25);
-                self.scrub_to = position + egui::vec2(0., (target - app.beat) as f32 * app.zoom);
+                self.scrub_to = position
+                    + egui::vec2(0., (target - app.transport.beat) as f32 * app.timeline.zoom);
             }
             self.router.event(phase, 1, position)
         } else {
@@ -78,7 +79,7 @@ impl Smoke {
             report["audio_available"] == true && report["transport"]["music"].is_object(),
             "No real music output: {report}"
         );
-        let seconds = app.editor.document().tempo().seconds_at(app.beat);
+        let seconds = app.editor.document().tempo().seconds_at(app.transport.beat);
         let now = get_time();
         match self.stage {
             0 => {
@@ -92,8 +93,8 @@ impl Smoke {
                 }
                 if self.frames == 8 {
                     self.event("start", preview)?;
-                    app.beat = 0.;
-                    app.playing = true;
+                    app.transport.beat = 0.;
+                    app.transport.playing = true;
                     preview.set_playback(0., true, true)?;
                     self.stage = 1;
                     self.since = now;
@@ -145,7 +146,7 @@ impl Smoke {
                         // Prove the callback stops music while rendering is not
                         // running; Android can stop the Surface thread first.
                         std::thread::sleep(Duration::from_millis(350));
-                        app.playing = false;
+                        app.transport.playing = false;
                         preview.set_playback(seconds, false, false)?;
                         self.paused_at = seconds;
                         self.since = get_time();
@@ -158,7 +159,7 @@ impl Smoke {
                 ensure!(seconds == self.paused_at, "Paused chart cursor moved");
                 if now - self.since > 0.8 {
                     self.event("pause-end", preview)?;
-                    app.beat = app.editor.document().tempo().beat_at(2.25);
+                    app.transport.beat = app.editor.document().tempo().beat_at(2.25);
                     preview.set_playback(2.25, false, true)?;
                     self.since = now;
                     self.stage = 3;
@@ -175,7 +176,7 @@ impl Smoke {
                 }
                 if now - self.since > 0.6 {
                     self.event("resume", preview)?;
-                    app.playing = true;
+                    app.transport.playing = true;
                     preview.set_playback(2.25, true, false)?;
                     self.stage = 4;
                 }
@@ -187,7 +188,7 @@ impl Smoke {
                 );
                 if seconds >= 2.7 {
                     self.event("fake-passed", preview)?;
-                    app.beat = app.editor.document().tempo().beat_at(3.9);
+                    app.transport.beat = app.editor.document().tempo().beat_at(3.9);
                     preview.set_playback(3.9, true, true)?;
                     self.stage = 5;
                     self.since = now;
@@ -200,8 +201,8 @@ impl Smoke {
                 );
                 if now - self.since > 0.4 {
                     self.event("forward-seek-end", preview)?;
-                    app.tool = crate::workbench::Tool::Select;
-                    let grid = crate::grid_input::geometry(app.grid_area, app);
+                    app.timeline.tool = crate::workbench::Tool::Select;
+                    let grid = crate::grid_input::geometry(app.timeline.area, app);
                     self.pending_touch = Some((
                         egui::TouchPhase::Start,
                         egui::pos2(grid.rect.center().x, grid.rect.bottom() - 30.),
@@ -212,7 +213,9 @@ impl Smoke {
             }
             6 => {
                 ensure!(
-                    app.playing && app.grid_input.is_scrubbing() && report["playing"] == false,
+                    app.transport.playing
+                        && app.timeline.input.is_scrubbing()
+                        && report["playing"] == false,
                     "A playback scrub did not pause the transport: {report}"
                 );
                 if now - self.since > 0.2 {
@@ -224,8 +227,8 @@ impl Smoke {
             }
             7 => {
                 ensure!(
-                    app.playing
-                        && app.grid_input.is_scrubbing()
+                    app.transport.playing
+                        && app.timeline.input.is_scrubbing()
                         && report["playing"] == false
                         && (seconds - 2.25).abs() < 1e-6,
                     "Finger scrubbing lost the selected time: {report}"
@@ -237,7 +240,7 @@ impl Smoke {
                         - app.editor.document().tempo().beat_at(2.25);
                     self.pending_touch = Some((
                         egui::TouchPhase::End,
-                        self.scrub_to + egui::vec2(0., delta as f32 * app.zoom),
+                        self.scrub_to + egui::vec2(0., delta as f32 * app.timeline.zoom),
                     ));
                     self.stage = 8;
                     self.since = now;
@@ -245,8 +248,8 @@ impl Smoke {
             }
             8 => {
                 ensure!(
-                    app.playing
-                        && !app.grid_input.is_scrubbing()
+                    app.transport.playing
+                        && !app.timeline.input.is_scrubbing()
                         && report["playing"] == true
                         && seconds >= 2.3 - 1e-6,
                     "Finger release did not resume at the selected time: {report}"
@@ -264,7 +267,7 @@ impl Smoke {
                         "Playback did not advance from the released cursor: {report}"
                     );
                     self.event("scrub-resumed-end", preview)?;
-                    app.playing = false;
+                    app.transport.playing = false;
                     preview.set_playback(seconds, false, false)?;
                     for (name, image) in &self.images {
                         image.export_png(

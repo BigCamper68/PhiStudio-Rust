@@ -2,8 +2,8 @@ use super::*;
 impl Workbench {
     pub(super) fn sidebar(&mut self, ctx: &egui::Context, canceled: bool) -> bool {
         self.line = self.line.min(self.editor.document().line_count() - 1);
-        let resizing_sidebar = self.show_context && self.capture_sidebar_resize(ctx, canceled);
-        if self.show_context {
+        let resizing_sidebar = self.windows.sidebar && self.capture_sidebar_resize(ctx, canceled);
+        if self.windows.sidebar {
             let line_summaries = self.line_summaries();
             let limits = sidebar_widths(ctx.screen_rect().width());
             let width = (ctx.screen_rect().width() * 0.30)
@@ -30,10 +30,10 @@ impl Workbench {
                                 if self.advanced.right_mode
                                     == crate::advanced_ui::RightMode::NoiseFields
                                 {
-                                    if !self.compact_properties {
-                                        if self.properties_scroll {
+                                    if !self.windows.floating_properties {
+                                        if self.windows.scroll_to_properties {
                                             ui.scroll_to_cursor(Some(Align::TOP));
-                                            self.properties_scroll = false;
+                                            self.windows.scroll_to_properties = false;
                                         }
                                         if ui
                                             .button(format!(
@@ -42,7 +42,7 @@ impl Workbench {
                                             ))
                                             .clicked()
                                         {
-                                            self.compact_properties = true;
+                                            self.windows.floating_properties = true;
                                         }
                                         self.noise_properties(ui);
                                     }
@@ -51,17 +51,17 @@ impl Workbench {
                                 if self.advanced.right_mode
                                     == crate::advanced_ui::RightMode::Shaders
                                 {
-                                    if !self.compact_properties {
-                                        if self.properties_scroll {
+                                    if !self.windows.floating_properties {
+                                        if self.windows.scroll_to_properties {
                                             ui.scroll_to_cursor(Some(Align::TOP));
-                                            self.properties_scroll = false;
+                                            self.windows.scroll_to_properties = false;
                                         }
                                         if ui
                                             .button(crate::i18n::tr("Shader properties ↗"))
                                             .clicked()
                                         {
-                                            self.compact_properties = true;
-                                            self.properties_scroll = true;
+                                            self.windows.floating_properties = true;
+                                            self.windows.scroll_to_properties = true;
                                         }
                                         self.shader_properties(ui);
                                     }
@@ -176,7 +176,8 @@ impl Workbench {
                                                                 3 => activity.as_ref().is_some_and(
                                                                     |index| {
                                                                         index.contains(
-                                                                            line.index, self.beat,
+                                                                            line.index,
+                                                                            self.transport.beat,
                                                                         )
                                                                     },
                                                                 ),
@@ -231,7 +232,7 @@ impl Workbench {
                                 });
                                 if old_line != self.line {
                                     self.select(None);
-                                    self.drag = None;
+                                    self.timeline.drag = None;
                                     self.unlink_invalid_xy();
                                 }
                                 ui.small(
@@ -256,17 +257,17 @@ impl Workbench {
                                         self.open_controls(phistudio_core::ControlKind::Position);
                                     }
                                     if ui.button(crate::i18n::tr("Line properties")).clicked() {
-                                        self.show_line_properties = true;
+                                        self.windows.line_properties = true;
                                     }
                                     if ui.button(crate::i18n::tr("BPM")).clicked() {
-                                        self.show_bpm = true;
+                                        self.windows.bpm = true;
                                     }
                                 });
                                 ui.separator();
-                                if !self.compact_properties {
-                                    if self.properties_scroll {
+                                if !self.windows.floating_properties {
+                                    if self.windows.scroll_to_properties {
                                         ui.scroll_to_cursor(Some(Align::TOP));
-                                        self.properties_scroll = false;
+                                        self.windows.scroll_to_properties = false;
                                     }
                                     if self.advanced.story_selected.is_some()
                                         || (self.advanced.right_mode
@@ -277,7 +278,7 @@ impl Workbench {
                                             .button(crate::i18n::tr("Storyboard properties ↗"))
                                             .clicked()
                                         {
-                                            self.compact_properties = true;
+                                            self.windows.floating_properties = true;
                                         }
                                         self.story_properties(ui);
                                     } else if self.selection().len() > 1 {
@@ -287,15 +288,15 @@ impl Workbench {
                                             .button(crate::i18n::tr("Event properties ↗"))
                                             .clicked()
                                         {
-                                            self.compact_properties = true;
-                                            self.properties_scroll = true;
+                                            self.windows.floating_properties = true;
+                                            self.windows.scroll_to_properties = true;
                                         }
                                         self.event_properties(ui);
                                     } else if self.selected.is_some() {
                                         if ui.button(crate::i18n::tr("Note properties ↗")).clicked()
                                         {
-                                            self.compact_properties = true;
-                                            self.properties_scroll = true;
+                                            self.windows.floating_properties = true;
+                                            self.windows.scroll_to_properties = true;
                                         }
                                         self.properties(ui);
                                     } else {

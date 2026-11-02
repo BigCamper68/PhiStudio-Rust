@@ -69,7 +69,7 @@ fn paint_observed(
     preview.set_editor_options(&app.options, app.line)?;
     app.sync_noise_preview(preview, &mut None, true)?;
     let time = if app.noise_preview_override().is_some() {
-        app.editor.document().tempo().seconds_at(app.beat)
+        app.editor.document().tempo().seconds_at(app.transport.beat)
     } else {
         0.
     };
@@ -155,7 +155,7 @@ pub async fn run() -> Result<()> {
                     for _ in 0..4 {
                         let panel = paint(&mut gui, &mut app, &mut preview, width)?;
                         ensure!(panel.right() <= screen_width() / scale + 0.5);
-                        ensure!(app.grid_area.width() >= 200.);
+                        ensure!(app.timeline.area.width() >= 200.);
                         widths.push(panel.width());
                         next_frame().await;
                     }
@@ -185,7 +185,7 @@ pub async fn run() -> Result<()> {
                     "{language:?}/{scale}/{label}: {changed} changed pixels after returning to the same width"
                 );
                 report.push(serde_json::json!({"case":name,"widths":widths,
-                    "grid":[app.grid_area.width(),app.grid_area.height()],
+                    "grid":[app.timeline.area.width(),app.timeline.area.height()],
                     "changed_pixels_after_resize":changed}));
                 next_frame().await;
             }

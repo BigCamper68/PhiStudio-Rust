@@ -93,8 +93,7 @@ impl Workbench {
         }
         if changed {
             self.noise.offset = x - 1.;
-            self.drag = None;
-            self.grid_input.cancel();
+            self.timeline.cancel_gesture();
         }
     }
     pub(crate) fn jump_noise_field(&mut self, index: usize, grid: crate::grid_input::Grid) -> bool {
@@ -120,10 +119,9 @@ impl Workbench {
         ) {
             self.set_grid_beat((start.as_f64() - 1.).max(0.));
         }
-        self.drag = None;
-        self.grid_input.cancel();
-        self.playing = false;
-        self.properties_scroll = true;
+        self.timeline.cancel_gesture();
+        self.transport.playing = false;
+        self.windows.scroll_to_properties = true;
         true
     }
     pub(crate) fn noise_toolbar(&mut self, ui: &mut egui::Ui) {

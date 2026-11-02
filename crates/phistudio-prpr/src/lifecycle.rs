@@ -66,11 +66,8 @@ impl Preview {
             playtest_viewport: None,
             shader_warning,
             shader_key,
-            picking: None,
-            source_ids,
+            picking: picking::PickingState::new(source_ids),
             sound_schedule: Default::default(),
-            pick_visible_lines: Default::default(),
-            pick_visible_ids: Vec::new(),
             editor_options: phistudio_core::EditorOptions {
                 mark_active_line_id: false,
                 highlight_current_line: false,
@@ -125,7 +122,8 @@ impl Preview {
         // Keep the last valid chart if parsing fails, and let the UI report it.
         compatibility::apply(document, &mut chart);
         self.sound_schedule.ready = false;
-        self.source_ids = picking::source_map(document, &chart);
+        self.picking
+            .replace_sources(picking::source_map(document, &chart));
         self.anchors = anchors::Anchors::install(document, &mut chart);
         self.judge = Judge::new(&chart);
         effects::replace(self, &mut chart, document, asset_root).await;

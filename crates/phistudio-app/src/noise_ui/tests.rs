@@ -186,7 +186,7 @@ fn grouped_drag_overlap_cycle_and_empty_box_selection_keep_one_history_step() {
     };
     let saved = app.editor.document().as_json().clone();
     let history = app.editor.history_rows().len();
-    let destination = origin - vec2(0., app.zoom);
+    let destination = origin - vec2(0., app.timeline.zoom);
     grid::update(&mut app, &mut gesture, destination);
     grid::finish(&mut app, gesture);
     assert_eq!(app.editor.history_rows().len(), history + 1);
@@ -496,13 +496,13 @@ fn field_list_jump_reveals_distant_fields_in_both_axes_without_editing_the_chart
         let history = app.editor.history_rows().len();
         let area = Rect::from_min_max(pos2(0., 80.), pos2(900., 700.));
         let g = crate::grid_input::geometry(area, &app);
-        app.playing = true;
-        app.show_context = false;
+        app.transport.playing = true;
+        app.windows.sidebar = false;
         assert!(app.jump_noise_field(1, g));
-        assert!(!app.show_context);
+        assert!(!app.windows.sidebar);
         assert_eq!(app.noise.selected, Some(1));
         assert_eq!(app.noise.selection, [1].into());
-        assert!(!app.playing);
+        assert!(!app.transport.playing);
         assert!(!app.noise.animation);
         let after = crate::grid_input::geometry(area, &app);
         let col = layout::column(&app, after, layout::View::focus(&app), lane);
@@ -554,7 +554,7 @@ fn field_picker_clicks_jump_even_when_reselecting_the_current_field() {
     ));
     app.refresh_noise();
     app.editor.mark_saved();
-    app.show_context = false;
+    app.windows.sidebar = false;
     let source = app.editor.document().as_json().clone();
     let ctx = egui::Context::default();
     let frame = |app: &mut Workbench, events: Vec<Event>| {
@@ -594,7 +594,7 @@ fn field_picker_clicks_jump_even_when_reselecting_the_current_field() {
     for current in ["#1 · Near", "#2 · Far"] {
         app.noise.offset = -10000.;
         app.set_grid_beat(0.);
-        app.show_context = false;
+        app.windows.sidebar = false;
         let out = frame(&mut app, vec![]);
         let selector = label(&out, current, false);
         let mode = label(&out, "Noise Fields", false);
@@ -618,7 +618,7 @@ fn field_picker_clicks_jump_even_when_reselecting_the_current_field() {
         for _ in 0..3 {
             frame(&mut app, vec![]);
         }
-        let g = crate::grid_input::geometry(app.grid_area, &app);
+        let g = crate::grid_input::geometry(app.timeline.area, &app);
         let col = layout::column(&app, g, layout::View::focus(&app), 1000.);
         assert!((col.center().x - g.rect.center().x).abs() < 0.01);
         assert_eq!(app.editor.document().as_json(), &source);
@@ -631,7 +631,7 @@ fn field_gestures_snap_both_axes_at_each_configurable_grid_density_and_undo_exac
     for count in [3, 5, 7, 9, 11, 13, 17, 21, 25, 33] {
         for format in [Format::Native, Format::Next] {
             let mut app = app();
-            app.lanes = count;
+            app.timeline.lanes = count;
             app.noise.format = format;
             app.set_tool(Tool::Event);
             let area = Rect::from_min_max(pos2(0., 80.), pos2(900., 700.));
@@ -690,7 +690,7 @@ fn field_gestures_snap_both_axes_at_each_configurable_grid_density_and_undo_exac
             app.refresh_noise();
             assert_eq!(app.editor.document().as_json(), &source);
             let stable = app.editor.document().as_json().clone();
-            app.lanes = if count == 11 { 5 } else { 11 };
+            app.timeline.lanes = if count == 11 { 5 } else { 11 };
             let resized = crate::grid_input::geometry(area, &app);
             let after = layout::column(&app, resized, layout::View::focus(&app), created_lane);
             assert_eq!(col, after);
@@ -744,7 +744,7 @@ fn grid_density_changes_only_fine_lines_and_snapping_not_numbered_columns_or_fie
         .collect();
     let base_lines: Vec<_> = layout::grid_lines(g, app.noise.offset).collect();
     for count in [3, 5, 7, 9, 11, 13, 17, 21, 25, 33] {
-        app.lanes = count;
+        app.timeline.lanes = count;
         let changed = crate::grid_input::geometry(area, &app);
         let after: Vec<_> = (-2..14)
             .map(|lane| layout::column(&app, changed, layout::View::focus(&app), lane as f64))
@@ -787,7 +787,7 @@ fn dense_native_animation_captions_follow_events_and_do_not_overlap() {
     let source = app.editor.document().as_json().clone();
     for width in [500., 900.] {
         for zoom in [24., 96., 280.] {
-            app.zoom = zoom;
+            app.timeline.zoom = zoom;
             let g = crate::grid_input::geometry(
                 Rect::from_min_max(pos2(0., 20.), pos2(width, 700.)),
                 &app,
@@ -833,19 +833,19 @@ fn cursor_created_fields_match_their_numbers_independently_of_grid_or_camera() {
             for snap in [true, false] {
                 let mut app = app();
                 app.noise.format = format;
-                app.lanes = density;
+                app.timeline.lanes = density;
                 app.options.snap_x = snap;
-                app.grid_area = Rect::from_min_max(pos2(0., 80.), pos2(900., 700.));
-                app.beat = 13.5;
+                app.timeline.area = Rect::from_min_max(pos2(0., 80.), pos2(900., 700.));
+                app.transport.beat = 13.5;
                 for index in 0..8 {
                     app.noise.offset = if snap { 10000. } else { -10000. };
                     app.add_noise();
                     let row = &noise::fields(app.editor.document()).unwrap()[index];
                     assert_eq!(layout::lane(row, index), index as f64);
-                    let g = crate::grid_input::geometry(app.grid_area, &app);
+                    let g = crate::grid_input::geometry(app.timeline.area, &app);
                     let col = layout::column(&app, g, layout::View::focus(&app), index as f64);
                     assert!((col.center().x - g.rect.center().x).abs() < 0.01);
-                    assert_eq!(app.beat, 13.5);
+                    assert_eq!(app.transport.beat, 13.5);
                 }
             }
         }
@@ -855,7 +855,7 @@ fn cursor_created_fields_match_their_numbers_independently_of_grid_or_camera() {
 #[test]
 fn cursor_creation_uses_its_number_even_if_occupied_and_keeps_visible_camera_stable() {
     let mut app = app();
-    app.grid_area = Rect::from_min_max(pos2(0., 80.), pos2(900., 700.));
+    app.timeline.area = Rect::from_min_max(pos2(0., 80.), pos2(900., 700.));
     for _ in 0..7 {
         app.add_noise();
     }

@@ -36,11 +36,11 @@ impl Workbench {
                 self.nudge(1, 0);
             }
             if ui.button(crate::i18n::tr("Quantize")).clicked() {
-                self.transform_selection(Transform::Quantize(self.division));
+                self.transform_selection(Transform::Quantize(self.timeline.division));
             }
         });
         ui.small({
-            let __i18n_arg_0 = &(self.division);
+            let __i18n_arg_0 = &(self.timeline.division);
             crate::i18n::format(
                 "Nudge: one lane or 1/{0} beat. Quantize uses the current Grid division.",
                 &[__i18n_arg_0.to_string()],

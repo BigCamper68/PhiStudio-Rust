@@ -6,12 +6,12 @@ impl Workbench {
             .get_or_insert_with(crate::covers::Covers::new)
             .update(ctx);
         let blocked = self.workspace.view.is_some()
-            || self.file_busy
-            || self.recovery.is_some()
-            || self.new_chart.is_some()
-            || self.export_package.is_some()
-            || self.package_dialog
-            || self.delete_project.is_some();
+            || self.files.busy
+            || self.files.recovery.is_some()
+            || self.files.new_chart.is_some()
+            || self.files.export_package.is_some()
+            || self.files.package_dialog
+            || self.files.delete_project.is_some();
         egui::CentralPanel::default()
             .frame(egui::Frame::none().fill(base()).inner_margin(20.))
             .show(ctx, |ui| {
@@ -93,7 +93,7 @@ impl Workbench {
                                     )
                                     .clicked()
                                 {
-                                    self.new_chart = Some(NewChart::default());
+                                    self.files.new_chart = Some(NewChart::default());
                                 }
                                 if ui
                                     .add_sized(
@@ -114,14 +114,14 @@ impl Workbench {
                                     .on_hover_text(crate::i18n::tr("Export project…"))
                                     .clicked()
                                 {
-                                    self.native_request = Some(FileRequest::ExportCurrent);
+                                    self.files.request = Some(FileRequest::ExportCurrent);
                                 }
                             },
                         );
                     });
                     ui.add_space(12.);
                     ui.separator();
-                    if self.file_busy {
+                    if self.files.busy {
                         ui.label(RichText::new(crate::i18n::tr(&self.status)).color(muted()));
                     }
                     if let Some(error) = &self.error {
@@ -129,12 +129,12 @@ impl Workbench {
                     }
                 });
                 let blocked = self.workspace.view.is_some()
-                    || self.file_busy
-                    || self.recovery.is_some()
-                    || self.new_chart.is_some()
-                    || self.export_package.is_some()
-                    || self.package_dialog
-                    || self.delete_project.is_some();
+                    || self.files.busy
+                    || self.files.recovery.is_some()
+                    || self.files.new_chart.is_some()
+                    || self.files.export_package.is_some()
+                    || self.files.package_dialog
+                    || self.files.delete_project.is_some();
                 let mut selected = None;
                 let mut export = None;
                 let mut delete = None;
@@ -144,7 +144,11 @@ impl Workbench {
                         .id_source("project-list")
                         .max_height(
                             (ui.available_height()
-                                - if self.last_deleted.is_some() { 52. } else { 0. })
+                                - if self.files.last_deleted.is_some() {
+                                    52.
+                                } else {
+                                    0.
+                                })
                             .max(60.),
                         )
                         .touch_show(ui, |ui| {
@@ -325,7 +329,7 @@ impl Workbench {
                             }
                         });
                 }
-                if let Some(trash) = &self.last_deleted {
+                if let Some(trash) = &self.files.last_deleted {
                     ui.separator();
                     ui.horizontal(|ui| {
                         ui.label({
@@ -342,22 +346,22 @@ impl Workbench {
                             )
                             .clicked()
                         {
-                            self.native_request = Some(FileRequest::UndoDelete(trash.clone()));
+                            self.files.request = Some(FileRequest::UndoDelete(trash.clone()));
                         }
                     });
                 }
                 if let Some(target) = delete {
-                    self.delete_project = Some(target);
+                    self.files.delete_project = Some(target);
                 }
                 if let Some((view, name)) = manage {
                     self.workspace.name = name;
                     self.open_workspace(view);
                 }
                 if let Some(workspace) = selected {
-                    self.native_request = Some(FileRequest::OpenProject(workspace));
+                    self.files.request = Some(FileRequest::OpenProject(workspace));
                 }
                 if let Some(workspace) = export {
-                    self.native_request = Some(FileRequest::ExportProject(workspace));
+                    self.files.request = Some(FileRequest::ExportProject(workspace));
                 }
             });
     }

@@ -41,9 +41,8 @@ impl Workbench {
         self.preview.touches.clear();
         self.preview.blocked = false;
         self.preview.fullscreen = true;
-        self.drag = None;
-        self.grid_input.cancel();
-        self.timeline_scrub = false;
+        self.timeline.cancel_gesture();
+        self.transport.scrubbing = false;
     }
     pub(crate) fn paint_grid_preview(&mut self, painter: &egui::Painter, area: Rect) {
         if !area.is_positive() {
@@ -165,9 +164,8 @@ impl Workbench {
         self.preview.touches.clear();
         self.preview.blocked = false;
         self.preview.fullscreen = false;
-        self.drag = None;
-        self.grid_input.cancel();
-        self.timeline_scrub = false;
+        self.timeline.cancel_gesture();
+        self.transport.scrubbing = false;
     }
     pub(crate) fn fullscreen_exit_rect(&self, rect: Rect) -> Rect {
         let [l, t, r, b] = self.preview.exit_bounds;
@@ -195,13 +193,13 @@ impl Workbench {
         Rect::from_center_size(center, size)
     }
     pub(crate) fn fullscreen_preview(&mut self, ctx: &egui::Context) {
-        self.grid_area = Rect::NOTHING;
+        self.timeline.area = Rect::NOTHING;
         ctx.input_mut(|i| {
             if i.consume_key(egui::Modifiers::NONE, egui::Key::Escape) {
                 self.close_fullscreen_preview();
             }
             if i.consume_key(egui::Modifiers::NONE, egui::Key::Space) {
-                self.playing = !self.playing;
+                self.transport.playing = !self.transport.playing;
             }
         });
         egui::CentralPanel::default()
@@ -240,8 +238,8 @@ impl Workbench {
             if d.vertical == Some(true) {
                 // Lock the gesture once; consume clamp overscroll so reversing at
                 // beat zero immediately moves the cursor again.
-                self.beat = (self.beat
-                    + ((pos.y - d.last.y) * self.options.scroll_speed / self.zoom) as f64)
+                self.transport.beat = (self.transport.beat
+                    + ((pos.y - d.last.y) * self.options.scroll_speed / self.timeline.zoom) as f64)
                     .max(0.);
             }
             if d.vertical.is_some() {
@@ -327,7 +325,7 @@ impl Workbench {
                         self.preview.touches.clear();
                         self.preview.drag = None;
                         self.preview.blocked = false;
-                        self.playing = false;
+                        self.transport.playing = false;
                     }
                     _ => {}
                 },
@@ -345,8 +343,8 @@ impl Workbench {
                 }
                 egui::Event::PointerMoved(pos) if !touch_frame => self.preview_move(pos),
                 egui::Event::Scroll(delta) => {
-                    self.beat = (self.beat
-                        + (delta.y * self.options.scroll_speed / self.zoom) as f64)
+                    self.transport.beat = (self.transport.beat
+                        + (delta.y * self.options.scroll_speed / self.timeline.zoom) as f64)
                         .max(0.);
                 }
                 _ => {}
@@ -436,8 +434,8 @@ mod noise_edit_tests {
             ),
         ] {
             let mut app = point_editor(format, track, target);
-            app.lanes = 9;
-            app.division = 8;
+            app.timeline.lanes = 9;
+            app.timeline.division = 8;
             app.options.snap_x = true;
             app.options.snap_time = true;
             let source = app.editor.document().as_json().clone();
@@ -513,7 +511,7 @@ mod noise_edit_tests {
         );
         assert_eq!(point(&app), staged);
         let a = app.preview.rect.center_bottom() - vec2(200., 40.);
-        let beat = app.beat;
+        let beat = app.transport.beat;
         input(
             &mut app,
             &[
@@ -521,7 +519,7 @@ mod noise_edit_tests {
                 touch(1, egui::TouchPhase::End, a + vec2(0., 30.)),
             ],
         );
-        assert!(app.beat > beat);
+        assert!(app.transport.beat > beat);
         assert_eq!(point(&app), staged);
         app.close_fullscreen_preview();
         assert!(app.noise.sample_target.is_none());
@@ -578,7 +576,7 @@ mod noise_edit_tests {
         let original = app.noise_preview_override().unwrap().1;
         let a = app.preview.rect.center_bottom() - vec2(100., 30.);
         let b = a + vec2(0., 50.);
-        let beat = app.beat;
+        let beat = app.transport.beat;
         input(
             &mut app,
             &[
@@ -587,7 +585,7 @@ mod noise_edit_tests {
                 touch(1, egui::TouchPhase::End, b),
             ],
         );
-        assert!(app.beat > beat);
+        assert!(app.transport.beat > beat);
         assert_eq!(app.noise_preview_override().unwrap().1, original);
         let a = app.noise.preview_handles[2].center();
         let b = a + vec2(40., -20.);
@@ -615,8 +613,8 @@ mod noise_edit_tests {
     fn preview_grid_snap_uses_main_density_and_taps_do_not_change_geometry() {
         for format in [Format::Native, Format::Next] {
             let mut app = editor(format);
-            app.lanes = 9;
-            app.division = 8;
+            app.timeline.lanes = 9;
+            app.timeline.division = 8;
             app.options.snap_x = true;
             app.options.snap_time = true;
             let original = app.noise_preview_override().unwrap().1;

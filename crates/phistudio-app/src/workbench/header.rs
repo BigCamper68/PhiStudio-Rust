@@ -38,7 +38,7 @@ impl Workbench {
                                 if ui.button(crate::i18n::tr("Export project…")).clicked()
                                     && self.flush_shader_draft()
                                 {
-                                    self.native_request =
+                                    self.files.request =
                                         Some(crate::files::FileRequest::ExportCurrent);
                                     ui.close_menu();
                                 }
@@ -88,7 +88,7 @@ impl Workbench {
                             .id_source("windows-menu-scroll")
                             .max_height((ctx.screen_rect().height() - 60.).max(60.))
                             .touch_show(ui, |ui| {
-                                ui.checkbox(&mut self.show_context, crate::i18n::tr("Sidebar"));
+                                ui.checkbox(&mut self.windows.sidebar, crate::i18n::tr("Sidebar"));
                                 ui.add_enabled(
                                     !self.options.preview_behind_grid,
                                     egui::Checkbox::new(
@@ -98,12 +98,12 @@ impl Workbench {
                                 );
                                 if ui
                                     .checkbox(
-                                        &mut self.compact_properties,
+                                        &mut self.windows.floating_properties,
                                         crate::i18n::tr("Floating properties"),
                                     )
                                     .changed()
                                 {
-                                    self.properties_scroll = true;
+                                    self.windows.scroll_to_properties = true;
                                 }
                                 if ui
                                     .checkbox(
@@ -127,18 +127,21 @@ impl Workbench {
                                     ui.close_menu();
                                 }
                                 if ui
-                                    .checkbox(&mut self.show_settings, crate::i18n::tr("Settings"))
+                                    .checkbox(
+                                        &mut self.windows.settings,
+                                        crate::i18n::tr("Settings"),
+                                    )
                                     .changed()
                                 {
                                     ui.close_menu();
                                 }
                                 ui.checkbox(
-                                    &mut self.show_line_properties,
+                                    &mut self.windows.line_properties,
                                     crate::i18n::tr("Judge line properties"),
                                 );
-                                ui.checkbox(&mut self.show_bpm, crate::i18n::tr("BPM timeline"));
+                                ui.checkbox(&mut self.windows.bpm, crate::i18n::tr("BPM timeline"));
                                 ui.checkbox(
-                                    &mut self.show_grid_settings,
+                                    &mut self.windows.grid,
                                     crate::i18n::tr("Grid settings"),
                                 );
                                 ui.checkbox(&mut self.advanced.history, crate::i18n::tr("History"));
@@ -156,7 +159,7 @@ impl Workbench {
                                     }
                                 }
                                 if ui.button(crate::i18n::tr("Controls and help")).clicked() {
-                                    self.show_help = true;
+                                    self.windows.help = true;
                                     ui.close_menu();
                                 }
                             });
@@ -179,13 +182,13 @@ impl Workbench {
                     if ui
                         .add_sized(
                             [36., 32.],
-                            egui::Button::new(if self.playing { "Ⅱ" } else { "▶" }),
+                            egui::Button::new(if self.transport.playing { "Ⅱ" } else { "▶" }),
                         )
                         .on_hover_text(crate::i18n::tr("Play / pause · Space"))
                         .clicked()
                         && self.flush_shader_draft()
                     {
-                        self.playing = !self.playing;
+                        self.transport.playing = !self.transport.playing;
                     }
                     if !compact && ui.button(crate::i18n::tr("Save")).clicked() {
                         self.save_action();

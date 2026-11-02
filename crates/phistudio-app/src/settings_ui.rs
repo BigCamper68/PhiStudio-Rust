@@ -165,8 +165,8 @@ impl Workbench {
             }
         });
         for (label, value) in [
-            ("Music volume", &mut self.music_volume),
-            ("Hitsound volume", &mut self.hitsound_volume),
+            ("Music volume", &mut self.transport.music_volume),
+            ("Hitsound volume", &mut self.transport.hitsound_volume),
         ] {
             ui.add(
                 egui::Slider::new(value, 0. ..=1.)

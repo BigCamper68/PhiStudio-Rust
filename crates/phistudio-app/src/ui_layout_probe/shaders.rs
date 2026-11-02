@@ -31,7 +31,7 @@ pub(super) async fn run(
     app.shaders.selected = Some(0);
     app.refresh_shaders();
     app.set_tool(crate::workbench::Tool::Select);
-    app.show_context = true;
+    app.windows.sidebar = true;
     let original = app.editor.document().as_json().clone();
     preview
         .replace_chart(app.editor.document(), None, &app.project_options)
@@ -51,7 +51,7 @@ pub(super) async fn run(
                     next_frame().await;
                 }
                 paint(gui, app, preview, width)?;
-                let grid = crate::grid_input::geometry(app.grid_area, app);
+                let grid = crate::grid_input::geometry(app.timeline.area, app);
                 ensure!(
                     grid.rect.right() < grid.event_rect.left(),
                     "Shader grids overlap"
@@ -72,7 +72,7 @@ pub(super) async fn run(
         paint(gui, app, preview, 220.)?;
         next_frame().await;
     }
-    let grid = crate::grid_input::geometry(app.grid_area, app);
+    let grid = crate::grid_input::geometry(app.timeline.area, app);
     let left = pos2(grid.rect.left() + 26., grid.y(1.));
     gui.probe_input(vec![button(left, true), button(left, false)], false);
     paint(gui, app, preview, 220.)?;

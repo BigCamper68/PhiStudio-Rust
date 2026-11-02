@@ -90,15 +90,15 @@ fn selected(app: &Workbench, surface: Surface) -> Option<Hit> {
     }
 }
 pub(crate) fn finish_tap(app: &mut Workbench, gesture: &Gesture) -> bool {
-    if !matches!(app.tool, Tool::Select | Tool::Event)
+    if !matches!(app.timeline.tool, Tool::Select | Tool::Event)
         || app.tools.additive
         || app.selection().len() + app.story_selection().len() > 1
     {
-        app.grid_input.cycle = None;
+        app.timeline.input.cycle = None;
         return false;
     }
     let Some((grid, point, surface)) = tap(gesture) else {
-        app.grid_input.cycle = None;
+        app.timeline.input.cycle = None;
         return false;
     };
     let hits = match surface {
@@ -119,11 +119,11 @@ pub(crate) fn finish_tap(app: &mut Workbench, gesture: &Gesture) -> bool {
     };
     let hits: Vec<Hit> = hits;
     if hits.len() < 2 {
-        app.grid_input.cycle = None;
+        app.timeline.input.cycle = None;
         return false;
     }
     let current = selected(app, surface);
-    let previous = app.grid_input.cycle.take();
+    let previous = app.timeline.input.cycle.take();
     let continuing = previous.as_ref().is_some_and(|last| {
         last.session == app.session
             && last.revision == app.editor.revision()
@@ -142,7 +142,7 @@ pub(crate) fn finish_tap(app: &mut Workbench, gesture: &Gesture) -> bool {
         0
     };
     let target = hits[index].clone();
-    app.playing = false;
+    app.transport.playing = false;
     if current.as_ref() != Some(&target) {
         match &target {
             Hit::Note(id) => app.toggle_note(Some(*id), false),
@@ -159,7 +159,7 @@ pub(crate) fn finish_tap(app: &mut Workbench, gesture: &Gesture) -> bool {
         } else {
             point
         };
-        app.grid_input.cycle = Some(TapCycle {
+        app.timeline.input.cycle = Some(TapCycle {
             session: app.session,
             revision: app.editor.revision(),
             point,
@@ -336,7 +336,7 @@ mod tests {
         assert_eq!(app.editor.document().as_json(), &original);
         assert!(!app.editor.is_dirty());
         app.advanced.right_mode = RightMode::Storyboard;
-        app.grid_input.cancel();
+        app.timeline.input.cancel();
         app.editor.mark_saved();
         let original = app.editor.document().as_json().clone();
         let g = grid(&app);

@@ -71,7 +71,7 @@ pub fn begin(app: &mut Workbench, grid: Grid, pos: Pos2, additive: bool) -> Gest
         None
     }
     .or_else(|| found.first().cloned());
-    if app.tool == Tool::Event {
+    if app.timeline.tool == Tool::Event {
         let start = grid.beat(pos.y);
         let end = start
             .checked_add(Beat::new(0, 1, grid.division).unwrap())
@@ -100,7 +100,9 @@ pub fn begin(app: &mut Workbench, grid: Grid, pos: Pos2, additive: bool) -> Gest
         };
         let selected = app.story_selection();
         let normal = app.selection();
-        if !additive && selected.contains(&id) && matches!(app.tool, Tool::Select | Tool::BoxSelect)
+        if !additive
+            && selected.contains(&id)
+            && matches!(app.timeline.tool, Tool::Select | Tool::BoxSelect)
         {
             let a = (pos.y - grid.y(event.start_time.as_f64())).abs();
             let b = (pos.y - grid.y(event.end_time.as_f64())).abs();
@@ -122,7 +124,7 @@ pub fn begin(app: &mut Workbench, grid: Grid, pos: Pos2, additive: bool) -> Gest
                 grid,
                 handle: (selected.len() == 1
                     && normal.is_empty()
-                    && app.tool == Tool::Select
+                    && app.timeline.tool == Tool::Select
                     && a.min(b) <= 14.)
                     .then_some(a <= b),
                 moved: false,
@@ -275,7 +277,7 @@ fn header_label(painter: &egui::Painter, kind: StoryKind, width: f32) -> (String
 pub fn paint(app: &Workbench, painter: &egui::Painter, grid: Grid) {
     let p = painter.with_clip_rect(grid.rect);
     let selected: std::collections::BTreeSet<_> = app.story_selection().into_iter().collect();
-    let (moving, shift): (std::collections::BTreeSet<_>, _) = match &app.drag {
+    let (moving, shift): (std::collections::BTreeSet<_>, _) = match &app.timeline.drag {
         Some(Gesture::Story(d)) if d.moved => (
             d.group.iter().copied().collect(),
             d.event.start_time.checked_sub(d.original.start_time).ok(),
@@ -333,12 +335,12 @@ pub fn paint(app: &Workbench, painter: &egui::Painter, grid: Grid) {
                 kind,
                 index,
             };
-            if let Some(Gesture::Erase { stories: ids, .. }) = &app.drag
+            if let Some(Gesture::Erase { stories: ids, .. }) = &app.timeline.drag
                 && ids.contains(&id)
             {
                 continue;
             }
-            if let Some(Gesture::Story(d)) = &app.drag
+            if let Some(Gesture::Story(d)) = &app.timeline.drag
                 && d.id == Some(id)
             {
                 event = d.event.clone();
@@ -354,7 +356,7 @@ pub fn paint(app: &Workbench, painter: &egui::Painter, grid: Grid) {
             block(&p, grid, kind, &event, selected.contains(&id));
         }
     }
-    if let Some(Gesture::Story(d)) = &app.drag
+    if let Some(Gesture::Story(d)) = &app.timeline.drag
         && d.id.is_none()
         && d.line == app.line
     {

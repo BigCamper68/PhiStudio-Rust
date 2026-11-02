@@ -122,7 +122,7 @@ impl Note {
             .and_then(Value::as_object)
             .cloned()
             .unwrap_or_default();
-        let previous = original.and_then(|v| serde_json::from_value::<Self>(v.clone()).ok());
+        let previous = original.and_then(|v| Self::deserialize(v).ok());
         let mut updated = serde_json::to_value(self)?.as_object().unwrap().clone();
         // New optional controls must not materialize or normalize untouched
         // missing/null extensions when an unrelated note property changes.
@@ -206,7 +206,7 @@ impl ChartDocument {
                     if !value.is_object() {
                         return Err(invalid(&format!("Line {i}, note {n}: expected an object")));
                     }
-                    let note: Note = serde_json::from_value(value.clone())
+                    let note = Note::deserialize(value)
                         .map_err(|e| invalid(&format!("Line {i}, note {n}: {e}")))?;
                     note.validate()
                         .map_err(|e| invalid(&format!("Line {i}, note {n}: {e}")))?;
@@ -326,20 +326,18 @@ impl ChartDocument {
             .note_values(line)
             .and_then(|x| x.get(index))
             .ok_or_else(|| ChartError::Invalid("Note no longer exists".into()))?;
-        Ok(serde_json::from_value(value.clone())?)
+        Ok(Note::deserialize(value)?)
     }
     pub fn notes(&self, line: usize) -> Vec<(usize, Note)> {
+        self.iter_notes(line).collect()
+    }
+    /// Decode notes lazily in source order without copying JSON extensions.
+    pub fn iter_notes(&self, line: usize) -> impl Iterator<Item = (usize, Note)> + '_ {
         self.note_values(line)
             .into_iter()
             .flatten()
             .enumerate()
-            .map(|(i, n)| {
-                (
-                    i,
-                    serde_json::from_value(n.clone()).expect("validated note"),
-                )
-            })
-            .collect()
+            .map(|(i, n)| (i, Note::deserialize(n).expect("validated note")))
     }
     pub(crate) fn note_values(&self, line: usize) -> Option<&Vec<Value>> {
         self.root["judgeLineList"]

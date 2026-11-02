@@ -17,8 +17,8 @@ fn preview_fits_a_compact_landscape_viewport() {
 #[test]
 fn resizing_the_timeline_split_preserves_chart_time_and_edits() {
     let mut app = Workbench::new(ChartDocument::empty("Split", 120.).unwrap(), None);
-    app.beat = 4.;
-    app.playing = true;
+    app.transport.beat = 4.;
+    app.transport.playing = true;
     let original = app.editor.document().as_json().clone();
     let ctx = egui::Context::default();
     ctx.set_style(crate::theme::style());
@@ -26,8 +26,8 @@ fn resizing_the_timeline_split_preserves_chart_time_and_edits() {
     for _ in 0..4 {
         frame(&mut app, &ctx, size, Vec::new(), false);
     }
-    let before = app.timeline_split;
-    let grid = crate::grid_input::geometry(app.grid_area, &app);
+    let before = app.timeline.split;
+    let grid = crate::grid_input::geometry(app.timeline.area, &app);
     let p = egui::pos2((grid.rect.right() + grid.event_rect.left()) * 0.5, 350.);
     frame(&mut app, &ctx, size, vec![pointer(p, true)], false);
     frame(
@@ -44,11 +44,11 @@ fn resizing_the_timeline_split_preserves_chart_time_and_edits() {
         vec![pointer(p + egui::vec2(140., 0.), false)],
         false,
     );
-    assert!(app.timeline_split > before + 0.1);
-    assert_eq!(app.beat, 4.);
-    assert!(app.playing);
+    assert!(app.timeline.split > before + 0.1);
+    assert_eq!(app.transport.beat, 4.);
+    assert!(app.transport.playing);
     assert_eq!(app.editor.document().as_json(), &original);
-    assert!(!app.grid_input.is_scrubbing());
+    assert!(!app.timeline.input.is_scrubbing());
 }
 
 #[test]
@@ -60,16 +60,16 @@ fn event_and_line_windows_fit_compact_viewport_and_register_touch_scrolling() {
         kind: phistudio_core::EventType::MoveX,
         index: 0,
     }));
-    app.compact_properties = true;
-    app.show_line_properties = true;
-    app.show_bpm = true;
+    app.windows.floating_properties = true;
+    app.windows.line_properties = true;
+    app.windows.bpm = true;
     let ctx = egui::Context::default();
     ctx.set_style(crate::theme::style());
     for _ in 0..5 {
         frame(&mut app, &ctx, Vec2::new(873., 393.), Vec::new(), false);
     }
     assert!(app.error.is_none());
-    assert!(app.grid_area.is_positive());
+    assert!(app.timeline.area.is_positive());
     // All windows contain real ScrollAreas; no chart command is produced by layout.
     assert!(!app.editor.is_dirty());
 }
@@ -97,7 +97,7 @@ fn selected_note_sidebar_stays_above_the_toolbar_on_a_phone() {
             sidebar.bottom() <= toolbar.top() + 1.,
             "Sidebar covers the toolbar: {size:?} {sidebar:?} {toolbar:?}"
         );
-        assert!(app.grid_area.bottom() <= toolbar.top() + 1.);
+        assert!(app.timeline.area.bottom() <= toolbar.top() + 1.);
     }
 }
 
@@ -107,10 +107,10 @@ fn ruler_labels_remain_in_the_draw_list_while_their_glyphs_cross_either_edge() {
     let ctx = egui::Context::default();
     let size = Vec2::new(900., 600.);
     frame(&mut app, &ctx, size, vec![], false);
-    let grid = crate::grid_input::geometry(app.grid_area, &app);
+    let grid = crate::grid_input::geometry(app.timeline.area, &app);
     for edge in [grid.rect.top(), grid.rect.bottom()] {
         for offset in [-2., 2.] {
-            app.beat = 10. - (grid.baseline() - edge - offset) as f64 / grid.zoom as f64;
+            app.transport.beat = 10. - (grid.baseline() - edge - offset) as f64 / grid.zoom as f64;
             let output = ctx.run(
                 egui::RawInput {
                     screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, size)),

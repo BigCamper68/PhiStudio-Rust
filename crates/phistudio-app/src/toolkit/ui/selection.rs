@@ -22,7 +22,7 @@ impl Workbench {
         ui.horizontal_wrapped(|ui| {
             if ui
                 .selectable_label(
-                    self.tool == Tool::BoxSelect,
+                    self.timeline.tool == Tool::BoxSelect,
                     crate::i18n::tr("Box selection · B"),
                 )
                 .clicked()

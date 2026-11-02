@@ -32,7 +32,7 @@ fn snapshot(app: &Workbench) -> RecoverySnapshot {
             chart,
             assets: app.asset_root().map(ToOwned::to_owned),
         }),
-        beat: app.beat,
+        beat: app.transport.beat,
         line: app.line,
     }
 }
@@ -52,7 +52,7 @@ impl Checkpoints {
         }
     }
     pub fn update(&mut self, app: &mut Workbench) {
-        if app.recovery_loading || app.recovery.is_some() {
+        if app.files.recovery_loading || app.files.recovery.is_some() {
             return;
         }
         if let Some((_, receiver)) = &self.pending {
@@ -107,7 +107,7 @@ impl Checkpoints {
             // Complete the old operation first; then publish the latest state.
             let _ = receiver.recv();
         }
-        if (app.recovery_loading || app.recovery.is_some()) && !discard {
+        if (app.files.recovery_loading || app.files.recovery.is_some()) && !discard {
             return Ok(());
         }
         let key = Key::new(app);
@@ -147,7 +147,7 @@ mod startup_tests {
             None,
         );
         app.show_projects = true;
-        app.recovery_loading = true;
+        app.files.recovery_loading = true;
         let mut checkpoints = Checkpoints::new(Some(root.path().to_owned()));
         checkpoints.update(&mut app);
         checkpoints.flush(&app, false).unwrap();

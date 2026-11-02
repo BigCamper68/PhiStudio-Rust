@@ -33,7 +33,7 @@ impl Preview {
             .flat_map(|l| l.notes.iter())
             .enumerate()
             .filter(|(_, n)| n.multiple_hint)
-            .filter_map(|(i, _)| self.source_ids.get(i).copied().flatten())
+            .filter_map(|(i, _)| self.picking.sources.get(i).copied().flatten())
             .collect()
     }
 

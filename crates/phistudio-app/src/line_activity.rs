@@ -203,7 +203,7 @@ mod tests {
         let mut app = Workbench::new(ChartDocument::from_value(raw).unwrap(), None);
         app.advanced.line_filter = 3;
         app.options.mark_active_line_id = true;
-        app.beat = 11.;
+        app.transport.beat = 11.;
         let ctx = egui::Context::default();
         for _ in 0..3 {
             frame(&mut app, &ctx, vec![]);
@@ -238,7 +238,7 @@ mod tests {
         );
         assert!(!labels.iter().any(|(t, _)| t.starts_with("L2 · Inactive ·")));
         let first = Arc::clone(&app.line_activity.entry.as_ref().unwrap().1);
-        app.beat = 12.5;
+        app.transport.beat = 12.5;
         for _ in 0..5 {
             let labels = frame(&mut app, &ctx, vec![]);
             assert!(

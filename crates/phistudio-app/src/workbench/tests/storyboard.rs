@@ -49,7 +49,7 @@ fn storyboard_shortcuts_clipboard_group_drag_and_delete_share_exact_undo() {
         false,
     );
     assert_eq!(app.tools.clipboard.as_ref().unwrap().len(), 3);
-    app.beat = 8.;
+    app.transport.beat = 8.;
     frame(
         &mut app,
         &ctx,
@@ -71,13 +71,13 @@ fn storyboard_shortcuts_clipboard_group_drag_and_delete_share_exact_undo() {
     assert_eq!(app.story_selection().len(), 3);
     app.history_step(false);
     assert_eq!(app.editor.document().as_json(), &original);
-    app.beat = 0.;
+    app.transport.beat = 0.;
     app.select_all_stories(false);
-    app.tool = Tool::BoxSelect;
+    app.timeline.tool = Tool::BoxSelect;
     for _ in 0..2 {
         frame(&mut app, &ctx, size, vec![], false);
     }
-    let grid = crate::grid_input::geometry(app.grid_area, &app);
+    let grid = crate::grid_input::geometry(app.timeline.area, &app);
     let start = egui::pos2(
         grid.event_rect.left() + grid.event_rect.width() / 12.,
         grid.y(1.5),

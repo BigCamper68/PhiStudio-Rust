@@ -242,7 +242,7 @@ impl Workbench {
                 Ok(selection) => {
                     self.remember_anchor(anchor);
                     self.line = line;
-                    self.playing = false;
+                    self.transport.playing = false;
                     self.set_selection(selection);
                     self.error = None;
                     if let Ok(mut v) = self.parameter_snapshot() {

@@ -3,8 +3,8 @@ use super::*;
 impl Workbench {
     pub(super) fn nudge(&mut self, beats: i32, lanes: i32) {
         self.transform_selection(Transform::Shift {
-            beats: Beat::new(0, beats, self.division).unwrap_or(Beat::ZERO),
-            x: f64::from(lanes) * 1350. / (self.lanes.max(2) - 1) as f64,
+            beats: Beat::new(0, beats, self.timeline.division).unwrap_or(Beat::ZERO),
+            x: f64::from(lanes) * 1350. / (self.timeline.lanes.max(2) - 1) as f64,
         });
     }
 
@@ -64,16 +64,15 @@ impl Workbench {
             }
         } else if modifiers.matches(egui::Modifiers::NONE) {
             match key {
-                Key::Space => self.playing = !self.playing,
+                Key::Space => self.transport.playing = !self.transport.playing,
                 Key::Delete => self.delete_selected(),
                 Key::Escape => {
-                    self.drag = None;
-                    self.grid_input.cancel();
+                    self.timeline.cancel_gesture();
                     self.set_tool(Tool::Select);
                     if self.close_advanced_window() {
                         return true;
-                    } else if self.show_edit {
-                        self.show_edit = false;
+                    } else if self.windows.edit {
+                        self.windows.edit = false;
                     } else if self.inspector.close_top_window() {
                     } else if self.tools.show {
                         self.tools.show = false;
@@ -90,7 +89,7 @@ impl Workbench {
                 Key::Num4 => self.set_tool(Tool::Place(NoteKind::Drag)),
                 Key::M => self.transform_selection(Transform::MirrorX(0.)),
                 Key::R => self.transform_selection(Transform::ReverseTime),
-                Key::Q => self.transform_selection(Transform::Quantize(self.division)),
+                Key::Q => self.transform_selection(Transform::Quantize(self.timeline.division)),
                 Key::ArrowUp => self.nudge(1, 0),
                 Key::ArrowDown => self.nudge(-1, 0),
                 Key::ArrowLeft => self.nudge(0, -1),

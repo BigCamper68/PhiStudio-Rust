@@ -201,7 +201,7 @@ impl Workbench {
             0,
             1,
             if self.options.snap_time {
-                self.division
+                self.timeline.division
             } else {
                 1920
             },
@@ -235,8 +235,7 @@ impl Workbench {
         } else {
             self.advanced.right_mode = RightMode::Events;
         }
-        self.drag = None;
-        self.grid_input.cancel();
+        self.timeline.cancel_gesture();
         true
     }
 }

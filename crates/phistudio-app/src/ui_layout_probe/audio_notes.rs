@@ -47,7 +47,7 @@ pub(super) async fn run(
     phistudio_core::save_chart(&document, &path)?;
     *app = Workbench::new(document, Some(path));
     app.project_options.music = Some("music.wav".into());
-    app.show_context = false;
+    app.windows.sidebar = false;
     app.multi_line.enabled = true;
     app.multi_line.lines = vec![0, 1, 2];
     app.multi_line.merged = false;
@@ -157,7 +157,7 @@ pub(super) async fn run(
     // The staged notes use the same native skin SFX player without entering
     // the chart/Judge. Exercise the real player, not only a counted callback.
     preview.set_audio_levels(0.5, 0.5)?;
-    app.playing = true;
+    app.transport.playing = true;
     app.audition_audio_notes(0., true, |kind| preview.audition(None, kind))?;
     let mut preview_hitsounds = 0;
     for step in 1..=90 {
@@ -165,7 +165,7 @@ pub(super) async fn run(
             preview.audition(None, kind)
         })?;
     }
-    app.playing = false;
+    app.transport.playing = false;
     ensure!(
         preview_hitsounds == count,
         "Staged hitsounds differ from preview count"

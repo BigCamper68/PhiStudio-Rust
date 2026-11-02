@@ -57,9 +57,9 @@ fn language_selector_updates_open_ui_persists_and_preserves_chart_state() {
             let mut app = Workbench::new(ChartDocument::empty("Settings", 120.).unwrap(), None);
             let mut writer = crate::settings::Preferences::new(Some(root.path().into()));
             writer.update(&mut app);
-            app.show_settings = true;
-            app.beat = 5.;
-            app.playing = true;
+            app.windows.settings = true;
+            app.transport.beat = 5.;
+            app.transport.playing = true;
             let original = app.editor.document().as_json().clone();
             let revision = app.editor.revision();
             let ctx = egui::Context::default();
@@ -114,11 +114,11 @@ fn language_selector_updates_open_ui_persists_and_preserves_chart_state() {
                 }
                 position(&texts, language.native_name());
             }
-            assert!(app.show_settings);
+            assert!(app.windows.settings);
             assert_eq!(app.editor.document().as_json(), &original);
             assert_eq!(app.editor.revision(), revision);
-            assert_eq!(app.beat, 5.);
-            assert!(app.playing);
+            assert_eq!(app.transport.beat, 5.);
+            assert!(app.transport.playing);
             writer.flush(&app).unwrap();
             let preferences = phistudio_core::load_editor_preferences(root.path()).unwrap();
             assert_eq!(preferences.options.language, language);
@@ -206,8 +206,8 @@ fn line_state_popup_localizes_every_item_and_only_changes_the_filter() {
         for language in phistudio_core::Language::ALL {
             let mut app = Workbench::new(ChartDocument::empty("Raw title", 120.).unwrap(), None);
             app.options.language = language;
-            app.beat = 5.;
-            app.playing = true;
+            app.transport.beat = 5.;
+            app.transport.playing = true;
             let original = app.editor.document().as_json().clone();
             let revision = app.editor.revision();
             let ctx = egui::Context::default();
@@ -246,8 +246,8 @@ fn line_state_popup_localizes_every_item_and_only_changes_the_filter() {
                 );
                 assert_eq!(app.editor.document().as_json(), &original);
                 assert_eq!(app.editor.revision(), revision);
-                assert_eq!(app.beat, 5.);
-                assert!(app.playing);
+                assert_eq!(app.transport.beat, 5.);
+                assert!(app.transport.playing);
             }
         }
     }
@@ -291,9 +291,9 @@ fn note_sidebar_stays_bounded_in_every_language_at_large_interface_scales() {
                     "{language:?} scale {scale} width {width}: {panel:?}, screen {size:?}"
                 );
                 assert!(
-                    app.grid_area.width() >= 200.,
+                    app.timeline.area.width() >= 200.,
                     "No chart left at {language:?}/{scale}: {:?}",
-                    app.grid_area
+                    app.timeline.area
                 );
             }
         }
@@ -317,8 +317,8 @@ fn windows_remain_inside_phone_at_100_to_150_percent_in_every_language() {
                 });
                 app.select(Some(NoteId { line: 0, index: 0 }));
                 match view {
-                    0 => app.show_settings = true,
-                    1 => app.show_edit = true,
+                    0 => app.windows.settings = true,
+                    1 => app.windows.edit = true,
                     2..=6 => {
                         app.tools.show = true;
                         app.tools.page = match view {
@@ -329,10 +329,10 @@ fn windows_remain_inside_phone_at_100_to_150_percent_in_every_language() {
                             _ => crate::toolkit::Page::Values,
                         };
                     }
-                    7 => app.show_line_properties = true,
-                    8 => app.show_bpm = true,
-                    9 => app.show_grid_settings = true,
-                    10 => app.compact_properties = true,
+                    7 => app.windows.line_properties = true,
+                    8 => app.windows.bpm = true,
+                    9 => app.windows.grid = true,
+                    10 => app.windows.floating_properties = true,
                     11 => app.advanced.history = true,
                     12 => app.open_chart_properties(),
                     13 => app.playtest.setup = true,

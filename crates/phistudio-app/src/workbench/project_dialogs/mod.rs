@@ -65,7 +65,7 @@ impl Workbench {
             self.accept_hitsound(file);
             return;
         }
-        if let Some(draft) = &mut self.new_chart {
+        if let Some(draft) = &mut self.files.new_chart {
             match kind {
                 MediaKind::Shader
                 | MediaKind::Resource
@@ -80,16 +80,16 @@ impl Workbench {
         }
     }
     pub(crate) fn open_media_picker(&mut self, kind: MediaKind) {
-        self.playing = false;
+        self.transport.playing = false;
         self.error = None;
         #[cfg(any(target_os = "android", target_os = "ios"))]
         {
-            self.native_request = Some(FileRequest::Media(kind));
+            self.files.request = Some(FileRequest::Media(kind));
         }
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         {
-            self.media_path.clear();
-            self.media_dialog = Some(kind);
+            self.files.media_path.clear();
+            self.files.media = Some(kind);
         }
     }
     pub(crate) fn project_deleted(
@@ -108,8 +108,8 @@ impl Workbench {
                 None,
             );
         }
-        self.delete_project = None;
-        self.last_deleted = Some(trash);
+        self.files.delete_project = None;
+        self.files.last_deleted = Some(trash);
         self.library = Some(library);
         self.show_projects = true;
         self.error = None;
@@ -119,16 +119,16 @@ impl Workbench {
         if !self.flush_shader_draft() {
             return;
         }
-        self.playing = false;
-        self.timeline_scrub = false;
-        self.grid_input.cancel();
+        self.transport.playing = false;
+        self.transport.scrubbing = false;
+        self.timeline.input.cancel();
         self.show_projects = true;
-        self.native_request = Some(FileRequest::Projects);
+        self.files.request = Some(FileRequest::Projects);
     }
     pub fn open_created_project(&mut self, location: phistudio_core::ProjectLocation) {
-        self.new_chart = None;
+        self.files.new_chart = None;
         self.show_projects = false;
-        self.pending_asset_directory = location.assets;
+        self.files.pending_asset_directory = location.assets;
         self.open(location.chart);
     }
 }

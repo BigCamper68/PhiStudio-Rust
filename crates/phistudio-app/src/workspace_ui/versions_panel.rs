@@ -58,7 +58,7 @@ impl Workbench {
             self.repository_request(workspace.clone(), action);
         }
         if std::mem::take(&mut self.workspace.repository.import_requested) {
-            self.native_request = Some(FileRequest::ImportRepository(workspace));
+            self.files.request = Some(FileRequest::ImportRepository(workspace));
         }
     }
     fn repository_graph(

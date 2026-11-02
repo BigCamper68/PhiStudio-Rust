@@ -2,34 +2,11 @@ use super::*;
 
 impl Workbench {
     pub fn notes(&mut self) -> Arc<Vec<(usize, Note)>> {
-        let revision = self.editor.revision();
-        if self
-            .note_cache
-            .get(&self.line)
-            .is_none_or(|cache| cache.revision != revision)
-        {
-            let notes = self.editor.document().notes(self.line);
-            self.note_cache
-                .retain(|_, cache| cache.revision == revision);
-            self.note_cache.insert(
-                self.line,
-                NoteCache {
-                    revision,
-                    index: crate::note_index::NoteIndex::new(&notes),
-                    notes: Arc::new(notes),
-                },
-            );
-        }
-        Arc::clone(&self.note_cache.get(&self.line).unwrap().notes)
+        self.view.notes(&self.editor, self.session, self.line)
     }
-
     pub(crate) fn note_candidates(&mut self, first: f64, last: f64) -> Vec<usize> {
-        self.notes();
-        self.note_cache
-            .get(&self.line)
-            .unwrap()
-            .index
-            .query(first, last)
+        self.view
+            .candidates(&self.editor, self.session, self.line, first, last)
     }
 
     pub fn execute(&mut self, command: Command) {
@@ -43,7 +20,7 @@ impl Workbench {
                         self.apply_line_remap(remap);
                     }
                     self.remember_anchor(anchor);
-                    self.playing = false;
+                    self.transport.playing = false;
                 }
             }
             Err(e) => self.error = Some(e.to_string()),
@@ -55,7 +32,7 @@ impl Workbench {
             self.line = id.line;
         }
         self.advanced.story_selection.clear();
-        self.properties_scroll |= id.is_some();
+        self.windows.scroll_to_properties |= id.is_some();
         self.advanced.story_selected = None;
         self.advanced.story = None;
         self.tools.selection = phistudio_core::tools::Selection {
@@ -95,7 +72,7 @@ impl Workbench {
                     change.before_line
                 };
             }
-            self.playing = false;
+            self.transport.playing = false;
         }
         self.select(None);
         if changed
@@ -105,12 +82,11 @@ impl Workbench {
             if !structural {
                 self.line = anchor.line.min(self.editor.document().line_count() - 1);
             }
-            self.beat = (anchor.beat - 1.).max(0.);
-            self.camera_x = if anchor.x.abs() <= 675. { 0. } else { anchor.x };
+            self.transport.beat = (anchor.beat - 1.).max(0.);
+            self.timeline.camera_x = if anchor.x.abs() <= 675. { 0. } else { anchor.x };
         }
         self.unlink_invalid_xy();
-        self.drag = None;
-        self.grid_input.cancel();
+        self.timeline.cancel_gesture();
     }
 
     pub(crate) fn unlink_invalid_xy(&mut self) {
@@ -126,9 +102,9 @@ impl Workbench {
     }
 
     pub(crate) fn set_tool(&mut self, tool: Tool) {
-        if self.tool != tool {
-            self.tool = tool;
-            self.drag = None;
+        if self.timeline.tool != tool {
+            self.timeline.tool = tool;
+            self.timeline.drag = None;
         }
     }
 

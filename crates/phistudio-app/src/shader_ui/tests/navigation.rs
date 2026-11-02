@@ -9,7 +9,7 @@ fn compact_and_tablet_workspace_switch_add_undo_and_return_use_real_widgets() {
             frame(&mut app, &ctx, size, vec![]);
         }
         let out = frame(&mut app, &ctx, size, vec![]);
-        assert!(app.grid_area.is_positive());
+        assert!(app.timeline.area.is_positive());
         assert_eq!(
             out.shapes
                 .iter()
@@ -19,7 +19,7 @@ fn compact_and_tablet_workspace_switch_add_undo_and_return_use_real_widgets() {
         );
         let add = text_position(&out, "+ Shader");
         click(&mut app, &ctx, size, add);
-        let grid = crate::grid_input::geometry(app.grid_area, &app);
+        let grid = crate::grid_input::geometry(app.timeline.area, &app);
         let start = pos2(grid.rect.left() + surface::EFFECT_WIDTH * 0.5, grid.y(0.25));
         let end = pos2(start.x, grid.y(1.25));
         frame(&mut app, &ctx, size, vec![pointer(start, true)]);
@@ -57,9 +57,9 @@ fn ruler_scrub_keeps_playback_intent_and_uses_final_release_position() {
     for _ in 0..3 {
         frame(&mut app, &ctx, size, vec![]);
     }
-    let grid = crate::grid_input::geometry(app.grid_area, &app);
+    let grid = crate::grid_input::geometry(app.timeline.area, &app);
     let pos = pos2(grid.rect.left() - 12., grid.y(2.));
-    app.playing = true;
+    app.transport.playing = true;
     frame(
         &mut app,
         &ctx,
@@ -72,13 +72,13 @@ fn ruler_scrub_keeps_playback_intent_and_uses_final_release_position() {
         size,
         vec![egui::Event::PointerMoved(pos + vec2(0., 48.))],
     );
-    assert!(app.playing && app.is_scrubbing());
-    let before = app.beat;
+    assert!(app.transport.playing && app.is_scrubbing());
+    let before = app.transport.beat;
     let release = pos + vec2(0., 96.);
     frame(&mut app, &ctx, size, vec![pointer(release, false)]);
-    assert!(app.playing && !app.is_scrubbing());
+    assert!(app.transport.playing && !app.is_scrubbing());
     assert!(
-        (app.beat - before - 0.5).abs() < 0.01,
+        (app.transport.beat - before - 0.5).abs() < 0.01,
         "final release must add another half beat"
     );
 }
@@ -93,7 +93,7 @@ fn vignette_color_radius_and_animation_have_visible_return_paths() {
         for _ in 0..4 {
             frame(&mut app, &ctx, size, vec![]);
         }
-        let handle = pos2(app.grid_area.right() - 3., size.y * 0.5);
+        let handle = pos2(app.timeline.area.right() - 3., size.y * 0.5);
         frame(&mut app, &ctx, size, vec![pointer(handle, true)]);
         frame(
             &mut app,
@@ -222,9 +222,9 @@ fn shader_bpm_grid_and_transport_keep_the_same_playback_time() {
     app.refresh_shaders();
     app.set_grid_beat(3.);
     assert_eq!(app.grid_beat(), 3.);
-    assert_eq!(app.beat, 6.);
+    assert_eq!(app.transport.beat, 6.);
     assert_eq!(app.grid_bpm(), 60.);
-    let seconds = app.editor.document().tempo().seconds_at(app.beat);
+    let seconds = app.editor.document().tempo().seconds_at(app.transport.beat);
     assert_eq!(seconds, 3.);
     app.shader_navigate(ShaderPage::Tempo, None);
     let original = app.editor.document().as_json().clone();
@@ -234,5 +234,8 @@ fn shader_bpm_grid_and_transport_keep_the_same_playback_time() {
     }
     assert_eq!(app.editor.document().as_json(), &original);
     app.shader_navigate(ShaderPage::Effect, None);
-    assert_eq!(app.editor.document().tempo().seconds_at(app.beat), seconds);
+    assert_eq!(
+        app.editor.document().tempo().seconds_at(app.transport.beat),
+        seconds
+    );
 }

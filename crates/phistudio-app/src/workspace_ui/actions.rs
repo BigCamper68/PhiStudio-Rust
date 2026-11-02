@@ -8,12 +8,12 @@ impl Workbench {
     }
 
     pub(crate) fn workspace_request(&mut self, job: WorkspaceJob) {
-        self.playing = false;
-        self.native_request = Some(FileRequest::Workspace(job));
+        self.transport.playing = false;
+        self.files.request = Some(FileRequest::Workspace(job));
     }
 
     pub(crate) fn open_workspace(&mut self, view: View) {
-        self.playing = false;
+        self.transport.playing = false;
         self.workspace.confirm_delete = None;
         self.workspace.confirm_restore = false;
         self.workspace.line = self.line;

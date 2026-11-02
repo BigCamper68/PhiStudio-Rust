@@ -17,13 +17,13 @@ impl Workbench {
             return Anchor {
                 line: id.line,
                 beat: e.start_time.as_f64(),
-                x: self.camera_x,
+                x: self.timeline.camera_x,
             };
         }
         Anchor {
             line: self.line,
-            beat: self.beat,
-            x: self.camera_x,
+            beat: self.transport.beat,
+            x: self.timeline.camera_x,
         }
     }
 
@@ -41,13 +41,13 @@ impl Workbench {
         if let Ok(note) = self.editor.document().note(id.line, id.index) {
             self.close_fullscreen_preview();
             self.line = id.line;
-            self.beat = (note.start_time.as_f64() - 1.).max(0.);
-            self.camera_x = if note.x.abs() <= 675. { 0. } else { note.x };
+            self.transport.beat = (note.start_time.as_f64() - 1.).max(0.);
+            self.timeline.camera_x = if note.x.abs() <= 675. { 0. } else { note.x };
             self.select(Some(id));
             self.unlink_invalid_xy();
-            self.show_context = true;
+            self.windows.sidebar = true;
             self.status = format!("Selected L{} note {}", id.line, id.index + 1);
-            self.playing = false;
+            self.transport.playing = false;
         }
     }
 }

@@ -13,7 +13,7 @@ pub(crate) struct SkinsState {
 }
 impl Workbench {
     pub(crate) fn accept_skin_file(&mut self, file: MediaFile) {
-        self.native_request = Some(FileRequest::ImportSkin(file));
+        self.files.request = Some(FileRequest::ImportSkin(file));
     }
     pub(crate) fn skins_ui(&mut self, ui: &mut egui::Ui) {
         ui.strong(crate::i18n::tr("Resource skins"));
@@ -76,7 +76,7 @@ impl Workbench {
             ));
             ui.horizontal_wrapped(|ui| {
                 if ui.button(crate::i18n::tr("Delete skin")).clicked() {
-                    self.native_request = Some(FileRequest::DeleteSkin(id));
+                    self.files.request = Some(FileRequest::DeleteSkin(id));
                     self.skins.delete = None;
                 }
                 if ui.button(crate::i18n::tr("Cancel")).clicked() {

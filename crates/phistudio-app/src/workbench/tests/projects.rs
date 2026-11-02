@@ -13,7 +13,7 @@ fn note_viewport_index_reuses_cursor_frames_and_tracks_edit_undo_and_document_ch
     });
     let cached = app.notes();
     assert_eq!(app.note_candidates(1., 3.), vec![0]);
-    app.beat = 500.;
+    app.transport.beat = 500.;
     assert!(app.note_candidates(499., 501.).is_empty());
     assert!(std::sync::Arc::ptr_eq(&cached, &app.notes()));
     app.execute(Command::AddNote {
@@ -66,15 +66,15 @@ fn open_shortcut_is_for_packages_and_save_uses_the_project_library() {
         shortcut(egui::Key::O, egui::Modifiers::COMMAND),
         false,
     );
-    assert!(app.package_dialog);
-    assert!(app.path_input.is_empty());
-    app.package_dialog = false;
+    assert!(app.files.package_dialog);
+    assert!(app.files.path_input.is_empty());
+    app.files.package_dialog = false;
     app.save_action();
     assert!(matches!(
-        app.native_request,
+        app.files.request,
         Some(crate::files::FileRequest::SaveWorkspace)
     ));
-    assert!(!app.package_dialog);
+    assert!(!app.files.package_dialog);
 }
 
 #[test]
@@ -93,8 +93,8 @@ fn recovery_prompt_blocks_editing_and_restores_an_unsaved_document_with_its_loca
         assets: Some(PathBuf::from("/private/projects/example/assets")),
     };
     app.managed_storage = true;
-    app.tool = Tool::Place(NoteKind::Tap);
-    app.recovery = Some(phistudio_core::RecoverySnapshot {
+    app.timeline.tool = Tool::Place(NoteKind::Tap);
+    app.files.recovery = Some(phistudio_core::RecoverySnapshot {
         document: recovered.document().clone(),
         location: Some(location.clone()),
         beat: 12.25,
@@ -110,7 +110,7 @@ fn recovery_prompt_blocks_editing_and_restores_an_unsaved_document_with_its_loca
         shortcut(egui::Key::Space, egui::Modifiers::NONE),
         false,
     );
-    let pos = app.grid_area.left_top() + egui::vec2(50., 50.);
+    let pos = app.timeline.area.left_top() + egui::vec2(50., 50.);
     frame(
         &mut app,
         &ctx,
@@ -119,15 +119,15 @@ fn recovery_prompt_blocks_editing_and_restores_an_unsaved_document_with_its_loca
         false,
     );
     assert_eq!(app.editor.document().note_count(), 0);
-    assert!(!app.playing);
+    assert!(!app.transport.playing);
     app.restore_recovery();
-    assert!(app.recovery.is_none());
+    assert!(app.files.recovery.is_none());
     assert_eq!(app.editor.document().as_json(), &expected);
     assert!(app.editor.is_dirty());
     assert!(!app.editor.can_undo());
     assert_eq!(app.file, Some(location.chart));
     assert_eq!(app.asset_root(), location.assets.as_deref());
-    assert_eq!(app.beat, 12.25);
+    assert_eq!(app.transport.beat, 12.25);
     assert!(app.managed_storage);
 }
 
@@ -187,12 +187,12 @@ fn saving_a_managed_project_keeps_its_private_location() {
 fn opening_another_document_keeps_grid_layout_and_audio_preferences() {
     let root = tempfile::tempdir().unwrap();
     let mut app = Workbench::new(ChartDocument::empty("First", 120.).unwrap(), None);
-    app.lanes = 21;
-    app.division = 12;
-    app.zoom = 140.;
-    app.music_volume = 0.3;
-    app.hitsound_volume = 0.6;
-    app.show_context = false;
+    app.timeline.lanes = 21;
+    app.timeline.division = 12;
+    app.timeline.zoom = 140.;
+    app.transport.music_volume = 0.3;
+    app.transport.hitsound_volume = 0.6;
+    app.windows.sidebar = false;
     let expected = app.preferences();
     let path = root.path().join("second.json");
     save_chart(&ChartDocument::empty("Second", 170.).unwrap(), &path).unwrap();

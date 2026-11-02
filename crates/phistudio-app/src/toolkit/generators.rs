@@ -115,7 +115,7 @@ impl Workbench {
             cycles: s.cycles,
             control: s.controls,
             seed: s.seed,
-            lanes: self.lanes,
+            lanes: self.timeline.lanes,
             include_endpoints: s.include_ends,
         };
         let easing = s.easing;

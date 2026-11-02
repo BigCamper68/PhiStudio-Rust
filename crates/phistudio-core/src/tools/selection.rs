@@ -43,8 +43,7 @@ impl Selection {
         let mut selected = Self::default();
         if notes {
             selected.notes = doc
-                .notes(line)
-                .into_iter()
+                .iter_notes(line)
                 .map(|(index, _)| NoteId { line, index })
                 .collect();
         }

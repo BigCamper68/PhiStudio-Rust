@@ -5,10 +5,9 @@ impl Workbench {
         if !self.shaders.code_view {
             return false;
         }
-        self.grid_area = Rect::NOTHING;
-        self.grid_hover = None;
-        self.drag = None;
-        self.grid_input.cancel();
+        self.timeline.area = Rect::NOTHING;
+        self.timeline.hover = None;
+        self.timeline.cancel_gesture();
         ui.horizontal(|ui| {
             self.workspace_selector(ui);
             if ui.button(crate::i18n::tr("Back to timeline")).clicked() {
@@ -77,10 +76,18 @@ impl Workbench {
             });
         } else {
             let start = Beat::from_grid(
-                self.shaders.tempo.as_ref().map_or(self.beat, |t| {
-                    t.beat_at(self.editor.document().tempo().seconds_at(self.beat))
-                }),
-                self.division,
+                self.shaders
+                    .tempo
+                    .as_ref()
+                    .map_or(self.transport.beat, |t| {
+                        t.beat_at(
+                            self.editor
+                                .document()
+                                .tempo()
+                                .seconds_at(self.transport.beat),
+                        )
+                    }),
+                self.timeline.division,
             )
             .unwrap_or(Beat::ZERO);
             let mut effect = ShaderEffect::new(
@@ -104,7 +111,7 @@ impl Workbench {
                     Some(self.shaders.selected.unwrap_or(self.shaders.effects.len()));
                 self.shaders.code_original = source;
                 self.shaders.code_target = format!("/{path}");
-                self.playing = false;
+                self.transport.playing = false;
                 self.error = None;
                 true
             }

@@ -140,7 +140,7 @@ impl Workbench {
             match key {
                 Key::Space => {
                     if self.flush_shader_draft() {
-                        self.playing = !self.playing;
+                        self.transport.playing = !self.transport.playing;
                     }
                 }
                 Key::Delete => self.shader_delete(),

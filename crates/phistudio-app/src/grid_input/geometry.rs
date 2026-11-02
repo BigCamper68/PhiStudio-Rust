@@ -73,21 +73,21 @@ impl Grid {
 
 pub fn geometry(area: Rect, app: &Workbench) -> Grid {
     let full = Rect::from_min_max(area.min + vec2(38., 22.), area.max - vec2(14., 0.));
-    let split = full.left() + full.width() * app.timeline_split.clamp(0.35, 0.7);
+    let split = full.left() + full.width() * app.timeline.split.clamp(0.35, 0.7);
     Grid {
         rect: Rect::from_min_max(full.min, pos2(split - 6., full.bottom())),
         event_rect: Rect::from_min_max(pos2(split + 6., full.top()), full.max),
         beat: app.grid_beat(),
-        zoom: app.zoom,
+        zoom: app.timeline.zoom,
         division: if app.options.snap_time {
-            app.division
+            app.timeline.division
         } else {
             1920
         },
-        lanes: app.lanes,
+        lanes: app.timeline.lanes,
         snap_x_enabled: app.options.snap_x,
         scroll_speed: app.options.scroll_speed,
         note_width: app.options.grid_note_width,
-        camera_x: app.camera_x,
+        camera_x: app.timeline.camera_x,
     }
 }

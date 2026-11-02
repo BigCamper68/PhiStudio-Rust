@@ -20,7 +20,7 @@ pub(crate) struct Frame {
     pub selection: Selection,
 }
 pub(crate) fn frame(app: &mut Workbench, grid: Grid) -> Option<Frame> {
-    if app.tool != Tool::Select || app.advanced.right_mode.dedicated() {
+    if app.timeline.tool != Tool::Select || app.advanced.right_mode.dedicated() {
         return None;
     }
     let selection = app.selection();
@@ -61,7 +61,7 @@ pub(crate) fn frame(app: &mut Workbench, grid: Grid) -> Option<Frame> {
         Anchor::Center => (lo + hi) / 2.,
         Anchor::Last => last,
     };
-    let scale = if let Some(Gesture::SelectionScale { anchor, factor, .. }) = &app.drag {
+    let scale = if let Some(Gesture::SelectionScale { anchor, factor, .. }) = &app.timeline.drag {
         Some((*anchor, *factor))
     } else {
         None

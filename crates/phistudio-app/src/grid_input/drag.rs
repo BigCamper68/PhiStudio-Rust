@@ -1,7 +1,7 @@
 use super::*;
 
 pub(super) fn update(app: &mut Workbench, pos: Pos2) {
-    let Some(mut gesture) = app.drag.take() else {
+    let Some(mut gesture) = app.timeline.drag.take() else {
         return;
     };
     match &mut gesture {
@@ -102,9 +102,9 @@ pub(super) fn update(app: &mut Workbench, pos: Pos2) {
             let delta = pos - *origin;
             *moved |= delta.length() > SLOP;
             if *moved {
-                if app.navigation_axis.is_none() {
+                if app.timeline.navigation_axis.is_none() {
                     if delta.y.abs() > 8. && delta.y.abs() >= delta.x.abs() * 0.6 {
-                        app.navigation_axis = Some(false);
+                        app.timeline.navigation_axis = Some(false);
                     } else if matches!(
                         intent,
                         Intent::Select(..)
@@ -124,23 +124,24 @@ pub(super) fn update(app: &mut Workbench, pos: Pos2) {
                         && delta.x.abs() > 18.
                         && delta.x.abs() > delta.y.abs() * 2.
                     {
-                        app.navigation_axis = Some(true);
+                        app.timeline.navigation_axis = Some(true);
                     }
                 }
-                let Some(horizontal) = app.navigation_axis else {
-                    app.drag = Some(gesture);
+                let Some(horizontal) = app.timeline.navigation_axis else {
+                    app.timeline.drag = Some(gesture);
                     return;
                 };
                 if horizontal {
                     if matches!(intent, Intent::SelectShader(..)) {
-                        app.grid_input.panel_navigation = true;
+                        app.timeline.input.panel_navigation = true;
                         crate::shader_ui::layout::navigate(app, *grid, delta.x);
                     } else if panel_scroll {
-                        app.grid_input.panel_navigation = true;
+                        app.timeline.input.panel_navigation = true;
                         let i = usize::from(app.multi_line.events);
-                        app.multi_line.offsets[i] = (app.grid_input.panel_offset - delta.x).max(0.);
+                        app.multi_line.offsets[i] =
+                            (app.timeline.input.panel_offset - delta.x).max(0.);
                     } else {
-                        app.camera_x = (grid.camera_x
+                        app.timeline.camera_x = (grid.camera_x
                             - delta.x as f64 / grid.rect.width() as f64 * 1350.)
                             .clamp(-100_000., 100_000.);
                     }
@@ -214,5 +215,5 @@ pub(super) fn update(app: &mut Workbench, pos: Pos2) {
             }
         }
     }
-    app.drag = Some(gesture);
+    app.timeline.drag = Some(gesture);
 }

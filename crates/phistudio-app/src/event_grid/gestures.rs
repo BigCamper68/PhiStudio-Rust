@@ -8,7 +8,7 @@ pub fn begin(app: &mut Workbench, grid: Grid, pos: Pos2) -> Gesture {
         moved: false,
     };
     let kind = kind_at(grid, pos);
-    if app.tool == Tool::Event && app.events.layer < 4 {
+    if app.timeline.tool == Tool::Event && app.events.layer < 4 {
         let start = grid.beat(pos.y);
         let end = start
             .checked_add(Beat::new(0, 1, grid.division).unwrap())

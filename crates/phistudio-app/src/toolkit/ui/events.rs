@@ -38,15 +38,16 @@ impl Workbench {
             .button(crate::i18n::tr("Split selected events at cursor"))
             .clicked()
         {
-            let edit = Beat::from_grid(self.beat, self.division).and_then(|beat| {
-                tools::subdivide_events(
-                    self.editor.document(),
-                    &selection,
-                    2,
-                    Some(beat),
-                    phistudio_prpr::slice_event,
-                )
-            });
+            let edit =
+                Beat::from_grid(self.transport.beat, self.timeline.division).and_then(|beat| {
+                    tools::subdivide_events(
+                        self.editor.document(),
+                        &selection,
+                        2,
+                        Some(beat),
+                        phistudio_prpr::slice_event,
+                    )
+                });
             self.apply_tool(edit);
         }
         ui.horizontal(|ui| {

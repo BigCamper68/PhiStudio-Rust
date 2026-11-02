@@ -59,8 +59,8 @@ impl Workbench {
         self.advanced.story_selection = ids;
         self.advanced.story = None;
         if self.advanced.story_selected.is_some() {
-            self.show_context = true;
-            self.properties_scroll = true;
+            self.windows.sidebar = true;
+            self.windows.scroll_to_properties = true;
             self.tools.scope = if self.selection().is_empty() {
                 crate::toolkit::Scope::Events
             } else {
@@ -98,9 +98,8 @@ impl Workbench {
                     self.events.layer = id.layer;
                 }
                 self.set_object_selection(selected.normal, selected.story);
-                self.drag = None;
-                self.grid_input.cancel();
-                self.playing = false;
+                self.timeline.cancel_gesture();
+                self.transport.playing = false;
                 self.error = None;
                 self.status = self.editor.undo_label().unwrap_or("Objects updated").into();
                 true
@@ -143,9 +142,8 @@ impl Workbench {
                     self.line = id.line;
                 }
                 self.set_story_selection(ids);
-                self.drag = None;
-                self.grid_input.cancel();
-                self.playing = false;
+                self.timeline.cancel_gesture();
+                self.transport.playing = false;
                 self.error = None;
                 self.status = self
                     .editor
@@ -317,7 +315,7 @@ impl Workbench {
                     for (label, op) in [
                         ("Reverse time", Transform::ReverseTime),
                         ("Swap values", Transform::ReverseValues),
-                        ("Quantize", Transform::Quantize(self.division)),
+                        ("Quantize", Transform::Quantize(self.timeline.division)),
                     ] {
                         if ui.button(crate::i18n::tr(label)).clicked() {
                             self.transform_selection(op);

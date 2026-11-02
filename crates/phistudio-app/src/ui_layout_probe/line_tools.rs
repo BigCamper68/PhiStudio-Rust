@@ -149,7 +149,7 @@ pub(super) async fn run(
     preview
         .replace_chart(app.editor.document(), Some(&assets), &app.project_options)
         .await?;
-    app.show_line_properties = true;
+    app.windows.line_properties = true;
     let mut ui_cases = vec![];
     for language in [Language::English, Language::Russian, Language::Japanese] {
         app.options.language = language;

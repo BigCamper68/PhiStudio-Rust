@@ -26,7 +26,7 @@ impl Workbench {
         match self.editor.execute_batch(label, commands) {
             Ok(changed) => {
                 if changed {
-                    self.playing = false;
+                    self.transport.playing = false;
                     self.remember_anchor(anchor);
                     self.noise.cache = None;
                 }
@@ -146,16 +146,16 @@ impl Workbench {
                 self.noise.selection.insert(i);
             }
         }
-        self.show_context = true;
-        self.properties_scroll = true;
-        self.playing = false;
+        self.windows.sidebar = true;
+        self.windows.scroll_to_properties = true;
+        self.transport.playing = false;
     }
     pub(crate) fn add_noise(&mut self) {
         if !self.flush_noise_draft() {
             return;
         }
         self.refresh_noise();
-        let a = Beat::from_grid(self.beat, self.division).unwrap_or(Beat::ZERO);
+        let a = Beat::from_grid(self.transport.beat, self.timeline.division).unwrap_or(Beat::ZERO);
         let b = a
             .checked_add(if self.noise.animation {
                 self.noise_tick()
@@ -208,8 +208,8 @@ impl Workbench {
                 self.noise.selected = Some(index);
                 self.noise.selection = [index].into();
                 self.refresh_noise();
-                if self.grid_area.is_positive() {
-                    let grid = crate::grid_input::geometry(self.grid_area, self);
+                if self.timeline.area.is_positive() {
+                    let grid = crate::grid_input::geometry(self.timeline.area, self);
                     let col = layout::column(self, grid, layout::View::focus(self), index as f64);
                     if col.left() < grid.rect.left() || col.right() > grid.rect.right() {
                         self.noise.offset = layout::centered_offset(grid, index as f64);
@@ -328,7 +328,7 @@ impl Workbench {
             return;
         }
         let target = if at_cursor {
-            Beat::from_grid(self.beat, self.division).unwrap_or(Beat::ZERO)
+            Beat::from_grid(self.transport.beat, self.timeline.division).unwrap_or(Beat::ZERO)
         } else if let Some(track) = clip.track {
             let end = if track.native(clip.format) {
                 "time"
@@ -349,7 +349,7 @@ impl Workbench {
             if end > clip.origin {
                 end
             } else {
-                end.checked_add(Beat::new(0, 1, self.division).unwrap_or(Beat::ONE))
+                end.checked_add(Beat::new(0, 1, self.timeline.division).unwrap_or(Beat::ONE))
                     .unwrap_or(end)
             }
         } else {
@@ -442,7 +442,7 @@ impl Workbench {
             match key {
                 Key::Space => {
                     if self.flush_noise_draft() {
-                        self.playing = !self.playing;
+                        self.transport.playing = !self.transport.playing;
                     }
                 }
                 Key::Delete | Key::Backspace => self.delete_noise(),

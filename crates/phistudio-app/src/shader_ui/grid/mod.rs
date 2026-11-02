@@ -6,6 +6,7 @@ mod gestures;
 pub(crate) use gestures::{begin_dual, finish, select, tap, update};
 mod paint;
 mod selection;
+mod view;
 use super::*;
 use crate::{
     grid_input::{Gesture, Grid, Intent, IntervalDrag},

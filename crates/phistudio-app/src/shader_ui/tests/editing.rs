@@ -76,7 +76,7 @@ fn interval_drag_commits_once_and_keeps_pending_uniform_changes() {
     }
     app.shaders.draft.as_mut().unwrap().raw["vars"]["power"] = json!(0.25);
     frame(&mut app, &ctx, size, vec![]);
-    let grid = crate::grid_input::geometry(app.grid_area, &app);
+    let grid = crate::grid_input::geometry(app.timeline.area, &app);
     let pos = pos2(effect_x(&app, grid, 0), grid.y(2.));
     frame(
         &mut app,

@@ -64,7 +64,7 @@ pub(super) fn step(
             serde_json::to_vec_pretty(&serde_json::json!({
                 "pixels_per_point":app.pixels_per_point,
                 "framebuffer":[screen_width(),screen_height()],
-                "grid":[app.grid_area.left(),app.grid_area.top(),app.grid_area.right(),app.grid_area.bottom()],
+                "grid":[app.timeline.area.left(),app.timeline.area.top(),app.timeline.area.right(),app.timeline.area.bottom()],
                 "preview":[app.preview.rect.left(),app.preview.rect.top(),app.preview.rect.right(),app.preview.rect.bottom()]
             }))?,
         )?;
@@ -95,7 +95,7 @@ pub(super) fn step(
             line: 0,
             index: initial_line0,
         }));
-        app.beat = 3.5;
+        app.transport.beat = 3.5;
     }
     if frame == 7 {
         ensure!(
@@ -142,7 +142,7 @@ pub(super) fn step(
             ),
         )?;
         app.preview.floating = true;
-        app.compact_properties = true;
+        app.windows.floating_properties = true;
     }
     if frame == 11 {
         unsafe { get_internal_gl() }.flush();

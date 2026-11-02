@@ -11,7 +11,7 @@ impl Workbench {
                 self.editor.revision(),
                 draft.properties.texture.clone(),
             );
-            self.playing = false;
+            self.transport.playing = false;
         }
     }
     pub(crate) fn stage_line_texture(&mut self, texture: String) {
@@ -56,7 +56,7 @@ impl Workbench {
                     .max_size(maximum)
             })
             .show(ctx, |ui| {
-                ui.set_enabled(!self.file_busy && self.media_dialog.is_none());
+                ui.set_enabled(!self.files.busy && self.files.media.is_none());
                 ui.style_mut().wrap = Some(true);
                 ui.horizontal(|ui| {
                     if ui.button(tr("Reload list")).clicked() {

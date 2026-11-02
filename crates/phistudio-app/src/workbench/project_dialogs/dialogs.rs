@@ -2,7 +2,7 @@ use super::*;
 
 impl Workbench {
     pub(in super::super) fn project_dialogs(&mut self, ctx: &egui::Context) {
-        if let Some(snapshot) = &self.recovery {
+        if let Some(snapshot) = &self.files.recovery {
             let name = snapshot.document.name().to_owned();
             crate::i18n::window("Restore unsaved changes?").collapsible(false).resizable(false)
                 .default_width((ctx.screen_rect().width() - 80.).clamp(260., 420.))
@@ -10,32 +10,32 @@ impl Workbench {
                     ui.label(RichText::new(name).strong());
                     ui.label(crate::i18n::tr("A recovery copy contains edits from your previous session. Your saved project is unchanged."));
                     ui.horizontal_wrapped(|ui| {
-                        if ui.button(crate::i18n::tr("Restore changes")).clicked() { self.native_request = Some(FileRequest::RestoreRecovery); }
-                        if ui.button(RichText::new(crate::i18n::tr("Discard recovery")).color(flick())).clicked() { self.native_request = Some(FileRequest::DiscardRecovery); }
+                        if ui.button(crate::i18n::tr("Restore changes")).clicked() { self.files.request = Some(FileRequest::RestoreRecovery); }
+                        if ui.button(RichText::new(crate::i18n::tr("Discard recovery")).color(flick())).clicked() { self.files.request = Some(FileRequest::DiscardRecovery); }
                     });
                 });
         }
-        if let Some((workspace, name)) = self.delete_project.clone() {
+        if let Some((workspace, name)) = self.files.delete_project.clone() {
             let mut open = true;
             crate::i18n::window("Delete project?").open(&mut open).collapsible(false).resizable(false).anchor(Align2::CENTER_CENTER, [0., 0.]).default_width(340.).show(ctx, |ui| {
                 ui.label(RichText::new(&name).strong());
                 ui.label(crate::i18n::tr("Move this local project and its resources to Trash? You can undo the deletion from Projects."));
                 if self.editor.is_dirty() && self.file.as_ref().is_some_and(|path| path.starts_with(&workspace)) { ui.colored_label(flick(), crate::i18n::tr("Unsaved edits in this project will be discarded.")); }
                 ui.horizontal(|ui| {
-                    if ui.button(RichText::new(crate::i18n::tr("Move to Trash")).color(flick())).clicked() { self.native_request = Some(FileRequest::TrashProject { workspace, name }); self.delete_project = None; }
-                    if ui.button(crate::i18n::tr("Cancel")).clicked() { self.delete_project = None; }
+                    if ui.button(RichText::new(crate::i18n::tr("Move to Trash")).color(flick())).clicked() { self.files.request = Some(FileRequest::TrashProject { workspace, name }); self.files.delete_project = None; }
+                    if ui.button(crate::i18n::tr("Cancel")).clicked() { self.files.delete_project = None; }
                 });
             });
             if !open {
-                self.delete_project = None;
+                self.files.delete_project = None;
             }
         }
-        if let Some(draft) = &mut self.new_chart {
+        if let Some(draft) = &mut self.files.new_chart {
             let mut open = true;
             let mut create = false;
             let mut pick = None;
             let error = self.error.clone();
-            let available = !self.file_busy && self.media_dialog.is_none();
+            let available = !self.files.busy && self.files.media.is_none();
             crate::i18n::window("Create chart")
                 .open(&mut open)
                 .collapsible(false)
@@ -132,21 +132,21 @@ impl Workbench {
                     });
                 match document {
                     Ok(document) => {
-                        self.native_request = Some(FileRequest::CreateProject { document, media })
+                        self.files.request = Some(FileRequest::CreateProject { document, media })
                     }
                     Err(error) => self.error = Some(error.to_string()),
                 }
             }
-            if !open && !self.file_busy {
-                self.new_chart = None;
-                self.media_dialog = None;
+            if !open && !self.files.busy {
+                self.files.new_chart = None;
+                self.files.media = None;
             }
             if let Some(kind) = pick {
                 self.open_media_picker(kind);
             }
         }
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
-        if let Some(kind) = self.media_dialog {
+        if let Some(kind) = self.files.media {
             let mut open = true;
             crate::window::Window::new(
                 crate::i18n::format("Choose {0}", &[crate::i18n::tr(kind.label())]),
@@ -158,27 +158,27 @@ impl Workbench {
             .anchor(Align2::CENTER_CENTER, [0., 0.])
             .show(ctx, |ui| {
                 ui.label(crate::i18n::tr("File path"));
-                ui.add(egui::TextEdit::singleline(&mut self.media_path).desired_width(350.));
+                ui.add(egui::TextEdit::singleline(&mut self.files.media_path).desired_width(350.));
                 if ui
                     .add_enabled(
-                        !self.media_path.trim().is_empty(),
+                        !self.files.media_path.trim().is_empty(),
                         egui::Button::new(crate::i18n::tr("Use file")),
                     )
                     .clicked()
                 {
-                    self.native_request = Some(FileRequest::MediaPath {
+                    self.files.request = Some(FileRequest::MediaPath {
                         kind,
-                        path: std::path::PathBuf::from(self.media_path.trim()),
+                        path: std::path::PathBuf::from(self.files.media_path.trim()),
                     });
-                    self.media_dialog = None;
+                    self.files.media = None;
                 }
             });
             if !open {
-                self.media_dialog = None;
+                self.files.media = None;
             }
         }
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
-        if let Some(package) = &self.export_package {
+        if let Some(package) = &self.files.export_package {
             let mut open = true;
             let mut write = false;
             crate::i18n::window(if package.name.ends_with(".phiversions.zip") {
@@ -199,20 +199,21 @@ impl Workbench {
                         "Package destination (.pez)"
                     },
                 ));
-                ui.add(egui::TextEdit::singleline(&mut self.export_path).desired_width(360.));
+                ui.add(egui::TextEdit::singleline(&mut self.files.export_path).desired_width(360.));
                 write = ui
                     .add_enabled(
-                        !self.export_path.trim().is_empty(),
+                        !self.files.export_path.trim().is_empty(),
                         egui::Button::new(crate::i18n::tr("Export project")),
                     )
                     .clicked();
             });
             if write {
-                self.native_request =
-                    Some(FileRequest::WriteExport(self.export_path.trim().into()));
+                self.files.request = Some(FileRequest::WriteExport(
+                    self.files.export_path.trim().into(),
+                ));
             }
             if !open {
-                self.export_package = None;
+                self.files.export_package = None;
             }
         }
     }

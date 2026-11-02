@@ -25,7 +25,7 @@ fn outer_field_end_wins_over_tied_disable_and_resize_is_one_undo() {
         let b = pos2(x, g.y(5.));
         input(&mut app, &[button(a, true), Event::PointerMoved(b)], false);
         assert_eq!(app.editor.document().as_json(), &source);
-        let Some(crate::grid_input::Gesture::Noise(gesture)) = &app.drag else {
+        let Some(crate::grid_input::Gesture::Noise(gesture)) = &app.timeline.drag else {
             panic!("Missing field resize");
         };
         let grid::NoiseGesture::Edit(edit) = &**gesture else {
@@ -78,7 +78,7 @@ fn keyframes_begin_at_one_grid_step_and_both_ends_resize_in_every_track() {
             }
             app.noise.animation = true;
             app.noise.track = *track;
-            app.beat = 1.;
+            app.transport.beat = 1.;
             let count = noise::keys(&app.noise.rows[0], *track).unwrap().len();
             app.add_noise();
             app.set_tool(Tool::Select);
@@ -180,7 +180,7 @@ fn tap_and_hold_creation_stays_anchored_and_cancellation_discards_native_endpoin
             assert_eq!(values[0]["endTime"], json!([3, 0, 1]));
         }
         assert_eq!(app.editor.history_rows().len(), 2);
-        assert!(app.tool == Tool::Event);
+        assert!(app.timeline.tool == Tool::Event);
         app.editor.undo();
         app.refresh_noise();
         assert_eq!(app.editor.document().as_json(), &before);
@@ -199,7 +199,7 @@ fn tap_and_hold_creation_stays_anchored_and_cancellation_discards_native_endpoin
 #[test]
 fn real_toolbar_and_touch_creation_work_on_first_and_repeated_drags() {
     let mut app = app();
-    app.show_context = true;
+    app.windows.sidebar = true;
     let ctx = egui::Context::default();
     let frame = |app: &mut Workbench, events: Vec<Event>, canceled: bool| {
         ctx.run(
@@ -236,18 +236,18 @@ fn real_toolbar_and_touch_creation_work_on_first_and_repeated_drags() {
         false,
     );
     frame(&mut app, vec![button(pos, false)], false);
-    assert!(app.tool == Tool::Event);
+    assert!(app.timeline.tool == Tool::Event);
     let mut touch = crate::touch::TouchRouter::default();
     for n in 0..2 {
         frame(&mut app, vec![], false);
-        let g = crate::grid_input::geometry(app.grid_area, &app);
+        let g = crate::grid_input::geometry(app.timeline.area, &app);
         let col = layout::column(&app, g, layout::View::focus(&app), n as f64 * 2.);
         let a = pos2(col.center().x, g.y(1.));
         let b = pos2(col.center().x, g.y(3.));
         let (events, cancel) = touch.event(egui::TouchPhase::Start, n + 1, a);
         frame(&mut app, events, cancel);
         assert!(matches!(
-            app.drag,
+            app.timeline.drag,
             Some(crate::grid_input::Gesture::Noise(_))
         ));
         let (events, cancel) = touch.event(egui::TouchPhase::Move, n + 1, b);
@@ -280,7 +280,7 @@ fn real_toolbar_and_touch_creation_work_on_first_and_repeated_drags() {
             .unwrap(),
             Beat::new(3, 0, 1).unwrap()
         );
-        assert!(app.tool == Tool::Event);
+        assert!(app.timeline.tool == Tool::Event);
     }
     assert_eq!(app.editor.history_rows().len(), 2);
 }
@@ -291,7 +291,7 @@ fn native_terminal_point_can_grow_a_new_segment_without_extending_the_field() {
     app.add_noise();
     app.noise.animation = true;
     app.noise.track = Track::Move;
-    app.beat = 1.;
+    app.transport.beat = 1.;
     app.add_noise();
     app.select_noise(Some(1), false);
     app.set_tool(Tool::Select);
@@ -352,7 +352,7 @@ fn animation_body_moves_both_ends_for_short_and_tall_blocks_in_every_track() {
                 }
                 app.noise.animation = true;
                 app.noise.track = *track;
-                app.beat = 1.;
+                app.transport.beat = 1.;
                 app.add_noise();
                 let index = app.noise.key_selected.unwrap();
                 let mut raw = app.noise.rows[0].clone();
@@ -429,7 +429,7 @@ fn moving_adjacent_native_segments_shifts_shared_endpoints_only_once() {
     app.add_noise();
     app.noise.animation = true;
     app.noise.track = Track::Move;
-    app.beat = 1.;
+    app.transport.beat = 1.;
     app.add_noise();
     let mut field = app.noise.rows[0].clone();
     field["moveEvents"] = json!([

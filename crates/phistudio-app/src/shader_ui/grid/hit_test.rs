@@ -21,23 +21,23 @@ pub(super) fn interval(
     ))
 }
 
-pub(super) fn rows_for(app: &Workbench, name: Option<&str>) -> Vec<Value> {
+pub(super) fn rows_for<'a>(app: &'a Workbench, name: Option<&str>) -> &'a [Value] {
     if let Some(name) = name {
         app.shaders
             .draft
             .as_ref()
             .and_then(|d| d.raw["vars"][name].as_array())
             .filter(|rows| rows.first().is_some_and(Value::is_object))
-            .cloned()
+            .map(Vec::as_slice)
             .unwrap_or_default()
     } else {
         app.shaders.source["effects"]
             .as_array()
-            .cloned()
+            .map(Vec::as_slice)
             .unwrap_or_default()
     }
 }
-pub(super) fn rows(app: &Workbench) -> Vec<Value> {
+pub(super) fn rows(app: &Workbench) -> &[Value] {
     rows_for(app, app.shaders.animation_track())
 }
 pub(super) fn row_column(

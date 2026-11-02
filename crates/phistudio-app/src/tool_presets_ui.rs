@@ -199,8 +199,8 @@ mod tests {
     #[test]
     fn loading_parameters_keeps_chart_selection_clipboard_and_history() {
         let mut app = Workbench::new(ChartDocument::empty("Parameters", 120.).unwrap(), None);
-        app.beat = 5.75;
-        app.playing = true;
+        app.transport.beat = 5.75;
+        app.transport.playing = true;
         app.tools.selection = Selection {
             notes: vec![NoteId { line: 0, index: 0 }],
             events: vec![],
@@ -218,8 +218,8 @@ mod tests {
         assert_eq!(app.selection().notes.len(), 1);
         assert_eq!(*app.editor.document().as_json(), before);
         assert_eq!(app.editor.revision(), revision);
-        assert_eq!(app.beat, 5.75);
-        assert!(app.playing);
+        assert_eq!(app.transport.beat, 5.75);
+        assert!(app.transport.playing);
         let saved = app.parameter_snapshot().unwrap();
         value["tools"]["page"] = json!("Motion");
         value["trajectory"]["trim"] = json!([1., 0.]);

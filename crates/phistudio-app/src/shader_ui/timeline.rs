@@ -52,8 +52,7 @@ fn header(app: &mut Workbench, ui: &mut egui::Ui, grid: crate::grid_input::Grid,
                 )
                 .changed()
             {
-                app.drag = None;
-                app.grid_input.cancel();
+                app.timeline.cancel_gesture();
             }
         });
     }

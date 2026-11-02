@@ -84,11 +84,11 @@ impl Workbench {
                 ui.add(crate::numeric::Value::new(&mut self.workspace.offset[1]).speed(1.));
                 ui.checkbox(&mut self.workspace.mirrored, crate::i18n::tr("Mirror X"));
             });
-            ui.label({ let __i18n_arg_0 = &(self.beat); crate::i18n::format("Insert at beat {0}. Missing target lines are created. Events use the destination line's textures and controls.", &[format!("{:.3}", __i18n_arg_0)]) });
+            ui.label({ let __i18n_arg_0 = &(self.transport.beat); crate::i18n::format("Insert at beat {0}. Missing target lines are created. Events use the destination line's textures and controls.", &[format!("{:.3}", __i18n_arg_0)]) });
             ui.horizontal_wrapped(|ui| {
                 if ui.button(crate::i18n::tr("Insert pattern")).clicked() {
                     match (
-                        Beat::from_grid(self.beat, self.division),
+                        Beat::from_grid(self.transport.beat, self.timeline.division),
                         Beat::from_grid(self.workspace.scale, 1000),
                     ) {
                         (Ok(beat), Ok(scale)) => {

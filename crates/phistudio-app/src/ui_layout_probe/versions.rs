@@ -16,7 +16,7 @@ async fn settle(
         paint(gui, app, preview, 280.)?;
         next_frame().await;
         ensure!(app.error.is_none(), "Repository worker: {:?}", app.error);
-        if !app.file_busy && app.native_request.is_none() {
+        if !app.files.busy && app.files.request.is_none() {
             return Ok(());
         }
         ensure!(get_time() < until, "Repository worker timeout");

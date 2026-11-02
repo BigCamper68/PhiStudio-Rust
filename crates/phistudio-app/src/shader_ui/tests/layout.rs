@@ -4,18 +4,18 @@ use super::*;
 fn paired_shader_grids_reflow_with_the_inspector() {
     let mut app = app();
     app.add_shader();
-    app.beat = 2.;
+    app.transport.beat = 2.;
     let ctx = egui::Context::default();
     let size = vec2(1194., 834.);
     for _ in 0..4 {
         frame(&mut app, &ctx, size, vec![]);
     }
     let original = app.editor.document().as_json().clone();
-    let before = crate::grid_input::geometry(app.grid_area, &app);
+    let before = crate::grid_input::geometry(app.timeline.area, &app);
     assert!(before.rect.right() < before.event_rect.left());
-    assert!((before.rect.left() - app.grid_area.left() - 38.).abs() < 0.1);
-    assert!((app.grid_area.right() - before.event_rect.right() - 14.).abs() < 0.1);
-    let handle = pos2(app.grid_area.right() - 3., 350.);
+    assert!((before.rect.left() - app.timeline.area.left() - 38.).abs() < 0.1);
+    assert!((app.timeline.area.right() - before.event_rect.right() - 14.).abs() < 0.1);
+    let handle = pos2(app.timeline.area.right() - 3., 350.);
     frame(&mut app, &ctx, size, vec![pointer(handle, true)]);
     frame(
         &mut app,
@@ -29,10 +29,10 @@ fn paired_shader_grids_reflow_with_the_inspector() {
         size,
         vec![pointer(handle - vec2(80., 0.), false)],
     );
-    let narrow = crate::grid_input::geometry(app.grid_area, &app);
+    let narrow = crate::grid_input::geometry(app.timeline.area, &app);
     assert!(narrow.rect.width() < before.rect.width() - 25.);
     assert_eq!(before.y(3.), narrow.y(3.));
-    assert_eq!(app.beat, 2.);
+    assert_eq!(app.transport.beat, 2.);
     let out = frame(&mut app, &ctx, size, vec![]);
     for label in ["Notes", "Lock X"] {
         assert!(
@@ -42,11 +42,11 @@ fn paired_shader_grids_reflow_with_the_inspector() {
             "Unexpected note-grid UI: {label}"
         );
     }
-    app.show_context = false;
+    app.windows.sidebar = false;
     for _ in 0..3 {
         frame(&mut app, &ctx, size, vec![]);
     }
-    let wide = crate::grid_input::geometry(app.grid_area, &app);
+    let wide = crate::grid_input::geometry(app.timeline.area, &app);
     assert!(wide.rect.width() > narrow.rect.width() + 100.);
     let out = frame(&mut app, &ctx, size, vec![]);
     assert!(
@@ -66,7 +66,7 @@ fn preview_header_style_and_size_are_shared_by_all_workspaces() {
             if mode == RightMode::Shaders {
                 app.add_shader();
             }
-            app.properties_scroll = false;
+            app.windows.scroll_to_properties = false;
             let ctx = egui::Context::default();
             ctx.set_style(crate::theme::style());
             let mut out = frame(&mut app, &ctx, size, vec![]);
@@ -136,7 +136,7 @@ fn shader_inspector_stays_inside_the_screen_with_the_native_theme() {
             "Inspector overflow on {page:?}: {:?}",
             panel.rect
         );
-        assert!((panel.rect.left() - app.grid_area.right()).abs() < 0.5);
+        assert!((panel.rect.left() - app.timeline.area.right()).abs() < 0.5);
     }
 }
 
@@ -145,7 +145,7 @@ fn inspector_resize_uses_down_and_final_touch_release_when_events_are_batched() 
     for mode in [RightMode::Events, RightMode::Shaders] {
         let mut app = app();
         app.advanced.right_mode = mode;
-        app.beat = 2.;
+        app.transport.beat = 2.;
         let ctx = egui::Context::default();
         ctx.set_style(crate::theme::style());
         let size = vec2(873., 393.);
@@ -153,7 +153,7 @@ fn inspector_resize_uses_down_and_final_touch_release_when_events_are_batched() 
             frame(&mut app, &ctx, size, vec![]);
         }
         let original = app.editor.document().as_json().clone();
-        let before = app.grid_area.right();
+        let before = app.timeline.area.right();
         let a = pos2(before - 1., size.y * 0.5);
         let b = a - vec2(70., 0.);
         frame(
@@ -167,12 +167,12 @@ fn inspector_resize_uses_down_and_final_touch_release_when_events_are_batched() 
                 egui::Event::PointerGone,
             ],
         );
-        assert!(app.grid_area.right() < before - 50.);
-        assert!((app.grid_area.right() - b.x).abs() < 1.);
-        assert_eq!(app.beat, 2.);
+        assert!(app.timeline.area.right() < before - 50.);
+        assert!((app.timeline.area.right() - b.x).abs() < 1.);
+        assert_eq!(app.transport.beat, 2.);
         assert_eq!(app.editor.document().as_json(), &original);
         app.set_tool(crate::workbench::Tool::Event);
-        let a = pos2(app.grid_area.right() - 1., size.y * 0.5);
+        let a = pos2(app.timeline.area.right() - 1., size.y * 0.5);
         let b = a + vec2(40., 0.);
         frame(
             &mut app,
@@ -187,8 +187,8 @@ fn inspector_resize_uses_down_and_final_touch_release_when_events_are_batched() 
             size,
             vec![pointer(release, false), egui::Event::PointerGone],
         );
-        assert!((app.grid_area.right() - release.x).abs() < 1.);
+        assert!((app.timeline.area.right() - release.x).abs() < 1.);
         assert_eq!(app.editor.document().as_json(), &original);
-        assert!(!app.grid_input.is_scrubbing());
+        assert!(!app.timeline.input.is_scrubbing());
     }
 }

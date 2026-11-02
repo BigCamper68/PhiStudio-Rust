@@ -32,7 +32,7 @@ impl Workbench {
             .min_width(240.)
             .resize(|r|r.max_size([(ctx.screen_rect().width()-40.).max(240.),(ctx.screen_rect().height()-90.).max(100.)]))
             .show(ctx,|ui| {
-                ui.set_enabled(!self.file_busy);
+                ui.set_enabled(!self.files.busy);
                 if let View::Versions(workspace)=view.clone() {
                     self.versions_ui(ui,workspace);
                     return;

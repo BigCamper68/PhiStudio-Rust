@@ -136,7 +136,7 @@ impl Workbench {
             ui.checkbox(&mut o.quantize,tr("Quantize generated notes"));
             ui.add_enabled_ui(o.quantize,|ui|{
                 number(ui,"Grid subdivisions per beat",&mut o.division,0.25,1..=1920);
-                if ui.button(tr("Use editor grid")).clicked(){o.division=self.division;}
+                if ui.button(tr("Use editor grid")).clicked(){o.division=self.timeline.division;}
                 number(ui,"Maximum snap shift (ms)",&mut o.max_snap_ms,1.,0. ..=2000.);
                 ui.small(tr("0 allows any snap distance. Other values skip markers farther from the grid."));
             });

@@ -7,7 +7,7 @@ impl Workbench {
                 self.selection_bounds();
             }
             if ui.button(crate::i18n::tr("Start at cursor")).clicked() {
-                self.tools.start = Beat::from_grid(self.beat, self.division)
+                self.tools.start = Beat::from_grid(self.transport.beat, self.timeline.division)
                     .unwrap_or(Beat::ZERO)
                     .to_string();
             }

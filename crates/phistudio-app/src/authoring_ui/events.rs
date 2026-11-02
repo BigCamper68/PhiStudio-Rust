@@ -54,7 +54,7 @@ impl Workbench {
             self.line = id.line;
         }
         self.advanced.story_selection.clear();
-        self.properties_scroll |= id.is_some();
+        self.windows.scroll_to_properties |= id.is_some();
         self.advanced.story_selected = None;
         self.advanced.story = None;
         self.tools.selection = phistudio_core::tools::Selection {
@@ -142,7 +142,7 @@ impl Workbench {
                         self.apply_line_remap(remap);
                     }
                     self.remember_anchor(anchor);
-                    self.playing = false;
+                    self.transport.playing = false;
                     self.select(None);
                     self.line_draft = None;
                     self.bpm_draft = None;
@@ -181,8 +181,7 @@ impl Workbench {
             });
         if before != self.events.layer {
             self.clear_event_selection();
-            self.drag = None;
-            self.grid_input.cancel();
+            self.timeline.cancel_gesture();
             self.unlink_invalid_xy();
         }
         if self.events.layer > 3 {

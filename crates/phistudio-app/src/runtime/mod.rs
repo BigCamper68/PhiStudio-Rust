@@ -109,10 +109,10 @@ pub(crate) async fn run(options: Options) -> Result<()> {
             && options.playback_smoke.is_none()
         {
             app.open_projects();
-            app.recovery_loading = true;
-            app.native_request = Some(files::FileRequest::Startup);
+            app.files.recovery_loading = true;
+            app.files.request = Some(files::FileRequest::Startup);
         } else {
-            app.recovery = match phistudio_core::load_recovery(root) {
+            app.files.recovery = match phistudio_core::load_recovery(root) {
                 Ok(snapshot) => snapshot,
                 Err(error) => {
                     app.error = Some(format!("Could not read recovery: {error}"));
@@ -139,7 +139,7 @@ pub(crate) async fn run(options: Options) -> Result<()> {
                 "Bundled Java demo has changed"
             );
         }
-        app.beat = if bundled_demo {
+        app.transport.beat = if bundled_demo {
             0.5
         } else {
             (0..initial_lines)
@@ -234,12 +234,11 @@ pub(crate) async fn run(options: Options) -> Result<()> {
         {
             use std::sync::atomic::Ordering;
             if android::WAS_SUSPENDED.swap(false, Ordering::AcqRel) {
-                app.playing = false;
+                app.transport.playing = false;
                 app.pause_playtest();
                 app.suspend_movie();
-                app.drag = None;
-                app.grid_input.cancel();
-                app.timeline_scrub = false;
+                app.timeline.cancel_gesture();
+                app.transport.scrubbing = false;
                 app.preview.drag = None;
                 gui.cancel_input();
                 if let Err(error) = files.checkpoint(&app, false) {
@@ -252,20 +251,19 @@ pub(crate) async fn run(options: Options) -> Result<()> {
         }
         #[cfg(target_os = "ios")]
         if ios::WAS_SUSPENDED.swap(false, std::sync::atomic::Ordering::AcqRel) {
-            app.playing = false;
+            app.transport.playing = false;
             app.pause_playtest();
             app.suspend_movie();
-            app.drag = None;
-            app.grid_input.cancel();
-            app.timeline_scrub = false;
+            app.timeline.cancel_gesture();
+            app.transport.scrubbing = false;
             app.preview.drag = None;
             gui.cancel_input();
             if let Err(error) = files.checkpoint(&app, false) {
                 app.error = Some(format!("Could not save recovery: {error}"));
             }
         }
-        if app.playing && !app.is_scrubbing() && app.render_error.is_none() {
-            app.beat = app
+        if app.transport.playing && !app.is_scrubbing() && app.render_error.is_none() {
+            app.transport.beat = app
                 .editor
                 .document()
                 .tempo()
@@ -274,7 +272,7 @@ pub(crate) async fn run(options: Options) -> Result<()> {
         if is_quit_requested() {
             if app.editor.is_dirty() {
                 app.close_requested = true;
-                app.playing = false;
+                app.transport.playing = false;
             } else {
                 break;
             }
@@ -294,7 +292,7 @@ pub(crate) async fn run(options: Options) -> Result<()> {
             let (events, canceled) = smoke.take_input(&app);
             gui.probe_input(events, canceled);
         }
-        let before_ui = app.beat;
+        let before_ui = app.transport.beat;
         if !app.show_projects && app.preview.rect.is_positive() {
             let size = app.preview.rect.size() * app.pixels_per_point;
             preview.fit_display([size.x, size.y], app.preview_aspect());
@@ -305,7 +303,7 @@ pub(crate) async fn run(options: Options) -> Result<()> {
         #[cfg(target_os = "ios")]
         ios::set_language(app.options.language);
         gui.run(|ctx, canceled| app.ui(ctx, canceled));
-        if app.workspace.view != Some(workspace_ui::View::Resources) || app.playing {
+        if app.workspace.view != Some(workspace_ui::View::Resources) || app.transport.playing {
             let _ = preview.audition_resource(None);
         }
         if let Some(clip) = app.workspace.audition.take()
@@ -354,7 +352,7 @@ pub(crate) async fn run(options: Options) -> Result<()> {
             app.asset_revision,
         );
         let chart_changed = key != rendered;
-        let seek = before_ui != app.beat;
+        let seek = before_ui != app.transport.beat;
         if chart_changed {
             if key.0 != rendered.0 || key.3 != rendered.3 {
                 preview.invalidate_resources();
@@ -384,7 +382,7 @@ pub(crate) async fn run(options: Options) -> Result<()> {
             preview.analysis_music(),
             &app.options.audio_guide,
         );
-        app.music_duration = preview.music_duration();
+        app.transport.music_duration = preview.music_duration();
         if let Err(error) = preview.set_editor_options(&app.options, app.line) {
             app.error = Some(format!("Could not configure preview: {error:#}"));
         }
@@ -396,32 +394,34 @@ pub(crate) async fn run(options: Options) -> Result<()> {
         if let Err(error) = preview.set_playback_rate(app.advanced.playback_rate) {
             app.error = Some(format!("Could not change playback speed: {error:#}"));
         }
-        if let Err(error) = preview.set_audio_levels(app.music_volume, app.hitsound_volume) {
+        if let Err(error) =
+            preview.set_audio_levels(app.transport.music_volume, app.transport.hitsound_volume)
+        {
             app.error = Some(format!("Could not update audio levels: {error:#}"));
         }
         // Read the music clock after UI work unless it supplied a new cursor.
-        if app.playing
+        if app.transport.playing
             && !app.is_scrubbing()
             && !seek
             && !chart_changed
             && app.render_error.is_none()
         {
             match preview.advance_transport() {
-                Ok(seconds) => app.beat = app.editor.document().tempo().beat_at(seconds),
+                Ok(seconds) => app.transport.beat = app.editor.document().tempo().beat_at(seconds),
                 Err(error) => {
                     app.error = Some(format!("Audio playback failed: {error:#}"));
-                    app.playing = false;
+                    app.transport.playing = false;
                 }
             }
         }
-        let seconds = app.editor.document().tempo().seconds_at(app.beat);
+        let seconds = app.editor.document().tempo().seconds_at(app.transport.beat);
         if let Err(error) = preview.set_playback(
             seconds,
-            app.playing && !app.is_scrubbing() && app.render_error.is_none(),
+            app.transport.playing && !app.is_scrubbing() && app.render_error.is_none(),
             seek,
         ) {
             app.error = Some(format!("Audio playback failed: {error:#}"));
-            app.playing = false;
+            app.transport.playing = false;
         }
         if let Err(error) =
             app.audition_audio_notes(seconds, seek, |kind| preview.audition(None, kind))
@@ -430,7 +430,7 @@ pub(crate) async fn run(options: Options) -> Result<()> {
         }
         if !app.show_projects && app.render_error.is_none() {
             preview.render(
-                app.editor.document().tempo().seconds_at(app.beat),
+                app.editor.document().tempo().seconds_at(app.transport.beat),
                 preview.target_viewport(),
             );
         }

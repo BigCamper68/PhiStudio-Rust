@@ -470,7 +470,7 @@ pub async fn run_text() -> Result<()> {
         );
         let selection = plan.apply(&mut app.editor)?;
         app.line = selection.notes[0].line;
-        app.beat = 2.;
+        app.transport.beat = 2.;
         app.skin = Some(skin.clone());
         preview
             .replace_chart(app.editor.document(), None, &app.project_options)
@@ -503,7 +503,7 @@ pub async fn run_text() -> Result<()> {
                 let ui_ms = begin.elapsed().as_secs_f64() * 1000.;
                 let begin = Instant::now();
                 preview.render(
-                    app.editor.document().tempo().seconds_at(app.beat),
+                    app.editor.document().tempo().seconds_at(app.transport.beat),
                     preview.target_viewport(),
                 );
                 unsafe {

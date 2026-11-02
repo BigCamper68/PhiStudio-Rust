@@ -264,12 +264,12 @@ mod tests {
         );
         app.options.shortcuts.insert("Space".into(), "Alt+P".into());
         assert!(!app.configured_tool_key(Key::Space, Modifiers::NONE));
-        assert!(!app.playing);
+        assert!(!app.transport.playing);
         assert!(app.configured_tool_key(Key::P, Modifiers::ALT));
-        assert!(app.playing);
+        assert!(app.transport.playing);
         assert!(app.configured_tool_key(Key::V, Modifiers::NONE));
-        assert!(app.playing);
+        assert!(app.transport.playing);
         assert!(app.configured_tool_key(Key::P, Modifiers::ALT));
-        assert!(!app.playing);
+        assert!(!app.transport.playing);
     }
 }

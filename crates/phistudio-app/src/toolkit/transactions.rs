@@ -44,9 +44,8 @@ impl Workbench {
                     };
                 }
                 self.set_selection(selection);
-                self.drag = None;
-                self.grid_input.cancel();
-                self.playing = false;
+                self.timeline.cancel_gesture();
+                self.transport.playing = false;
                 self.error = None;
                 self.status = self
                     .editor

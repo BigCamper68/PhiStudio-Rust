@@ -4,14 +4,14 @@ use super::*;
 fn notes_and_events_are_edited_together_on_one_clock() {
     use phistudio_core::{EventId, EventType};
     let mut app = Workbench::new(ChartDocument::empty("Combined", 120.).unwrap(), None);
-    app.beat = 2.;
+    app.transport.beat = 2.;
     let grid = test_grid(&app);
     let events = grid.events();
     assert!(grid.rect.right() < events.rect.left());
     for beat in [0., 2., 3.25, 100.] {
         assert_eq!(grid.y(beat), events.y(beat));
     }
-    app.tool = Tool::Place(NoteKind::Tap);
+    app.timeline.tool = Tool::Place(NoteKind::Tap);
     let note_pos = egui::pos2(grid.x(0.), grid.y(3.));
     grid_events(
         &mut app,
@@ -19,7 +19,7 @@ fn notes_and_events_are_edited_together_on_one_clock() {
         false,
     );
     assert_eq!(app.editor.document().note_count(), 1);
-    app.tool = Tool::Event;
+    app.timeline.tool = Tool::Event;
     let start = egui::pos2(events.rect.left() + events.rect.width() * 0.1, events.y(3.));
     let end = egui::pos2(start.x, events.y(4.));
     grid_events(
@@ -35,7 +35,7 @@ fn notes_and_events_are_edited_together_on_one_clock() {
     };
     assert_eq!(app.events.selected, Some(id));
     assert_eq!(app.editor.document().note_count(), 1);
-    app.tool = Tool::Select;
+    app.timeline.tool = Tool::Select;
     grid_events(
         &mut app,
         &[pointer(note_pos, true), pointer(note_pos, false)],
@@ -52,8 +52,8 @@ fn notes_and_events_are_edited_together_on_one_clock() {
     assert_eq!(app.events.selected, Some(id));
     assert!(app.selected.is_none());
     let original = app.editor.document().as_json().clone();
-    app.tool = Tool::Select;
-    app.playing = true;
+    app.timeline.tool = Tool::Select;
+    app.transport.playing = true;
     let blank = egui::pos2(grid.x(600.), events.y(3.5));
     grid_events(
         &mut app,
@@ -64,8 +64,8 @@ fn notes_and_events_are_edited_together_on_one_clock() {
         false,
     );
     let after = test_grid(&app);
-    assert_eq!(app.beat, 2.5);
-    assert!(app.playing);
+    assert_eq!(app.transport.beat, 2.5);
+    assert!(app.transport.playing);
     assert_eq!(after.y(3.), after.events().y(3.));
     assert_eq!(app.editor.document().as_json(), &original);
 }
@@ -74,8 +74,8 @@ fn notes_and_events_are_edited_together_on_one_clock() {
 fn event_create_move_resize_and_cancel_use_one_history_action_per_gesture() {
     use phistudio_core::{EventId, EventType};
     let mut app = Workbench::new(ChartDocument::empty("Events", 120.).unwrap(), None);
-    app.tool = Tool::Event;
-    app.beat = 2.;
+    app.timeline.tool = Tool::Event;
+    app.transport.beat = 2.;
     let original = app.editor.document().as_json().clone();
     let grid = test_grid(&app).events();
     let x = grid.rect.left() + grid.rect.width() * 0.1;
@@ -95,7 +95,7 @@ fn event_create_move_resize_and_cancel_use_one_history_action_per_gesture() {
     app.editor.undo();
     assert_eq!(app.editor.document().as_json(), &original);
     app.editor.redo();
-    app.tool = Tool::Select;
+    app.timeline.tool = Tool::Select;
     let middle = egui::pos2(x, grid.y(3.5));
     let shifted = middle - egui::vec2(0., grid.zoom * 0.5);
     grid_events(
@@ -123,7 +123,7 @@ fn event_create_move_resize_and_cancel_use_one_history_action_per_gesture() {
     assert_eq!(app.editor.document().event(id).unwrap(), created);
     let before = app.editor.document().as_json().clone();
     let rev = app.editor.revision();
-    app.tool = Tool::Event;
+    app.timeline.tool = Tool::Event;
     grid_events(&mut app, &[pointer(egui::pos2(x, grid.y(5.)), true)], false);
     grid_events(&mut app, &[], true);
     grid_events(

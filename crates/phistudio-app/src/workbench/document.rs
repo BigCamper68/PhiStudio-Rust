@@ -2,7 +2,7 @@ use super::*;
 
 impl Workbench {
     pub fn restore_recovery(&mut self) {
-        let Some(snapshot) = self.recovery.take() else {
+        let Some(snapshot) = self.files.recovery.take() else {
             return;
         };
         let (file, assets) = snapshot
@@ -10,7 +10,7 @@ impl Workbench {
             .map_or((None, None), |p| (Some(p.chart), p.assets));
         self.replace_document(snapshot.document, file, assets);
         self.editor = Editor::recovered(self.editor.document().clone());
-        self.beat = snapshot.beat;
+        self.transport.beat = snapshot.beat;
         self.line = snapshot.line;
         self.status = "Unsaved changes restored; save to keep them in the project".into();
     }
@@ -49,21 +49,21 @@ impl Workbench {
 
     pub fn open(&mut self, path: PathBuf) {
         if self.editor.is_dirty() {
-            self.pending_open = Some(path);
+            self.files.pending_open = Some(path);
             return;
         }
         self.load(path);
     }
 
     pub fn discard_and_open(&mut self, path: PathBuf) {
-        self.pending_open = None;
+        self.files.pending_open = None;
         self.load(path);
     }
 
     pub(super) fn load(&mut self, path: PathBuf) {
         match load_chart(&path) {
             Ok(document) => {
-                let assets = self.pending_asset_directory.take();
+                let assets = self.files.pending_asset_directory.take();
                 self.replace_document(document, Some(path), assets);
                 self.status = "Project opened".into();
             }
@@ -96,11 +96,11 @@ impl Workbench {
         let clipboard_history = std::mem::take(&mut self.clipboard_history);
         let preferences = self.preferences();
         let clipboard = self.tools.clipboard.clone();
-        let last_deleted = self.last_deleted.clone();
+        let last_deleted = self.files.last_deleted.clone();
         let floating = self.preview.floating;
-        let show_context = self.show_context;
+        let show_context = self.windows.sidebar;
         let managed_storage = self.managed_storage;
-        let timeline_split = self.timeline_split;
+        let timeline_split = self.timeline.split;
         *self = Self::new(document, file);
         if self
             .file
@@ -120,13 +120,13 @@ impl Workbench {
         self.presets = presets;
         self.clipboard_history = clipboard_history;
         self.preview.floating = floating;
-        self.show_context = show_context;
+        self.windows.sidebar = show_context;
         self.asset_directory = assets;
         self.reload_project_options();
         self.managed_storage = managed_storage;
-        self.timeline_split = timeline_split;
+        self.timeline.split = timeline_split;
         self.apply_preferences(&preferences);
-        self.last_deleted = last_deleted;
+        self.files.last_deleted = last_deleted;
         self.tools.clipboard = clipboard;
     }
 
@@ -146,17 +146,17 @@ impl Workbench {
     pub(crate) fn offer_version_copy(&mut self, copy: phistudio_core::vcs::WorkingCopy) {
         self.workspace.view = None;
         self.show_projects = false;
-        self.pending_asset_directory = copy.location.assets;
+        self.files.pending_asset_directory = copy.location.assets;
         self.open(copy.location.chart);
     }
 
     pub fn offer_project(&mut self, project: phistudio_core::ImportedProject) {
         self.show_projects = false;
         if let Some(index) = project.suggested {
-            self.pending_asset_directory = Some(project.assets);
+            self.files.pending_asset_directory = Some(project.assets);
             self.open(project.charts[index].path.clone());
         } else {
-            self.imported_project = Some(project);
+            self.files.imported_project = Some(project);
         }
     }
 
@@ -189,13 +189,13 @@ impl Workbench {
         if !self.flush_shader_draft() {
             return;
         }
-        if self.file_busy {
+        if self.files.busy {
             return;
         }
         if let Some(path) = self.file.clone() {
             self.save(path);
         } else {
-            self.native_request = Some(crate::files::FileRequest::SaveWorkspace);
+            self.files.request = Some(crate::files::FileRequest::SaveWorkspace);
         }
     }
 
@@ -203,20 +203,19 @@ impl Workbench {
         if !self.flush_shader_draft() {
             return;
         }
-        if self.file_busy {
+        if self.files.busy {
             return;
         }
-        self.playing = false;
-        self.drag = None;
-        self.grid_input.cancel();
+        self.transport.playing = false;
+        self.timeline.cancel_gesture();
         #[cfg(any(target_os = "android", target_os = "ios"))]
         {
-            self.native_request = Some(crate::files::FileRequest::Package);
+            self.files.request = Some(crate::files::FileRequest::Package);
         }
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         {
-            self.path_input.clear();
-            self.package_dialog = true;
+            self.files.path_input.clear();
+            self.files.package_dialog = true;
         }
     }
 }

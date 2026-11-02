@@ -84,8 +84,8 @@ impl Workbench {
         let painter = ui.painter_at(rect);
         if self.options.noise_preview_grid {
             for (vertical, count) in [
-                (true, self.lanes.saturating_sub(1).max(1)),
-                (false, self.division.max(1) as usize),
+                (true, self.timeline.lanes.saturating_sub(1).max(1)),
+                (false, self.timeline.division.max(1) as usize),
             ] {
                 for i in 0..=count {
                     let t = i as f32 / count as f32;
@@ -171,8 +171,16 @@ impl Workbench {
         // Moving snaps one corner and preserves the field's dimensions.
         let anchor = bounds[(*handle).min(1)];
         for (axis, count, snap) in [
-            (0, self.lanes.saturating_sub(1).max(1), self.options.snap_x),
-            (1, self.division.max(1) as usize, self.options.snap_time),
+            (
+                0,
+                self.timeline.lanes.saturating_sub(1).max(1),
+                self.options.snap_x,
+            ),
+            (
+                1,
+                self.timeline.division.max(1) as usize,
+                self.options.snap_time,
+            ),
         ] {
             if snap {
                 let step = scale[axis] / count as f64;
@@ -268,7 +276,7 @@ impl Workbench {
                                 &mut self.options.noise_preview_grid,
                                 crate::i18n::tr("Field preview grid"),
                             );
-                            ui.label(format!("{:.3}", self.beat));
+                            ui.label(format!("{:.3}", self.transport.beat));
                         });
                         ui.small(crate::i18n::tr(help));
                         if let Some(error) = &self.error {

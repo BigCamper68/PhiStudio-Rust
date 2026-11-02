@@ -226,8 +226,7 @@ impl Workbench {
         }
         self.select(None);
         self.line_draft = None;
-        self.drag = None;
-        self.grid_input.cancel();
+        self.timeline.cancel_gesture();
     }
 
     pub(crate) fn multi_active(&self, events: bool) -> bool {
@@ -361,8 +360,7 @@ impl Workbench {
                 )
                 .changed()
             {
-                self.drag = None;
-                self.grid_input.cancel();
+                self.timeline.cancel_gesture();
             }
         });
     }
@@ -440,8 +438,7 @@ impl Workbench {
                     self.reconcile_multi_selection();
                 }
                 if before != after {
-                    self.drag = None;
-                    self.grid_input.cancel();
+                    self.timeline.cancel_gesture();
                     self.multi_line.offsets = [0.; 2];
                 }
             });

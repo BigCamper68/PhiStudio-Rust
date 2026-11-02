@@ -43,7 +43,7 @@ impl FileManager {
                             media: None,
                         });
                         app.video.open = false;
-                        app.file_busy = true;
+                        app.files.busy = true;
                     }
                     Err(error) => {
                         app.video.completed = Some(movie);
@@ -113,7 +113,7 @@ impl FileManager {
                 }
                 let (sender, receiver) = mpsc::channel();
                 self.worker = Some(receiver);
-                app.file_busy = true;
+                app.files.busy = true;
                 app.status = "Working…".into();
                 std::thread::spawn(move || {
                     let result = context.run(job).map(|(session, result)| match result {
@@ -132,7 +132,7 @@ impl FileManager {
                 };
                 let (sender, receiver) = mpsc::channel();
                 self.worker = Some(receiver);
-                app.file_busy = true;
+                app.files.busy = true;
                 std::thread::spawn(move || {
                     let result = (|| -> Result<WorkerResult, String> {
                         let selected = match request {
@@ -167,7 +167,7 @@ impl FileManager {
             | FileRequest::CheckHitSound { .. } => {
                 let (sender, receiver) = mpsc::channel();
                 self.worker = Some(receiver);
-                app.file_busy = true;
+                app.files.busy = true;
                 std::thread::spawn(move || {
                     let result = (|| -> Result<WorkerResult, String> {
                         match request {
@@ -245,7 +245,7 @@ impl FileManager {
             },
             FileRequest::DiscardRecovery => match self.checkpoint(app, true) {
                 Ok(()) => {
-                    app.recovery = None;
+                    app.files.recovery = None;
                     app.status = "Saved project kept; recovery discarded".into();
                 }
                 Err(error) => app.error = Some(error),
@@ -273,10 +273,9 @@ impl FileManager {
                     .then(|| app.editor.document().clone());
                 let session = app.session;
                 let revision = app.editor.revision();
-                app.playing = false;
-                app.drag = None;
-                app.grid_input.cancel();
-                app.file_busy = true;
+                app.transport.playing = false;
+                app.timeline.cancel_gesture();
+                app.files.busy = true;
                 app.status = "Loading projects…".into();
                 let (sender, receiver) = mpsc::channel();
                 self.worker = Some(receiver);
@@ -349,9 +348,9 @@ impl FileManager {
                 };
                 let (sender, receiver) = mpsc::channel();
                 self.worker = Some(receiver);
-                app.file_busy = true;
-                app.playing = false;
-                app.grid_input.cancel();
+                app.files.busy = true;
+                app.transport.playing = false;
+                app.timeline.input.cancel();
                 app.status = "Preparing project export…".into();
                 std::thread::spawn(move || {
                     let result = (|| {
@@ -397,10 +396,10 @@ impl FileManager {
             }
             #[cfg(not(any(target_os = "android", target_os = "ios")))]
             FileRequest::WriteExport(path) => {
-                if let Some(package) = app.export_package.take() {
+                if let Some(package) = app.files.export_package.take() {
                     let (sender, receiver) = mpsc::channel();
                     self.worker = Some(receiver);
-                    app.file_busy = true;
+                    app.files.busy = true;
                     std::thread::spawn(move || {
                         let _ = sender.send(
                             package
@@ -423,7 +422,7 @@ impl FileManager {
             #[cfg(any(target_os = "android", target_os = "ios"))]
             FileRequest::Media(kind) => {
                 if let Err(error) = self.pick_media(app, kind) {
-                    app.file_busy = false;
+                    app.files.busy = false;
                     app.error = Some(format!("{error:#}"));
                 }
             }
@@ -431,7 +430,7 @@ impl FileManager {
             #[cfg(any(target_os = "android", target_os = "ios"))]
             FileRequest::Package => {
                 if let Err(error) = self.pick(app) {
-                    app.file_busy = false;
+                    app.files.busy = false;
                     app.error = Some(format!("{error:#}"));
                 }
             }

@@ -42,7 +42,7 @@ impl Workbench {
         let beat = if original_time {
             Ok(clipboard.first)
         } else {
-            Beat::from_grid(self.beat, self.division)
+            Beat::from_grid(self.transport.beat, self.timeline.division)
         };
         let edit = beat.and_then(|beat| {
             clipboard.paste(

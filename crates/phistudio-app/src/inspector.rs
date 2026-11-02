@@ -91,7 +91,7 @@ impl Workbench {
             .as_ref()
             .and_then(|id| self.skins.entries.iter().find(|s| &s.id == id))
             .map(|s| s.assets.clone());
-        self.native_request = Some(FileRequest::NoteVolume {
+        self.files.request = Some(FileRequest::NoteVolume {
             root,
             skin,
             source,
@@ -103,7 +103,7 @@ impl Workbench {
                 revision: self.editor.revision(),
             },
         });
-        self.playing = false;
+        self.transport.playing = false;
     }
     pub(crate) fn open_controls(&mut self, kind: ControlKind) {
         match self.editor.document().control_points(self.line, kind) {
@@ -151,7 +151,7 @@ impl Workbench {
             catalog: vec![],
         });
         if let Some(root) = self.asset_root() {
-            self.native_request = Some(FileRequest::SoundCatalog {
+            self.files.request = Some(FileRequest::SoundCatalog {
                 root: root.to_owned(),
                 exclude: self.project_options.music.clone(),
                 target,
@@ -188,7 +188,7 @@ impl Workbench {
             return;
         }
         if let Some(root) = self.asset_root() {
-            self.native_request = Some(FileRequest::ImportHitSound {
+            self.files.request = Some(FileRequest::ImportHitSound {
                 root: root.to_owned(),
                 target,
                 file,
@@ -348,7 +348,7 @@ impl Workbench {
                 {
                     self.apply_sound(target, reference);
                 } else if let Some(root) = self.asset_root() {
-                    self.native_request = Some(FileRequest::CheckHitSound {
+                    self.files.request = Some(FileRequest::CheckHitSound {
                         root: root.to_owned(),
                         target,
                         reference: reference.unwrap(),

@@ -126,8 +126,8 @@ pub(super) async fn run(
     app.options.language = Language::Russian;
     app.options.audio_guide.waveform = true;
     app.options.audio_guide.attacks = true;
-    app.zoom = 96.;
-    app.beat = 0.;
+    app.timeline.zoom = 96.;
+    app.transport.beat = 0.;
     ready(gui, app, preview).await?;
     let initial = app.audio_guide.probe_report();
     ensure!(
@@ -135,7 +135,7 @@ pub(super) async fn run(
         "Expected eight attacks without release markers: {initial}"
     );
     let enabled = capture(gui, app, preview, out, "guide-on").await?;
-    let grid = crate::grid_input::geometry(app.grid_area, app);
+    let grid = crate::grid_input::geometry(app.timeline.area, app);
     let revision = app.editor.revision();
     app.options.audio_guide.waveform = false;
     app.options.audio_guide.attacks = false;
@@ -163,8 +163,8 @@ pub(super) async fn run(
         ("negative-offset", -250, 3., 64.),
     ] {
         app.project_options.manifest_offset_ms = offset;
-        app.beat = beat;
-        app.zoom = zoom;
+        app.transport.beat = beat;
+        app.timeline.zoom = zoom;
         preview
             .replace_chart(
                 app.editor.document(),

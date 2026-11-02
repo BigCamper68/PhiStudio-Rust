@@ -85,7 +85,7 @@ pub(super) async fn run(
                     paint(gui, app, preview, 210.)?;
                     next_frame().await;
                 }
-                let grid = crate::grid_input::geometry(app.grid_area, app);
+                let grid = crate::grid_input::geometry(app.timeline.area, app);
                 let panels = app.line_panels(grid, events);
                 ensure!(!panels.is_empty());
                 let name = format!("{label}-{}-{offset}", language.code());
@@ -114,13 +114,13 @@ pub(super) async fn run(
     // A compact grid may fit only one column. Bring the second source line
     // into view before checking its native pointer picking.
     app.multi_line.offsets = [app.multi_line.widths[0] + 8., 0.];
-    app.beat = app.editor.document().note(1, 0)?.start_time.as_f64();
+    app.transport.beat = app.editor.document().note(1, 0)?.start_time.as_f64();
     app.set_tool(crate::workbench::Tool::Select);
     for _ in 0..3 {
         paint(gui, app, preview, 210.)?;
         next_frame().await;
     }
-    let grid = crate::grid_input::geometry(app.grid_area, app);
+    let grid = crate::grid_input::geometry(app.timeline.area, app);
     let Some((_, panel)) = app
         .line_panels(grid, false)
         .into_iter()

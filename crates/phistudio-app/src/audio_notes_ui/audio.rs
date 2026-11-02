@@ -77,7 +77,7 @@ impl Workbench {
             .preview
             .as_ref()
             .is_some_and(|(key, _)| self.audio_note_key().as_ref().ok() == Some(key));
-        let playing = self.playing
+        let playing = self.transport.playing
             && !self.is_scrubbing()
             && !self.playtest.active()
             && !self.show_projects

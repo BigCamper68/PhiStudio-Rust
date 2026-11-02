@@ -15,10 +15,10 @@ fn closing_a_loading_resource_query_leaves_editor_unblocked_and_ignores_late_res
         result,
     });
     files.update(&mut app);
-    assert!(app.modal_open() && !app.file_busy);
+    assert!(app.modal_open() && !app.files.busy);
     app.back();
     files.update(&mut app);
-    assert!(!app.modal_open() && !app.file_busy && files.query.is_some());
+    assert!(!app.modal_open() && !app.files.busy && files.query.is_some());
     sender
         .send(Ok(crate::workspace_ui::WorkspaceResult::Resources {
             entries: vec![phistudio_core::resources::Resource {
@@ -32,7 +32,7 @@ fn closing_a_loading_resource_query_leaves_editor_unblocked_and_ignores_late_res
         }))
         .unwrap();
     files.update(&mut app);
-    assert!(!app.modal_open() && !app.file_busy && files.query.is_none());
+    assert!(!app.modal_open() && !app.files.busy && files.query.is_none());
     assert!(!app.workspace.loading && app.workspace.resources.is_empty());
 }
 fn media_fixture(root: &std::path::Path) -> phistudio_core::NewProjectMedia {
@@ -155,7 +155,7 @@ fn creating_another_chart_retains_dirty_history_until_the_switch_is_resolved() {
     };
     app.open_created_project(location.clone());
     assert!(!app.show_projects);
-    assert_eq!(app.pending_open, Some(location.chart));
+    assert_eq!(app.files.pending_open, Some(location.chart));
     assert_eq!(app.editor.document().name(), "Current");
     assert_eq!(app.editor.document().note_count(), 1);
     assert!(app.editor.is_dirty());
@@ -195,7 +195,7 @@ fn deleting_an_active_project_clears_recovery_and_returns_to_projects() {
     };
     app.project_deleted(trash, library);
     assert!(app.show_projects && app.file.is_none() && !app.editor.is_dirty());
-    assert!(app.last_deleted.is_some());
+    assert!(app.files.last_deleted.is_some());
     assert!(!workspace.exists());
     assert!(!root.path().join("recovery/session.json").exists());
 }

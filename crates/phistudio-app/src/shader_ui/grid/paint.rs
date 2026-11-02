@@ -80,38 +80,9 @@ fn paint_rows(app: &Workbench, p: &egui::Painter, grid: Grid, name: Option<&str>
     {
         return;
     }
-    let mut rows = rows_for(app, name);
-    if let Some(a) = &app.shaders.animation
-        && name == Some(a.name.as_str())
-        && let Some(row) = rows.get_mut(a.index)
-    {
-        *row = a.raw.clone();
-    }
-    if let Some(Gesture::Shader(d)) = &app.drag
-        && let ShaderGesture::Edit(d) = &**d
-        && d.keyframe.as_ref().map(|(name, _)| name.as_str()) == name
-    {
-        let index = d.keyframe.as_ref().map_or(d.effect, |(_, index)| *index);
-        if d.creating {
-            rows.push(d.current.clone());
-        } else if let Some(row) = rows.get_mut(index) {
-            *row = d.current.clone();
-        }
-    }
-    if let Some(Gesture::Shader(d)) = &app.drag
-        && let ShaderGesture::Edit(d) = &**d
-        && d.group.len() > 1
-    {
-        for (id, raw) in &d.group {
-            if id.parameter.as_deref() == name
-                && let Some(row) = rows.get_mut(id.index)
-            {
-                *row = selection::shifted(d, id, raw);
-            }
-        }
-    }
-    for (index, raw) in rows.iter().enumerate() {
-        if let Some(Gesture::Shader(d)) = &app.drag
+    for (index, row) in view::Rows::new(app, name).iter() {
+        let raw = row.as_ref();
+        if let Some(Gesture::Shader(d)) = &app.timeline.drag
             && let ShaderGesture::Erase {
                 ids,
                 keys: erase_keys,
@@ -167,7 +138,7 @@ fn paint_rows(app: &Workbench, p: &egui::Painter, grid: Grid, name: Option<&str>
             );
         }
     }
-    if let Some(Gesture::Shader(d)) = &app.drag
+    if let Some(Gesture::Shader(d)) = &app.timeline.drag
         && let ShaderGesture::Box {
             origin,
             current,
@@ -182,7 +153,7 @@ fn paint_rows(app: &Workbench, p: &egui::Painter, grid: Grid, name: Option<&str>
             Stroke::new(1_f32, accent()),
         );
     }
-    if let Some(Gesture::Shader(d)) = &app.drag
+    if let Some(Gesture::Shader(d)) = &app.timeline.drag
         && let ShaderGesture::Erase { last, .. } = &**d
         && app.shaders.animation_track() == name
     {

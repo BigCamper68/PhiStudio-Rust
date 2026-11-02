@@ -9,7 +9,7 @@ fn preview_tap_enters_fullscreen_and_static_pause_target_returns_without_stoppin
             frame(&mut app, &ctx, size, vec![], false);
         }
         let original = app.editor.document().as_json().clone();
-        app.playing = true;
+        app.transport.playing = true;
         let tap = app.preview.rect.center();
         frame(
             &mut app,
@@ -20,8 +20,8 @@ fn preview_tap_enters_fullscreen_and_static_pause_target_returns_without_stoppin
         );
         assert!(app.preview.fullscreen);
         frame(&mut app, &ctx, size, vec![], false);
-        assert!(app.playing);
-        assert!(!app.grid_area.is_positive());
+        assert!(app.transport.playing);
+        assert!(!app.timeline.area.is_positive());
         let exit = app.fullscreen_exit_rect(app.preview.rect).center();
         frame(
             &mut app,
@@ -31,12 +31,12 @@ fn preview_tap_enters_fullscreen_and_static_pause_target_returns_without_stoppin
             false,
         );
         assert!(!app.preview.fullscreen);
-        assert!(app.playing);
+        assert!(app.transport.playing);
         assert_eq!(app.editor.document().as_json(), &original);
         app.preview.fullscreen = true;
         app.back();
         assert!(!app.preview.fullscreen);
-        assert!(app.playing);
+        assert!(app.transport.playing);
     }
 }
 
@@ -50,19 +50,19 @@ fn holding_fullscreen_return_never_enters_scrub_or_pauses_playback() {
         let ctx = egui::Context::default();
         let size = Vec2::new(1194., 834.);
         app.preview.fullscreen = true;
-        app.playing = playing;
-        app.beat = 8.;
+        app.transport.playing = playing;
+        app.transport.beat = 8.;
         for _ in 0..3 {
             frame(&mut app, &ctx, size, vec![], false);
         }
         let exit = app.fullscreen_exit_rect(app.preview.rect).center();
         frame(&mut app, &ctx, size, vec![pointer(exit, true)], false);
         assert!(!app.is_scrubbing());
-        assert_eq!(app.playing, playing);
+        assert_eq!(app.transport.playing, playing);
         for _ in 0..5 {
             frame(&mut app, &ctx, size, vec![], false);
             assert!(!app.is_scrubbing());
-            assert_eq!(app.playing, playing);
+            assert_eq!(app.transport.playing, playing);
         }
         let outside = exit + egui::vec2(200., 150.);
         frame(
@@ -73,15 +73,15 @@ fn holding_fullscreen_return_never_enters_scrub_or_pauses_playback() {
             false,
         );
         assert!(!app.is_scrubbing());
-        assert_eq!(app.beat, 8.);
+        assert_eq!(app.transport.beat, 8.);
         frame(&mut app, &ctx, size, vec![pointer(outside, false)], false);
         assert!(app.preview.fullscreen);
-        assert_eq!(app.playing, playing);
+        assert_eq!(app.transport.playing, playing);
         frame(&mut app, &ctx, size, vec![pointer(exit, true)], false);
         assert!(!app.is_scrubbing());
         frame(&mut app, &ctx, size, vec![pointer(exit, false)], false);
         assert!(!app.preview.fullscreen);
-        assert_eq!(app.playing, playing);
+        assert_eq!(app.transport.playing, playing);
     }
 }
 
@@ -90,8 +90,8 @@ fn fullscreen_scrubbing_preserves_playback_and_final_release_coordinate() {
     for playing in [false, true] {
         let mut app = Workbench::new(ChartDocument::empty("Preview scrub", 120.).unwrap(), None);
         app.preview.fullscreen = true;
-        app.beat = 10.;
-        app.playing = playing;
+        app.transport.beat = 10.;
+        app.transport.playing = playing;
         let ctx = egui::Context::default();
         let size = Vec2::new(873., 393.);
         frame(&mut app, &ctx, size, vec![], false);
@@ -112,8 +112,8 @@ fn fullscreen_scrubbing_preserves_playback_and_final_release_coordinate() {
             vec![pointer(start + egui::vec2(4., 144.), false)],
             false,
         );
-        assert!((app.beat - 11.5).abs() < 1e-8);
-        assert_eq!(app.playing, playing);
+        assert!((app.transport.beat - 11.5).abs() < 1e-8);
+        assert_eq!(app.transport.playing, playing);
         assert!(!app.is_scrubbing());
         assert!(app.preview.pick.is_none());
         assert!(app.preview.fullscreen);
@@ -127,8 +127,8 @@ fn fullscreen_scrub_locks_its_axis_and_reverses_immediately_at_zero() {
         let mut app = Workbench::new(ChartDocument::empty("Scrub", 120.).unwrap(), None);
         let ctx = egui::Context::default();
         app.preview.fullscreen = true;
-        app.playing = playing;
-        app.beat = 10.;
+        app.transport.playing = playing;
+        app.transport.beat = 10.;
         frame(&mut app, &ctx, size, vec![], false);
         let start = app.preview.rect.center();
         let touch = |phase, pos| egui::Event::Touch {
@@ -138,7 +138,7 @@ fn fullscreen_scrub_locks_its_axis_and_reverses_immediately_at_zero() {
             pos,
             force: 0.,
         };
-        let step = (app.options.scroll_speed / app.zoom) as f64;
+        let step = (app.options.scroll_speed / app.timeline.zoom) as f64;
         frame(
             &mut app,
             &ctx,
@@ -154,8 +154,8 @@ fn fullscreen_scrub_locks_its_axis_and_reverses_immediately_at_zero() {
                 vec![touch(egui::TouchPhase::Move, start + Vec2::new(x, y))],
                 false,
             );
-            assert!((app.beat - (10. + y as f64 * step)).abs() < 1e-5);
-            assert_eq!(app.playing, playing);
+            assert!((app.transport.beat - (10. + y as f64 * step)).abs() < 1e-5);
+            assert_eq!(app.transport.playing, playing);
             assert!(app.is_scrubbing());
         }
         frame(
@@ -165,10 +165,10 @@ fn fullscreen_scrub_locks_its_axis_and_reverses_immediately_at_zero() {
             vec![touch(egui::TouchPhase::End, start + Vec2::new(100., 40.))],
             false,
         );
-        assert!((app.beat - (10. + 40. * step)).abs() < 1e-5);
+        assert!((app.transport.beat - (10. + 40. * step)).abs() < 1e-5);
         assert!(!app.is_scrubbing());
         assert!(app.preview.pick.is_none());
-        app.beat = step * 20.;
+        app.transport.beat = step * 20.;
         frame(
             &mut app,
             &ctx,
@@ -183,7 +183,7 @@ fn fullscreen_scrub_locks_its_axis_and_reverses_immediately_at_zero() {
             vec![touch(egui::TouchPhase::Move, start - Vec2::new(0., 100.))],
             false,
         );
-        assert_eq!(app.beat, 0.);
+        assert_eq!(app.transport.beat, 0.);
         frame(
             &mut app,
             &ctx,
@@ -191,7 +191,7 @@ fn fullscreen_scrub_locks_its_axis_and_reverses_immediately_at_zero() {
             vec![touch(egui::TouchPhase::Move, start - Vec2::new(0., 90.))],
             false,
         );
-        assert!((app.beat - step * 10.).abs() < 1e-5);
+        assert!((app.transport.beat - step * 10.).abs() < 1e-5);
         frame(
             &mut app,
             &ctx,
@@ -199,8 +199,8 @@ fn fullscreen_scrub_locks_its_axis_and_reverses_immediately_at_zero() {
             vec![touch(egui::TouchPhase::End, start - Vec2::new(0., 80.))],
             false,
         );
-        assert!((app.beat - step * 20.).abs() < 1e-5);
-        assert_eq!(app.playing, playing);
+        assert!((app.transport.beat - step * 20.).abs() < 1e-5);
+        assert_eq!(app.transport.playing, playing);
     }
 }
 
@@ -210,8 +210,8 @@ fn fullscreen_multitouch_cancels_only_the_scrub_and_retains_playback_intent() {
     let mut app = Workbench::new(ChartDocument::empty("Multi", 120.).unwrap(), None);
     let ctx = egui::Context::default();
     app.preview.fullscreen = true;
-    app.playing = true;
-    app.beat = 5.;
+    app.transport.playing = true;
+    app.transport.beat = 5.;
     frame(&mut app, &ctx, size, vec![], false);
     let start = app.preview.rect.center();
     let touch = |id, phase| egui::Event::Touch {
@@ -235,7 +235,7 @@ fn fullscreen_multitouch_cancels_only_the_scrub_and_retains_playback_intent() {
         vec![touch(2, egui::TouchPhase::Start)],
         true,
     );
-    assert!(app.playing && app.is_scrubbing() && app.preview.blocked);
+    assert!(app.transport.playing && app.is_scrubbing() && app.preview.blocked);
     frame(
         &mut app,
         &ctx,
@@ -251,7 +251,7 @@ fn fullscreen_multitouch_cancels_only_the_scrub_and_retains_playback_intent() {
         vec![touch(2, egui::TouchPhase::End)],
         false,
     );
-    assert!(app.playing && !app.is_scrubbing());
+    assert!(app.transport.playing && !app.is_scrubbing());
     frame(
         &mut app,
         &ctx,
@@ -262,5 +262,5 @@ fn fullscreen_multitouch_cancels_only_the_scrub_and_retains_playback_intent() {
         ],
         false,
     );
-    assert!(!app.playing);
+    assert!(!app.transport.playing);
 }

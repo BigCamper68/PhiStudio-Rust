@@ -52,7 +52,7 @@ fn clipboard_shortcuts_and_duplicate_keep_one_undo_and_survive_project_changes()
     );
     assert_eq!(app.tools.clipboard.as_ref().unwrap().len(), 2);
     assert_eq!(app.editor.document().as_json(), &before);
-    app.beat = 8.;
+    app.transport.beat = 8.;
     frame(
         &mut app,
         &ctx,
@@ -78,7 +78,7 @@ fn clipboard_shortcuts_and_duplicate_keep_one_undo_and_survive_project_changes()
 fn batched_select_copy_clear_paste_shortcuts_keep_their_hardware_order() {
     let mut app = group_app();
     let ctx = egui::Context::default();
-    app.beat = 8.;
+    app.transport.beat = 8.;
     let command = egui::Modifiers::COMMAND;
     let events = [
         shortcut(egui::Key::A, command),
