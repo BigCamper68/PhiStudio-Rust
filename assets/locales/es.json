@@ -1238,6 +1238,7 @@
   "Skin exceeds the 32 MiB file / 128 MiB total limit": "El paquete de recursos supera el límite de 32 MiB por archivo o de 128 MiB en total",
   "Skin exceeds the extraction limit": "El paquete de recursos supera el límite de extracción",
   "Skin library load interrupted": "Carga de la biblioteca de paquetes de recursos interrumpida",
+  "Snap shader X to grid": "Ajustar X del shader a la cuadrícula",
   "Snap note X to lanes": "Ajustar X de las notas a los carriles",
   "Snap time to grid": "Ajustar tiempo a la rejilla",
   "Sound attack markers": "Marcadores de ataques de sonido",

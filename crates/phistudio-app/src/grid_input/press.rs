@@ -27,10 +27,15 @@ pub(super) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2, additive: bool) 
         app.drag = crate::noise_ui::grid::begin_dual(app, grid, pos, additive);
         return;
     }
-    if grid.event_rect.contains(pos)
+    if (grid.rect.contains(pos) || grid.event_rect.contains(pos))
         && app.advanced.right_mode == crate::advanced_ui::RightMode::Shaders
     {
-        app.drag = crate::shader_ui::grid::begin(app, grid.events(), pos);
+        app.drag = crate::shader_ui::grid::begin_dual(app, grid, pos);
+        return;
+    }
+    if app.advanced.right_mode.dedicated() && pos.x >= grid.rect.left() {
+        // The divider is a navigation control, never an underlying note surface.
+        app.drag = None;
         return;
     }
     if grid.event_rect.contains(pos)

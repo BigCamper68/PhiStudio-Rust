@@ -4,32 +4,6 @@ pub(super) fn at(_app: &Workbench, grid: Grid, y: f32) -> Beat {
     grid.beat(y)
 }
 
-pub(super) fn lanes(app: &Workbench) -> Vec<(String, bool)> {
-    let mut lanes = Vec::new();
-    for effect in &app.shaders.effects {
-        let key = (effect.shader.clone(), effect.global);
-        if !lanes.contains(&key) {
-            lanes.push(key);
-        }
-    }
-    let preset = (PRESETS[app.shaders.preset].to_owned(), false);
-    if lanes.is_empty() || (app.tool == Tool::Event && !lanes.contains(&preset)) {
-        lanes.push(preset);
-    }
-    lanes
-}
-
-pub(super) fn column(grid: Grid, index: usize, count: usize) -> Rect {
-    let width = grid.rect.width() / count.max(1) as f32;
-    Rect::from_min_max(
-        pos2(grid.rect.left() + width * index as f32, grid.rect.top()),
-        pos2(
-            grid.rect.left() + width * (index + 1) as f32,
-            grid.rect.bottom(),
-        ),
-    )
-}
-
 pub(super) fn interval(
     _app: &Workbench,
     grid: Grid,
@@ -47,8 +21,8 @@ pub(super) fn interval(
     ))
 }
 
-pub(super) fn rows(app: &Workbench) -> Vec<Value> {
-    if let Some(name) = app.shaders.animation_track() {
+pub(super) fn rows_for(app: &Workbench, name: Option<&str>) -> Vec<Value> {
+    if let Some(name) = name {
         app.shaders
             .draft
             .as_ref()
@@ -63,26 +37,33 @@ pub(super) fn rows(app: &Workbench) -> Vec<Value> {
             .unwrap_or_default()
     }
 }
-
+pub(super) fn rows(app: &Workbench) -> Vec<Value> {
+    rows_for(app, app.shaders.animation_track())
+}
+pub(super) fn row_column(
+    app: &Workbench,
+    grid: Grid,
+    name: Option<&str>,
+    index: usize,
+    raw: &Value,
+) -> Option<Rect> {
+    if let Some(name) = name {
+        layout::parameter_column(app, grid, name)
+    } else {
+        Some(layout::column(app, grid, false, layout::lane(raw, index)))
+    }
+}
 pub(super) fn hits(app: &Workbench, grid: Grid, pos: Pos2) -> Vec<usize> {
     if !grid.rect.contains(pos) {
         return vec![];
     }
-    let lanes = lanes(app);
+    let name = app.shaders.animation_track();
     rows(app)
         .iter()
         .enumerate()
         .filter_map(|(i, raw)| {
-            let col = if app.shaders.animation_track().is_some() {
-                grid.rect
-            } else {
-                let lane = lanes.iter().position(|(name, global)| {
-                    raw["shader"].as_str() == Some(name)
-                        && raw["global"].as_bool().unwrap_or(false) == *global
-                })?;
-                column(grid, lane, lanes.len())
-            };
-            interval(app, grid, col, raw, app.shaders.animation_track().is_some())
+            let col = row_column(app, grid, name, i, raw)?;
+            interval(app, grid, col, raw, name.is_some())
                 .filter(|r| r.expand2(vec2(0., 8.)).contains(pos))
                 .map(|_| i)
         })

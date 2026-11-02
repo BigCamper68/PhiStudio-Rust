@@ -75,16 +75,8 @@ pub fn geometry(area: Rect, app: &Workbench) -> Grid {
     let full = Rect::from_min_max(area.min + vec2(38., 22.), area.max - vec2(14., 0.));
     let split = full.left() + full.width() * app.timeline_split.clamp(0.35, 0.7);
     Grid {
-        rect: if app.advanced.right_mode == crate::advanced_ui::RightMode::Shaders {
-            full
-        } else {
-            Rect::from_min_max(full.min, pos2(split - 6., full.bottom()))
-        },
-        event_rect: if app.advanced.right_mode == crate::advanced_ui::RightMode::Shaders {
-            full
-        } else {
-            Rect::from_min_max(pos2(split + 6., full.top()), full.max)
-        },
+        rect: Rect::from_min_max(full.min, pos2(split - 6., full.bottom())),
+        event_rect: Rect::from_min_max(pos2(split + 6., full.top()), full.max),
         beat: app.grid_beat(),
         zoom: app.zoom,
         division: if app.options.snap_time {

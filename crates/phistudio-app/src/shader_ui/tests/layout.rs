@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn shader_grid_uses_the_whole_canvas_and_reflows_with_the_inspector() {
+fn paired_shader_grids_reflow_with_the_inspector() {
     let mut app = app();
     app.add_shader();
     app.beat = 2.;
@@ -12,9 +12,9 @@ fn shader_grid_uses_the_whole_canvas_and_reflows_with_the_inspector() {
     }
     let original = app.editor.document().as_json().clone();
     let before = crate::grid_input::geometry(app.grid_area, &app);
-    assert_eq!(before.rect, before.event_rect);
+    assert!(before.rect.right() < before.event_rect.left());
     assert!((before.rect.left() - app.grid_area.left() - 38.).abs() < 0.1);
-    assert!((app.grid_area.right() - before.rect.right() - 14.).abs() < 0.1);
+    assert!((app.grid_area.right() - before.event_rect.right() - 14.).abs() < 0.1);
     let handle = pos2(app.grid_area.right() - 3., 350.);
     frame(&mut app, &ctx, size, vec![pointer(handle, true)]);
     frame(
@@ -30,11 +30,11 @@ fn shader_grid_uses_the_whole_canvas_and_reflows_with_the_inspector() {
         vec![pointer(handle - vec2(80., 0.), false)],
     );
     let narrow = crate::grid_input::geometry(app.grid_area, &app);
-    assert!(narrow.rect.width() < before.rect.width() - 50.);
+    assert!(narrow.rect.width() < before.rect.width() - 25.);
     assert_eq!(before.y(3.), narrow.y(3.));
     assert_eq!(app.beat, 2.);
     let out = frame(&mut app, &ctx, size, vec![]);
-    for label in ["Notes", "X 0", "Lock X"] {
+    for label in ["Notes", "Lock X"] {
         assert!(
             !out.shapes.iter().any(
                 |s| matches!(&s.1,egui::Shape::Text(t) if t.galley.job.text==label && t.pos.y > 40.)
@@ -47,9 +47,11 @@ fn shader_grid_uses_the_whole_canvas_and_reflows_with_the_inspector() {
         frame(&mut app, &ctx, size, vec![]);
     }
     let wide = crate::grid_input::geometry(app.grid_area, &app);
-    assert!(wide.rect.width() > narrow.rect.width() + 200.);
+    assert!(wide.rect.width() > narrow.rect.width() + 100.);
     let out = frame(&mut app, &ctx, size, vec![]);
-    assert!((text_position(&out, "L · chromatic").x - wide.rect.center().x).abs() < 2.);
+    assert!(
+        (text_position(&out, "X 1").x - wide.rect.left() - surface::EFFECT_WIDTH / 2.).abs() < 2.
+    );
     assert_eq!(app.editor.document().as_json(), &original);
 }
 

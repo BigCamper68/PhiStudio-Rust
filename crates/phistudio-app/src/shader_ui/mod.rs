@@ -22,7 +22,9 @@ use crate::{
 };
 use egui::{FontId, Rect, Sense, vec2};
 pub(crate) mod grid;
+pub(crate) mod layout;
 mod navigation;
+pub(crate) mod timeline;
 use phistudio_core::{Beat, Command, EventType, LineEvent, TempoMap, shaders::*};
 use serde_json::{Value, json};
 
@@ -59,6 +61,9 @@ pub(crate) struct ShaderState {
     tempo_rows: Option<Vec<BpmDraft>>,
     clipboard: Option<Value>,
     keyframe_clipboard: Option<Value>,
+    offsets: [f64; 2],
+    selection: std::collections::BTreeSet<grid::Item>,
+    selection_clipboard: Vec<(Option<String>, Value)>,
 }
 impl ShaderState {
     fn animation_track(&self) -> Option<&str> {

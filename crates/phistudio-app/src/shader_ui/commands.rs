@@ -70,6 +70,8 @@ impl Workbench {
             return;
         }
         self.shaders.selected = Some(index);
+        self.shaders.selection.clear();
+        self.shaders.offsets[1] = 0.;
         self.shaders.track = None;
         self.shaders.page = ShaderPage::Effect;
         self.shaders.key = None;

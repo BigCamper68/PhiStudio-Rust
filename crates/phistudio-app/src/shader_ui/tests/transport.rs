@@ -72,7 +72,7 @@ fn shader_keyframe_grid_preserves_the_independent_clock_and_unknown_fields() {
     let original = app.editor.document().as_json().clone();
     let grid =
         crate::grid_input::geometry(Rect::from_min_max(pos2(0., 80.), pos2(900., 1100.)), &app);
-    let a = pos2(grid.event_rect.center().x, grid.y(2.));
+    let a = pos2(parameter_x(&app, grid, "power"), grid.y(2.));
     let b = a - vec2(0., 96.);
     let count = app.editor.history_rows().len();
     crate::grid_input::handle(

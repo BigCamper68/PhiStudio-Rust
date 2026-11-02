@@ -39,10 +39,7 @@ impl Workbench {
                                 (Tool::BoxSelect, "Box", text()),
                                 (Tool::Erase, "Erase", flick()),
                             ] {
-                                if shaders
-                                    && (matches!(tool, Tool::Place(_))
-                                        || (!noise && tool == Tool::BoxSelect))
-                                {
+                                if shaders && matches!(tool, Tool::Place(_)) {
                                     continue;
                                 }
                                 if ui

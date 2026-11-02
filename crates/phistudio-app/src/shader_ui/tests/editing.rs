@@ -76,8 +76,8 @@ fn interval_drag_commits_once_and_keeps_pending_uniform_changes() {
     }
     app.shaders.draft.as_mut().unwrap().raw["vars"]["power"] = json!(0.25);
     frame(&mut app, &ctx, size, vec![]);
-    let grid = crate::grid_input::geometry(app.grid_area, &app).events();
-    let pos = pos2(grid.rect.center().x, grid.y(2.));
+    let grid = crate::grid_input::geometry(app.grid_area, &app);
+    let pos = pos2(effect_x(&app, grid, 0), grid.y(2.));
     frame(
         &mut app,
         &ctx,
@@ -113,7 +113,7 @@ fn shader_vertical_resize_and_erase_are_single_reversible_gestures() {
     let original = app.editor.document().as_json().clone();
     let grid =
         crate::grid_input::geometry(Rect::from_min_max(pos2(0., 80.), pos2(900., 700.)), &app);
-    let x = grid.event_rect.center().x;
+    let x = effect_x(&app, grid, 0);
     let start = pos2(x, grid.y(4.));
     let end = pos2(x, grid.y(5.));
     let count = app.editor.history_rows().len();
@@ -136,6 +136,8 @@ fn shader_vertical_resize_and_erase_are_single_reversible_gestures() {
     app.refresh_shaders();
     assert_eq!(app.editor.document().as_json(), &original);
     app.add_shader();
+    app.shaders.draft.as_mut().unwrap().raw["phiStudioEditorX"] = json!(0.);
+    assert!(app.flush_shader_draft());
     let erase_original = app.editor.document().as_json().clone();
     let count = app.editor.history_rows().len();
     app.set_tool(crate::workbench::Tool::Erase);

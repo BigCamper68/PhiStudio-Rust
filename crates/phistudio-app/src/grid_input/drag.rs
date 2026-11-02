@@ -112,11 +112,14 @@ pub(super) fn update(app: &mut Workbench, pos: Pos2) {
                             | Intent::SelectStory(..)
                             | Intent::Place(..)
                             | Intent::Pan
+                            | Intent::SelectShader(..)
                     ) && (!matches!(
                         intent,
                         Intent::SelectEvent(..) | Intent::SelectStory(..)
                     ) || app.multi_active(true))
-                        && (!app.options.lock_horizontal || panel_scroll)
+                        && (!app.options.lock_horizontal
+                            || panel_scroll
+                            || matches!(intent, Intent::SelectShader(..)))
                         && grid.rect.contains(*origin)
                         && delta.x.abs() > 18.
                         && delta.x.abs() > delta.y.abs() * 2.
@@ -129,7 +132,10 @@ pub(super) fn update(app: &mut Workbench, pos: Pos2) {
                     return;
                 };
                 if horizontal {
-                    if panel_scroll {
+                    if matches!(intent, Intent::SelectShader(..)) {
+                        app.grid_input.panel_navigation = true;
+                        crate::shader_ui::layout::navigate(app, *grid, delta.x);
+                    } else if panel_scroll {
                         app.grid_input.panel_navigation = true;
                         let i = usize::from(app.multi_line.events);
                         app.multi_line.offsets[i] = (app.grid_input.panel_offset - delta.x).max(0.);

@@ -1,10 +1,11 @@
 //! Shader tracks use the ordinary vertical grid and its ordered touch router.
 mod hit_test;
-use hit_test::{at, column, hit, hits, interval, lanes, rows};
+use hit_test::{at, hit, hits, interval, row_column, rows, rows_for};
 pub(crate) use hit_test::{cycle_hits, selected_hit};
 mod gestures;
-pub(crate) use gestures::{begin, finish, select, tap, update};
+pub(crate) use gestures::{begin_dual, finish, select, tap, update};
 mod paint;
+mod selection;
 use super::*;
 use crate::{
     grid_input::{Gesture, Grid, Intent, IntervalDrag},
@@ -13,12 +14,27 @@ use crate::{
 use egui::{Align2, Pos2, Stroke, pos2};
 pub(crate) use paint::paint;
 use phistudio_core::{StoryEvent, StoryKind};
+pub(super) use selection::{Item, selection_key};
 use std::collections::BTreeSet;
 
 pub(crate) enum ShaderGesture {
     Edit(Box<Edit>),
+    Navigate {
+        grid: Grid,
+        origin: Pos2,
+        offset: f64,
+        horizontal: Option<bool>,
+    },
+    Box {
+        grid: Grid,
+        keys: bool,
+        origin: Pos2,
+        current: Pos2,
+        additive: bool,
+    },
     Erase {
-        ids: BTreeSet<usize>,
+        ids: BTreeSet<Item>,
+        keys: bool,
         grid: Grid,
         last: Pos2,
     },
@@ -38,4 +54,6 @@ pub(crate) struct Edit {
     grid: Grid,
     interval: IntervalDrag,
     moved: bool,
+    lane: f64,
+    group: Vec<(Item, Value)>,
 }

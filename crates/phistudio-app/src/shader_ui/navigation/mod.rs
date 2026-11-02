@@ -1,5 +1,5 @@
-//! Effect → parameter → animation navigation follows the Java shader editor.
-//! Navigation stays outside the scrolling inspector and always has a return path.
+//! Paired timelines select effects and uniforms; the inspector exposes properties,
+//! animation and the independent FX tempo with explicit return navigation.
 mod parameters;
 mod tempo;
 use super::*;
@@ -111,23 +111,90 @@ impl Workbench {
         }
         true
     }
+    pub(super) fn shader_left_navigation(&mut self, ui: &mut egui::Ui) {
+        ui.set_enabled(!self.modal_open());
+        ui.spacing_mut().interact_size.y = 24.;
+        crate::timeline::navigation_row(ui, "shader-effect-navigation", |ui| {
+            let mut x = self.shaders.offsets[0] + 1.;
+            let mut changed = false;
+            if ui.add_sized([24., 24.], egui::Button::new("<")).clicked() {
+                x -= 1.;
+                changed = true;
+            }
+            changed |= ui
+                .add_sized(
+                    [64., 24.],
+                    crate::numeric::Value::new(&mut x)
+                        .speed(0.05)
+                        .prefix("X ")
+                        .max_decimals(2),
+                )
+                .changed();
+            if ui.add_sized([24., 24.], egui::Button::new(">")).clicked() {
+                x += 1.;
+                changed = true;
+            }
+            if changed {
+                self.shaders.offsets[0] = x - 1.;
+                self.drag = None;
+                self.grid_input.cancel();
+            }
+        });
+        crate::timeline::navigation_row(ui, "shader-preset-navigation", |ui| {
+            egui::ComboBox::from_id_source("shader-placement-preset")
+                .width(110.)
+                .selected_text(crate::i18n::format(
+                    "New: {0}",
+                    &[PRESETS[self.shaders.preset].to_owned()],
+                ))
+                .touch_show_ui(ui, |ui| {
+                    for (i, preset) in PRESETS.iter().enumerate() {
+                        ui.selectable_value(&mut self.shaders.preset, i, *preset);
+                    }
+                });
+        });
+    }
+    pub(super) fn shader_page_selector(&mut self, ui: &mut egui::Ui) {
+        let mut page = self.shaders.page;
+        let label = |page| match page {
+            ShaderPage::Effect => "Effect",
+            ShaderPage::Parameters => "Parameters",
+            ShaderPage::Animation => "Animation",
+            ShaderPage::Tempo => "FX BPM",
+        };
+        egui::ComboBox::from_id_source("shader-inspector-page")
+            .width(90.)
+            .selected_text(crate::i18n::tr(label(page)))
+            .touch_show_ui(ui, |ui| {
+                for value in [
+                    ShaderPage::Effect,
+                    ShaderPage::Parameters,
+                    ShaderPage::Animation,
+                    ShaderPage::Tempo,
+                ] {
+                    ui.add_enabled_ui(
+                        self.shaders.selected.is_some()
+                            || matches!(value, ShaderPage::Effect | ShaderPage::Tempo),
+                        |ui| {
+                            ui.selectable_value(&mut page, value, crate::i18n::tr(label(value)));
+                        },
+                    );
+                }
+            });
+        if page != self.shaders.page {
+            self.shader_navigate(page, None);
+        }
+    }
     pub(crate) fn shader_navigation(&mut self, ui: &mut egui::Ui) {
         self.refresh_shaders();
         ui.set_enabled(!self.modal_open());
         ui.spacing_mut().interact_size.y = 24.;
         ui.spacing_mut().button_padding.y = 3.;
         ui.spacing_mut().item_spacing.y = 4.;
-        ui.spacing_mut().scroll_bar_width = 3.;
-        ui.spacing_mut().scroll_bar_inner_margin = 1.;
         crate::timeline::navigation_row(ui, "shader-main-navigation-scroll", |ui| {
             self.workspace_selector(ui);
             if self.advanced.right_mode != RightMode::Shaders {
                 return;
-            }
-            if self.shaders.page != ShaderPage::Effect
-                && ui.button(crate::i18n::tr("Back to effect")).clicked()
-            {
-                self.shader_navigate(ShaderPage::Effect, None);
             }
             let mut selected = self.shaders.selected;
             let label = selected
@@ -137,103 +204,76 @@ impl Workbench {
                         .get(i)
                         .map(|e| format!("#{} · {}", i + 1, e.shader))
                 })
-                .unwrap_or_else(|| "Select effect".into());
-            let placing = self.tool == crate::workbench::Tool::Event
-                && self.shaders.animation_track().is_none();
+                .unwrap_or_else(|| crate::i18n::tr("Select effect"));
+            let font = egui::TextStyle::Button.resolve(ui.style());
+            let mut job =
+                egui::text::LayoutJob::simple(label, font, ui.visuals().text_color(), 74.);
+            job.wrap.max_rows = 1;
+            let label = ui.fonts(|fonts| fonts.layout_job(job));
+            let mut jump = false;
             egui::ComboBox::from_id_source("shader-effect-list")
-                .width((ui.available_width() - if placing { 120. } else { 0. }).clamp(90., 260.))
-                .selected_text(crate::i18n::tr(label))
+                .width(104.)
+                .selected_text(label)
                 .touch_show_ui(ui, |ui| {
                     for (i, effect) in self.shaders.effects.iter().enumerate() {
-                        ui.selectable_value(
-                            &mut selected,
-                            Some(i),
-                            format!(
-                                "#{} · {} · {}–{}",
-                                i + 1,
-                                effect.shader,
-                                effect.start,
-                                effect.end
-                            ),
-                        );
+                        jump |= ui
+                            .selectable_value(
+                                &mut selected,
+                                Some(i),
+                                format!(
+                                    "#{} · {} · {}–{}",
+                                    i + 1,
+                                    effect.shader,
+                                    effect.start,
+                                    effect.end
+                                ),
+                            )
+                            .clicked();
                     }
                 });
-            if selected != self.shaders.selected
-                && let Some(index) = selected
-            {
-                self.select_shader(index);
-            }
-            if placing {
-                egui::ComboBox::from_id_source("shader-placement-preset")
-                    .width(100.)
-                    .selected_text({
-                        let __i18n_arg_0 = &(PRESETS[self.shaders.preset]);
-                        crate::i18n::format("New: {0}", &[__i18n_arg_0.to_string()])
-                    })
-                    .touch_show_ui(ui, |ui| {
-                        for (i, preset) in PRESETS.iter().enumerate() {
-                            ui.selectable_value(&mut self.shaders.preset, i, *preset);
-                        }
-                    });
+            if jump && let Some(index) = selected {
+                self.jump_shader(index, crate::grid_input::geometry(self.grid_area, self));
             }
         });
-        egui::ScrollArea::horizontal()
-            .id_source("shader-pages-scroll")
-            .touch_show_x(ui, |ui| {
-                ui.horizontal(|ui| {
-                    let mut page = self.shaders.page;
-                    let mut activated = false;
-                    for (value, label) in [
-                        (ShaderPage::Effect, "Effect"),
-                        (ShaderPage::Parameters, "Parameters"),
-                        (ShaderPage::Animation, "Animation"),
-                        (ShaderPage::Tempo, "FX BPM"),
-                    ] {
-                        if ui
-                            .add_enabled(
-                                self.shaders.selected.is_some()
-                                    || matches!(value, ShaderPage::Effect | ShaderPage::Tempo),
-                                egui::SelectableLabel::new(page == value, crate::i18n::tr(label)),
-                            )
-                            .clicked()
-                        {
-                            page = value;
-                            activated = true;
+        crate::timeline::navigation_row(ui, "shader-parameter-navigation", |ui| {
+            if !self.shaders.parameters.is_empty() {
+                let mut name = self
+                    .shaders
+                    .track
+                    .clone()
+                    .unwrap_or_else(|| self.shaders.parameters[0].name.clone());
+                let mut chosen = false;
+                egui::ComboBox::from_id_source("shader-parameter-choice")
+                    .width(88.)
+                    .selected_text(&name)
+                    .touch_show_ui(ui, |ui| {
+                        for parameter in &self.shaders.parameters {
+                            chosen |= ui
+                                .selectable_value(
+                                    &mut name,
+                                    parameter.name.clone(),
+                                    &parameter.name,
+                                )
+                                .clicked();
                         }
-                    }
-                    if page != self.shaders.page {
-                        self.shader_navigate(page, None);
-                    } else if activated {
-                        self.show_context = true;
-                        self.properties_scroll = true;
-                    }
-                    if matches!(
-                        self.shaders.page,
-                        ShaderPage::Parameters | ShaderPage::Animation
-                    ) && !self.shaders.parameters.is_empty()
+                    });
+                if chosen {
+                    let page = if self.shaders.page == ShaderPage::Animation {
+                        ShaderPage::Animation
+                    } else {
+                        ShaderPage::Parameters
+                    };
+                    self.shader_navigate(page, Some(name.clone()));
+                    let grid = crate::grid_input::geometry(self.grid_area, self).events();
+                    if let Some(index) = self.shaders.parameters.iter().position(|p| p.name == name)
                     {
-                        let mut name = self
-                            .shaders
-                            .track
-                            .clone()
-                            .unwrap_or_else(|| self.shaders.parameters[0].name.clone());
-                        egui::ComboBox::from_id_source("shader-parameter-choice")
-                            .width(ui.available_width().clamp(60., 150.))
-                            .selected_text(&name)
-                            .touch_show_ui(ui, |ui| {
-                                for parameter in &self.shaders.parameters {
-                                    ui.selectable_value(
-                                        &mut name,
-                                        parameter.name.clone(),
-                                        &parameter.name,
-                                    );
-                                }
-                            });
-                        if self.shaders.track.as_ref() != Some(&name) {
-                            self.shader_navigate(self.shaders.page, Some(name));
-                        }
+                        let visible =
+                            f64::from(grid.rect.width() / layout::width(self, grid, true));
+                        self.shaders.offsets[1] = (index as f64 + 0.5 - visible / 2.)
+                            .clamp(0., layout::max_offset(self, grid));
                     }
-                });
-            });
+                }
+            }
+        });
     }
 }

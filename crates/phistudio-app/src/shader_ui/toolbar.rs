@@ -61,43 +61,34 @@ impl Workbench {
         self.refresh_shaders();
         let valid = self.shaders.error.is_none();
         ui.add_enabled_ui(valid, |ui| {
-            let selected = self.shaders.selected;
-            if ui
-                .add_enabled(
-                    selected.is_some(),
-                    egui::Button::new(crate::i18n::tr("Duplicate effect")),
-                )
-                .clicked()
-                && self.flush_shader_draft()
-            {
-                self.refresh_shaders();
-                let i = selected.unwrap();
-                if self.shader_command(ShaderAction::Insert {
-                    index: i + 1,
-                    effect: self.shaders.source["effects"][i].clone(),
-                }) {
-                    self.shaders.selected = Some(i + 1);
-                    self.refresh_shaders();
+            let selected = self.shaders.selected.is_some()
+                && (self.shaders.animation_track().is_none()
+                    || self.shaders.animation.is_some()
+                    || !self.shaders.selection.is_empty());
+            for (label, key) in [("Duplicate", egui::Key::D), ("Copy", egui::Key::C)] {
+                if ui
+                    .add_enabled(selected, egui::Button::new(crate::i18n::tr(label)))
+                    .clicked()
+                {
+                    self.shader_key(key, egui::Modifiers::COMMAND);
                 }
             }
+            let paste = if self.shaders.animation_track().is_some() {
+                self.shaders.keyframe_clipboard.is_some()
+            } else {
+                self.shaders.clipboard.is_some()
+            } || !self.shaders.selection_clipboard.is_empty();
             if ui
-                .add_enabled(
-                    if self.shaders.animation_track().is_some() {
-                        self.shaders.animation.is_some()
-                    } else {
-                        selected.is_some()
-                    },
-                    egui::Button::new(crate::i18n::tr(
-                        if self.shaders.animation_track().is_some() {
-                            "Delete keyframe"
-                        } else {
-                            "Delete effect"
-                        },
-                    )),
-                )
+                .add_enabled(paste, egui::Button::new(crate::i18n::tr("Paste")))
                 .clicked()
             {
-                self.shader_delete();
+                self.shader_key(egui::Key::V, egui::Modifiers::COMMAND);
+            }
+            if ui
+                .add_enabled(selected, egui::Button::new(crate::i18n::tr("Delete")))
+                .clicked()
+            {
+                self.shader_key(egui::Key::Delete, egui::Modifiers::NONE);
             }
             if ui.button(crate::i18n::tr("Import GLSL")).clicked() {
                 self.open_media_picker(MediaKind::Shader);

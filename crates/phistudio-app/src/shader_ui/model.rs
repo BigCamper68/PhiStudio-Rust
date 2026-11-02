@@ -9,6 +9,7 @@ impl Workbench {
         let selected = self.shaders.selected;
         let animation_index = self.shaders.animation.as_ref().map_or(0, |a| a.index);
         self.shaders.key = Some(key);
+        self.shaders.selection.clear();
         self.shaders.draft = None;
         self.shaders.animation = None;
 

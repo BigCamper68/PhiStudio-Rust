@@ -1,4 +1,5 @@
 mod notes;
+pub(crate) mod paired;
 pub use crate::grid_input::Gesture;
 use crate::{
     grid_input::{self, Grid},
@@ -18,6 +19,8 @@ pub fn show(app: &mut Workbench, ui: &mut egui::Ui, canceled: bool, resizing_sid
         if app.shader_source_view(ui) {
             return;
         }
+        crate::shader_ui::timeline::show(app, ui, canceled, resizing_sidebar);
+        return;
     }
     if app.advanced.right_mode == crate::advanced_ui::RightMode::NoiseFields {
         app.refresh_noise();

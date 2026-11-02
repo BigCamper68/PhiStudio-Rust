@@ -1238,6 +1238,7 @@
   "Skin exceeds the 32 MiB file / 128 MiB total limit": "Скин превышает 32 MiB на файл или 128 MiB суммарно",
   "Skin exceeds the extraction limit": "Скин превышает ограничение распаковки",
   "Skin library load interrupted": "Загрузка библиотеки скинов прервана",
+  "Snap shader X to grid": "Привязывать X шейдера к сетке",
   "Snap note X to lanes": "Привязывать X нот к дорожкам",
   "Snap time to grid": "Привязывать время к сетке",
   "Sound attack markers": "Маркеры атак звука",

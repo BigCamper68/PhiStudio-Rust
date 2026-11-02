@@ -6,6 +6,9 @@ impl Workbench {
             return;
         }
         self.refresh_shaders();
+        if matches!(key, egui::Key::C | egui::Key::X | egui::Key::D) {
+            self.shaders.selection_clipboard.clear();
+        }
         let Some(name) = self.shaders.animation_track().map(str::to_owned) else {
             return;
         };
@@ -72,6 +75,13 @@ impl Workbench {
     pub(crate) fn shader_key(&mut self, key: egui::Key, modifiers: egui::Modifiers) -> bool {
         use egui::{Key, Modifiers};
         self.refresh_shaders();
+        if (modifiers.matches(Modifiers::COMMAND)
+            && matches!(key, Key::C | Key::X | Key::D | Key::V)
+            || modifiers.matches(Modifiers::NONE) && key == Key::Delete)
+            && grid::selection_key(self, key)
+        {
+            return true;
+        }
         if modifiers.matches(Modifiers::COMMAND | Modifiers::SHIFT) && key == Key::Z {
             self.history_step(true);
             return true;
@@ -89,13 +99,16 @@ impl Workbench {
                 Key::Y => self.history_step(true),
                 Key::S => self.save_action(),
                 Key::C | Key::X | Key::D => {
+                    self.shaders.selection_clipboard.clear();
                     if !self.flush_shader_draft() {
                         return true;
                     }
                     self.refresh_shaders();
                     if let Some(i) = self.shaders.selected {
-                        let effect = self.shaders.source["effects"][i].clone();
+                        let mut effect = self.shaders.source["effects"][i].clone();
                         if key == Key::D {
+                            let lane = layout::lane(&effect, i) + 1.;
+                            layout::place(&mut effect, lane);
                             self.shader_command(ShaderAction::Insert {
                                 index: i + 1,
                                 effect,
@@ -113,8 +126,9 @@ impl Workbench {
                 Key::V => {
                     if self.flush_shader_draft() {
                         self.refresh_shaders();
-                        if let Some(effect) = self.shaders.clipboard.clone() {
+                        if let Some(mut effect) = self.shaders.clipboard.clone() {
                             let index = self.shaders.effects.len();
+                            layout::place(&mut effect, index as f64);
                             self.shader_command(ShaderAction::Insert { index, effect });
                             self.shaders.selected = Some(index);
                         }

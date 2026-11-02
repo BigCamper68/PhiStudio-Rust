@@ -17,7 +17,7 @@ fn overlapping_keyframes_cycle_without_history_and_drag_the_selected_lower_row()
     let count = app.editor.history_rows().len();
     let grid =
         crate::grid_input::geometry(Rect::from_min_max(pos2(0., 80.), pos2(900., 700.)), &app);
-    let p = pos2(grid.event_rect.center().x, grid.y(3.));
+    let p = pos2(parameter_x(&app, grid, "power"), grid.y(3.));
     for index in [2, 1, 0, 2, 1] {
         crate::grid_input::handle(
             &mut app,
@@ -121,7 +121,7 @@ fn first_keyframe_can_be_drawn_from_float_or_rgba_constants() {
         app.set_tool(crate::workbench::Tool::Event);
         let grid =
             crate::grid_input::geometry(Rect::from_min_max(pos2(0., 80.), pos2(900., 700.)), &app);
-        let a = pos2(grid.rect.center().x, grid.y(0.));
+        let a = pos2(parameter_x(&app, grid, name), grid.y(0.));
         let b = pos2(a.x, grid.y(1.));
         let count = app.editor.history_rows().len();
         crate::grid_input::handle(

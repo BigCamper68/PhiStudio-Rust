@@ -1238,6 +1238,7 @@
   "Skin exceeds the 32 MiB file / 128 MiB total limit": "Skin exceeds the 32 MiB file / 128 MiB total limit",
   "Skin exceeds the extraction limit": "Skin exceeds the extraction limit",
   "Skin library load interrupted": "Skin library load interrupted",
+  "Snap shader X to grid": "Snap shader X to grid",
   "Snap note X to lanes": "Snap note X to lanes",
   "Snap time to grid": "Snap time to grid",
   "Sound attack markers": "Sound attack markers",

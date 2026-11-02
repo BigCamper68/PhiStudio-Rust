@@ -2,8 +2,10 @@ mod animation;
 mod editing;
 mod layout;
 mod navigation;
+mod paired;
 mod transport;
 use super::*;
+use crate::shader_ui::layout as surface;
 
 use egui::pos2;
 
@@ -83,4 +85,37 @@ fn pointer(pos: egui::Pos2, pressed: bool) -> egui::Event {
         pressed,
         modifiers: Default::default(),
     }
+}
+
+fn effect_x(app: &Workbench, grid: crate::grid_input::Grid, index: usize) -> f32 {
+    surface::column(
+        app,
+        grid,
+        false,
+        surface::lane(&app.shaders.source["effects"][index], index),
+    )
+    .center()
+    .x
+}
+fn parameter_x(app: &Workbench, grid: crate::grid_input::Grid, name: &str) -> f32 {
+    surface::parameter_column(app, grid.events(), name)
+        .unwrap()
+        .center()
+        .x
+}
+fn choose_page(app: &mut Workbench, ctx: &egui::Context, size: egui::Vec2, page: &str) {
+    let label = match app.shaders.page {
+        ShaderPage::Effect => "Effect",
+        ShaderPage::Parameters => "Parameters",
+        ShaderPage::Animation => "Animation",
+        ShaderPage::Tempo => "FX BPM",
+    };
+    app.properties_scroll = true;
+    for _ in 0..20 {
+        frame(app, ctx, size, vec![]);
+    }
+    let out = frame(app, ctx, size, vec![]);
+    click(app, ctx, size, text_position(&out, label));
+    let out = frame(app, ctx, size, vec![]);
+    click(app, ctx, size, text_position(&out, page));
 }

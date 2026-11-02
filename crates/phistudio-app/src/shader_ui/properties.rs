@@ -7,6 +7,12 @@ impl Workbench {
             ui.colored_label(flick(), crate::i18n::tr(e));
             return;
         }
+        self.shader_page_selector(ui);
+        if self.shaders.page != ShaderPage::Effect
+            && ui.button(crate::i18n::tr("Back to effect")).clicked()
+        {
+            self.shader_navigate(ShaderPage::Effect, None);
+        }
         match self.shaders.page {
             ShaderPage::Parameters => {
                 self.shader_parameter_ui(ui);

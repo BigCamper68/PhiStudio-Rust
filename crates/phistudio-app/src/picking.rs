@@ -359,10 +359,14 @@ mod tests {
                 baseline: baseline.clone(),
                 action: ShaderAction::Insert {
                     index,
-                    effect: serde_json::json!(ShaderEffect::new(
-                        Beat::new(2, 0, 1).unwrap(),
-                        Beat::new(4, 0, 1).unwrap()
-                    )),
+                    effect: {
+                        let mut effect = serde_json::json!(ShaderEffect::new(
+                            Beat::new(2, 0, 1).unwrap(),
+                            Beat::new(4, 0, 1).unwrap()
+                        ));
+                        effect["phiStudioEditorX"] = serde_json::json!(0.);
+                        effect
+                    },
                 },
             });
         }
@@ -370,7 +374,7 @@ mod tests {
         app.editor.mark_saved();
         let original = app.editor.document().as_json().clone();
         let g = grid(&app);
-        let p = pos2(g.rect.center().x, g.y(3.));
+        let p = pos2(g.rect.left() + 26., g.y(3.));
         for index in [2, 1, 0, 2, 1] {
             click(&mut app, p);
             assert_eq!(app.shaders.selected, Some(index));

@@ -1238,6 +1238,7 @@
   "Skin exceeds the 32 MiB file / 128 MiB total limit": "스킨이 파일당 32 MiB / 총 128 MiB 제한을 초과합니다",
   "Skin exceeds the extraction limit": "스킨이 압축 해제 제한을 초과합니다",
   "Skin library load interrupted": "스킨 라이브러리 불러오기가 중단되었습니다",
+  "Snap shader X to grid": "셰이더 X를 격자에 맞추기",
   "Snap note X to lanes": "노트 X를 레인에 맞추기",
   "Snap time to grid": "시간을 그리드에 맞추기",
   "Sound attack markers": "소리 어택 마커",

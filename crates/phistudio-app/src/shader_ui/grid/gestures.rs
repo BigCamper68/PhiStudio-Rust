@@ -7,6 +7,38 @@ pub(crate) fn tap(gesture: &ShaderGesture) -> Option<(Grid, Pos2)> {
     }
 }
 
+pub(crate) fn begin_dual(app: &mut Workbench, grid: Grid, pos: Pos2) -> Option<Gesture> {
+    app.refresh_shaders();
+    let keys = grid.event_rect.contains(pos);
+    let mut surface = if keys {
+        grid.events()
+    } else {
+        Grid {
+            event_rect: grid.rect,
+            ..grid
+        }
+    };
+    let parameter = if keys {
+        if let Some(parameter) = layout::parameter_at(app, surface, pos) {
+            Some(parameter)
+        } else {
+            return Some(Gesture::Shader(Box::new(ShaderGesture::Navigate {
+                grid: surface,
+                origin: pos,
+                offset: app.shaders.offsets[1],
+                horizontal: None,
+            })));
+        }
+    } else {
+        None
+    };
+    if !app.focus_shader_grid(parameter) {
+        return None;
+    }
+    surface.camera_x = app.shaders.offsets[usize::from(keys)];
+    begin(app, surface, pos)
+}
+
 pub(crate) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2) -> Option<Gesture> {
     app.refresh_shaders();
     if app.shaders.error.is_some() {
@@ -28,9 +60,28 @@ pub(crate) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2) -> Option<Gestur
         }
         app.refresh_shaders();
         return Some(Gesture::Shader(Box::new(ShaderGesture::Erase {
-            ids: hits(app, grid, pos).into_iter().collect(),
+            ids: selection::box_hits(
+                app,
+                grid,
+                app.shaders.animation_track().is_some(),
+                Rect::from_center_size(pos, vec2(1., 16.)),
+            ),
+            keys: app.shaders.animation_track().is_some(),
             grid,
             last: pos,
+        })));
+    }
+    let item = found.map(|i| Item::new(app.shaders.animation_track(), i));
+    let in_group = item
+        .as_ref()
+        .is_some_and(|id| app.shaders.selection.contains(id));
+    if app.tool == Tool::BoxSelect && !in_group {
+        return Some(Gesture::Shader(Box::new(ShaderGesture::Box {
+            grid,
+            keys: app.shaders.animation_track().is_some(),
+            origin: pos,
+            current: pos,
+            additive: app.tools.additive,
         })));
     }
     let selected = if app.shaders.animation_track().is_some() {
@@ -38,7 +89,7 @@ pub(crate) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2) -> Option<Gestur
     } else {
         app.shaders.selected
     };
-    if app.tool != Tool::Event && (found.is_none() || found != selected) {
+    if app.tool != Tool::Event && !in_group && (found.is_none() || found != selected) {
         return Some(Gesture::Tap {
             origin: pos,
             grid,
@@ -89,12 +140,8 @@ pub(crate) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2) -> Option<Gestur
             json!({"startTime":start,"endTime":end,"start":value,"end":value,"easingType":1})
         } else {
             let mut raw = json!(ShaderEffect::new(start, end));
-            let lanes = lanes(app);
-            let lane = (((pos.x - grid.rect.left()) / grid.rect.width() * lanes.len() as f32)
-                .floor() as usize)
-                .min(lanes.len() - 1);
-            raw["shader"] = json!(lanes[lane].0);
-            raw["global"] = json!(lanes[lane].1);
+            raw["shader"] = json!(PRESETS[app.shaders.preset]);
+            layout::place(&mut raw, layout::at(app, grid, false, pos));
             raw
         }
     } else if let Some((name, index)) = &keyframe {
@@ -111,6 +158,20 @@ pub(crate) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2) -> Option<Gestur
     let b: Beat = serde_json::from_value(raw[keys[1]].clone()).ok()?;
     let da = (pos.y - grid.y(a.as_f64())).abs();
     let db = (pos.y - grid.y(b.as_f64())).abs();
+    let group = if !creating && in_group {
+        selection::items(app, keyframe.is_some())
+            .into_iter()
+            .filter(|(id, _)| app.shaders.selection.contains(id))
+            .collect::<Vec<_>>()
+    } else {
+        vec![]
+    };
+    let earliest = group
+        .iter()
+        .filter_map(|(_, raw)| serde_json::from_value::<Beat>(raw[keys[0]].clone()).ok())
+        .min()
+        .unwrap_or(a);
+    let lane = layout::lane(&raw, effect);
     Some(Gesture::Shader(Box::new(ShaderGesture::Edit(Box::new(
         Edit {
             effect,
@@ -121,15 +182,20 @@ pub(crate) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2) -> Option<Gestur
             origin: pos,
             grid,
             moved: false,
+            lane,
+            group,
             interval: IntervalDrag {
                 original: [a, b],
                 current: [a, b],
                 origin: at(app, grid, pos.y),
-                earliest: a,
+                earliest,
                 handle: if creating {
                     Some(false)
                 } else {
-                    (da.min(db) <= 14.).then_some(da <= db)
+                    (app.shaders.selection.len() < 2
+                        && da.min(db) <= 14.
+                        && da.min(db) < (grid.y(a.as_f64()) - grid.y(b.as_f64())).abs() * 0.35)
+                        .then_some(da <= db)
                 },
             },
         },
@@ -138,6 +204,7 @@ pub(crate) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2) -> Option<Gestur
 
 pub(crate) fn select(app: &mut Workbench, id: Option<usize>) {
     app.playing = false;
+    app.shaders.selection.clear();
     if let Some(name) = app.shaders.animation_track().map(str::to_owned) {
         if !app.apply_shader_animation() {
             return;
@@ -153,13 +220,40 @@ pub(crate) fn select(app: &mut Workbench, id: Option<usize>) {
     } else if app.flush_shader_draft() {
         app.shaders.selected = None;
         app.shaders.draft = None;
+        app.shaders.parameters.clear();
+        app.shaders.animation = None;
+        app.shaders.track = None;
     }
     app.show_context = true;
     app.properties_scroll = true;
 }
 
-pub(crate) fn update(app: &Workbench, gesture: &mut ShaderGesture, pos: Pos2) {
+pub(crate) fn update(app: &mut Workbench, gesture: &mut ShaderGesture, pos: Pos2) {
     match gesture {
+        ShaderGesture::Navigate {
+            grid,
+            origin,
+            offset,
+            horizontal,
+        } => {
+            let delta = pos - *origin;
+            if horizontal.is_none() {
+                if delta.y.abs() > 8. && delta.y.abs() >= delta.x.abs() * 0.6 {
+                    *horizontal = Some(false);
+                } else if delta.x.abs() > 18. && delta.x.abs() > delta.y.abs() * 2. {
+                    *horizontal = Some(true);
+                }
+            }
+            if *horizontal == Some(true) {
+                app.shaders.offsets[1] = *offset;
+                layout::pan(app, *grid, true, -f64::from(delta.x));
+            } else if *horizontal == Some(false) {
+                app.set_grid_beat(
+                    (grid.beat + f64::from(delta.y * grid.scroll_speed / grid.zoom)).max(0.),
+                );
+            }
+        }
+        ShaderGesture::Box { current, .. } => *current = pos,
         ShaderGesture::Edit(d) => {
             d.moved |= pos.distance(d.origin) > 8.;
             if d.creating || d.moved {
@@ -171,15 +265,34 @@ pub(crate) fn update(app: &Workbench, gesture: &mut ShaderGesture, pos: Pos2) {
                 };
                 d.current[keys[0]] = json!(d.interval.current[0]);
                 d.current[keys[1]] = json!(d.interval.current[1]);
+                if d.keyframe.is_none()
+                    && d.interval.handle.is_none()
+                    && (pos.x - d.origin.x).abs() > 8.
+                {
+                    let lane = layout::snap(
+                        d.grid,
+                        d.lane + f64::from((pos.x - d.origin.x) / layout::EFFECT_WIDTH),
+                    );
+                    if (lane - d.lane).abs() > f64::EPSILON {
+                        layout::place(&mut d.current, lane);
+                    }
+                }
             }
         }
-        ShaderGesture::Erase { ids, grid, last } => {
+        ShaderGesture::Erase {
+            ids,
+            keys,
+            grid,
+            last,
+        } => {
             let steps = ((pos.distance(*last) / 8.).ceil() as usize).clamp(1, 256);
             for i in 1..=steps {
-                ids.extend(hits(
+                let point = *last + (pos - *last) * (i as f32 / steps as f32);
+                ids.extend(selection::box_hits(
                     app,
                     *grid,
-                    *last + (pos - *last) * (i as f32 / steps as f32),
+                    *keys,
+                    Rect::from_center_size(point, vec2(1., 16.)),
                 ));
             }
             *last = pos;
@@ -189,8 +302,47 @@ pub(crate) fn update(app: &Workbench, gesture: &mut ShaderGesture, pos: Pos2) {
 
 pub(crate) fn finish(app: &mut Workbench, gesture: ShaderGesture) {
     match gesture {
+        ShaderGesture::Navigate { .. } => {}
+        ShaderGesture::Box {
+            grid,
+            keys,
+            origin,
+            current,
+            additive,
+        } => {
+            let mut ids = selection::box_hits(app, grid, keys, Rect::from_two_pos(origin, current));
+            if additive {
+                ids.extend(app.shaders.selection.iter().cloned());
+            }
+            if let Some(id) = ids.first() {
+                if keys {
+                    if app.focus_shader_grid(id.parameter.clone()) {
+                        select(app, Some(id.index));
+                    }
+                } else {
+                    app.select_shader(id.index);
+                }
+            }
+            if ids.is_empty() {
+                select(app, None);
+            }
+            app.shaders.selection = ids;
+        }
         ShaderGesture::Edit(d) => {
             if !d.creating && (!d.moved || d.current == d.original) {
+                return;
+            }
+            if d.group.len() > 1 {
+                let values = d
+                    .group
+                    .iter()
+                    .map(|(id, raw)| (id.clone(), selection::shifted(&d, id, raw)))
+                    .collect::<Vec<_>>();
+                let ids = values.iter().map(|(id, _)| id.clone()).collect();
+                if selection::commit_group(app, values) {
+                    app.refresh_shaders();
+                    app.shaders.selection = ids;
+                }
                 return;
             }
             if let Some((name, index)) = d.keyframe {
@@ -239,49 +391,9 @@ pub(crate) fn finish(app: &mut Workbench, gesture: ShaderGesture) {
             app.properties_scroll = true;
         }
         ShaderGesture::Erase { ids, .. } => {
-            if ids.is_empty() {
-                return;
+            if !ids.is_empty() {
+                selection::delete_group(app, ids);
             }
-            if let Some(name) = app.shaders.animation_track().map(str::to_owned) {
-                let Some(index) = app.shaders.selected else {
-                    return;
-                };
-                let mut effect = app.shaders.source["effects"][index].clone();
-                if let Some(rows) = effect["vars"][&name].as_array_mut() {
-                    let value = rows
-                        .first()
-                        .map(|r| r["start"].clone())
-                        .unwrap_or(json!(0.));
-                    for id in ids.iter().rev() {
-                        rows.remove(*id);
-                    }
-                    if rows.is_empty() {
-                        effect["vars"][&name] = value;
-                    }
-                    app.shader_command(ShaderAction::Update { index, effect });
-                }
-            } else {
-                let commands = ids
-                    .iter()
-                    .rev()
-                    .map(|&index| Command::EditShader {
-                        baseline: app.shaders.source.clone(),
-                        action: ShaderAction::Delete(index),
-                    })
-                    .collect();
-                let anchor = app.anchor();
-                match app.editor.execute_batch("Erase shader effects", commands) {
-                    Ok(true) => {
-                        app.playing = false;
-                        app.remember_anchor(anchor);
-                        app.shaders.selected = None;
-                    }
-                    Ok(false) => {}
-                    Err(e) => app.error = Some(e.to_string()),
-                }
-            }
-            app.shaders.key = None;
-            app.refresh_shaders();
         }
     }
 }

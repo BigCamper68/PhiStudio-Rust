@@ -3002,7 +3002,7 @@ dependencies = [
 
 [[package]]
 name = "phistudio-app"
-version = "1.29.6"
+version = "1.30.0"
 dependencies = [
  "anyhow",
  "cc",
@@ -3023,7 +3023,7 @@ dependencies = [
 
 [[package]]
 name = "phistudio-audio"
-version = "1.29.6"
+version = "1.30.0"
 dependencies = [
  "rustfft",
  "serde_json",
@@ -3033,7 +3033,7 @@ dependencies = [
 
 [[package]]
 name = "phistudio-core"
-version = "1.29.6"
+version = "1.30.0"
 dependencies = [
  "fs2",
  "glam 0.30.10",
@@ -3049,7 +3049,7 @@ dependencies = [
 
 [[package]]
 name = "phistudio-prpr"
-version = "1.29.6"
+version = "1.30.0"
 dependencies = [
  "anyhow",
  "async-trait",

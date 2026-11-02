@@ -1238,6 +1238,7 @@
   "Skin exceeds the 32 MiB file / 128 MiB total limit": "スキンが1ファイル32 MiB / 合計128 MiBの制限を超えています",
   "Skin exceeds the extraction limit": "スキンが展開のサイズ制限を超えています",
   "Skin library load interrupted": "スキンライブラリの読み込みが中断されました",
+  "Snap shader X to grid": "シェーダーのXをグリッドに吸着",
   "Snap note X to lanes": "ノーツXをレーンに合わせる",
   "Snap time to grid": "時間をグリッドに合わせる",
   "Sound attack markers": "音の立ち上がりマーカー",

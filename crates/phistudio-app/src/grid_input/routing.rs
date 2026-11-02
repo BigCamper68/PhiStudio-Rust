@@ -132,7 +132,12 @@ pub fn handle(
                     .grid_hover
                     .is_some_and(|p| area.contains(p) && eligible(p)) =>
             {
-                if app.advanced.right_mode == crate::advanced_ui::RightMode::NoiseFields
+                if app.advanced.right_mode == crate::advanced_ui::RightMode::Shaders
+                    && delta.x.abs() > delta.y.abs()
+                {
+                    let keys = app.grid_hover.is_some_and(|p| grid.event_rect.contains(p));
+                    crate::shader_ui::layout::pan(app, grid, keys, -f64::from(delta.x));
+                } else if app.advanced.right_mode == crate::advanced_ui::RightMode::NoiseFields
                     && delta.x.abs() > delta.y.abs()
                 {
                     let keys = app.grid_hover.is_some_and(|p| grid.event_rect.contains(p));

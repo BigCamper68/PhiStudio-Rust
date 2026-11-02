@@ -1238,6 +1238,7 @@
   "Skin exceeds the 32 MiB file / 128 MiB total limit": "皮肤超过单文件 32 MiB / 总计 128 MiB 的限制",
   "Skin exceeds the extraction limit": "皮肤超过解压大小限制",
   "Skin library load interrupted": "加载皮肤库被中断",
+  "Snap shader X to grid": "着色器 X 吸附到网格",
   "Snap note X to lanes": "音符 X 对齐到轨道",
   "Snap time to grid": "时间对齐到网格",
   "Sound attack markers": "声音起音标记",

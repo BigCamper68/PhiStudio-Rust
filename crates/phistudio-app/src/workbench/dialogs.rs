@@ -55,7 +55,7 @@ impl Workbench {
                         .id_source("grid-settings-scroll")
                         .max_height((ctx.screen_rect().height() - 110.).max(80.))
                         .touch_show(ui, |ui| {
-                            if self.advanced.right_mode != crate::advanced_ui::RightMode::Shaders {
+                            {
                                 ui.label(crate::i18n::tr("Vertical grid lines"));
                                 ui.horizontal_wrapped(|ui| {
                                     for count in [3, 5, 7, 9, 11, 13, 17, 21, 25, 33] {
@@ -79,6 +79,11 @@ impl Workbench {
                                 }
                             });
                             ui.separator();
+                            if self.advanced.right_mode == crate::advanced_ui::RightMode::Shaders {
+                                ui.checkbox(&mut self.options.snap_x, crate::i18n::tr("Snap shader X to grid"));
+                                ui.checkbox(&mut self.options.snap_time, crate::i18n::tr("Snap time to grid"));
+                                ui.separator();
+                            }
                             if self.advanced.right_mode == crate::advanced_ui::RightMode::NoiseFields {
                                 ui.checkbox(&mut self.options.snap_x,crate::i18n::tr("Snap field X to grid"));
                                 ui.checkbox(&mut self.options.snap_time,crate::i18n::tr("Snap time to grid"));

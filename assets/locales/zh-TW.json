@@ -1238,6 +1238,7 @@
   "Skin exceeds the 32 MiB file / 128 MiB total limit": "資源包超過單檔案 32 MiB / 總計 128 MiB 的限制",
   "Skin exceeds the extraction limit": "資源包超過解壓大小限制",
   "Skin library load interrupted": "載入資源包庫被中斷",
+  "Snap shader X to grid": "著色器 X 吸附至網格",
   "Snap note X to lanes": "音符 X 對齊到軌道",
   "Snap time to grid": "時間對齊到網格",
   "Sound attack markers": "聲音起音標記",

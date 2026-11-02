@@ -19,8 +19,8 @@ fn compact_and_tablet_workspace_switch_add_undo_and_return_use_real_widgets() {
         );
         let add = text_position(&out, "+ Shader");
         click(&mut app, &ctx, size, add);
-        let grid = crate::grid_input::geometry(app.grid_area, &app).events();
-        let start = pos2(grid.rect.center().x, grid.y(0.25));
+        let grid = crate::grid_input::geometry(app.grid_area, &app);
+        let start = pos2(grid.rect.left() + surface::EFFECT_WIDTH * 0.5, grid.y(0.25));
         let end = pos2(start.x, grid.y(1.25));
         frame(&mut app, &ctx, size, vec![pointer(start, true)]);
         frame(
@@ -108,8 +108,7 @@ fn vignette_color_radius_and_animation_have_visible_return_paths() {
             vec![pointer(handle - vec2(200., 0.), false)],
         );
         let original = app.editor.document().as_json().clone();
-        let out = frame(&mut app, &ctx, size, vec![]);
-        click(&mut app, &ctx, size, text_position(&out, "Parameters"));
+        choose_page(&mut app, &ctx, size, "Parameters");
         assert_eq!(app.shaders.page, ShaderPage::Parameters);
         assert_eq!(app.shaders.track.as_deref(), Some("color"));
         let out = frame(&mut app, &ctx, size, vec![]);
@@ -125,7 +124,18 @@ fn vignette_color_radius_and_animation_have_visible_return_paths() {
         }
         click(&mut app, &ctx, size, text_position(&out, "color"));
         let out = frame(&mut app, &ctx, size, vec![]);
-        click(&mut app, &ctx, size, text_position(&out, "radius"));
+        let radius = out
+            .shapes
+            .iter()
+            .rev()
+            .find_map(|s| match &s.1 {
+                egui::Shape::Text(t) if t.galley.job.text == "radius" => {
+                    Some(t.pos + t.galley.size() * 0.5)
+                }
+                _ => None,
+            })
+            .expect("Parameter choice in popup");
+        click(&mut app, &ctx, size, radius);
         assert_eq!(app.shaders.track.as_deref(), Some("radius"));
         assert!(app.shaders.animation_track().is_none());
         let out = frame(&mut app, &ctx, size, vec![]);
@@ -133,8 +143,7 @@ fn vignette_color_radius_and_animation_have_visible_return_paths() {
         assert_eq!(app.shaders.page, ShaderPage::Effect);
         assert!(app.shaders.animation_track().is_none());
         assert_eq!(app.editor.document().as_json(), &original);
-        let out = frame(&mut app, &ctx, size, vec![]);
-        click(&mut app, &ctx, size, text_position(&out, "Animation"));
+        choose_page(&mut app, &ctx, size, "Animation");
         assert_eq!(app.shaders.page, ShaderPage::Animation);
         for _ in 0..20 {
             frame(&mut app, &ctx, size, vec![]);
@@ -150,6 +159,9 @@ fn vignette_color_radius_and_animation_have_visible_return_paths() {
         assert!(is_animated(
             &app.editor.document().as_json()[EXTRA_KEY]["effects"][0]["vars"]["radius"]
         ));
+        for _ in 0..20 {
+            frame(&mut app, &ctx, size, vec![]);
+        }
         app.shaders.animation.as_mut().unwrap().end = "unfinished".into();
         let out = frame(&mut app, &ctx, size, vec![]);
         click(&mut app, &ctx, size, text_position(&out, "Back to effect"));

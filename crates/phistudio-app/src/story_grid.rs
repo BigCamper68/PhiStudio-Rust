@@ -384,6 +384,34 @@ pub(crate) fn paint_block(
     if !r.intersects(clip) {
         return;
     }
+    paint_block_shape(p, clip, r, event, selected, color, show_curve);
+    let q = p.with_clip_rect(r.intersect(clip));
+    for (y, align, label) in [
+        (r.bottom() - 3., Align2::LEFT_BOTTOM, text(&event.start)),
+        (r.top() + 3., Align2::LEFT_TOP, text(&event.end)),
+    ] {
+        q.text(
+            pos2(r.left() + 3., y),
+            align,
+            label,
+            FontId::monospace(10.),
+            crate::theme::text(),
+        );
+    }
+}
+/// Shared interval body; callers choose captions appropriate to their value types.
+pub(crate) fn paint_block_shape(
+    p: &egui::Painter,
+    clip: Rect,
+    r: Rect,
+    event: &StoryEvent,
+    selected: bool,
+    color: Color32,
+    show_curve: bool,
+) {
+    if !r.intersects(clip) {
+        return;
+    }
     p.rect_filled(
         r,
         0.,
@@ -424,19 +452,6 @@ pub(crate) fn paint_block(
             })
             .collect();
         p.add(Shape::line(points, Stroke::new(1_f32, color)));
-    }
-    let q = p.with_clip_rect(r.intersect(clip));
-    for (y, align, label) in [
-        (r.bottom() - 3., Align2::LEFT_BOTTOM, text(&event.start)),
-        (r.top() + 3., Align2::LEFT_TOP, text(&event.end)),
-    ] {
-        q.text(
-            pos2(r.left() + 3., y),
-            align,
-            label,
-            FontId::monospace(10.),
-            crate::theme::text(),
-        );
     }
     if selected {
         for y in [r.top(), r.bottom()] {
