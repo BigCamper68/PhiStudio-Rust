@@ -54,6 +54,7 @@ pub struct Workbench {
     pub(crate) clipboard_history: crate::clipboard_ui::ClipboardState,
     pub(crate) presets: crate::tool_presets_ui::PresetsState,
     pub(crate) trajectory: crate::trajectory_ui::TrajectoryState,
+    pub(crate) noise: crate::noise_ui::State,
     pub(crate) shaders: crate::shader_ui::ShaderState,
     pub(crate) line_activity: crate::line_activity::ActivityCache,
     pub(crate) workspace: crate::workspace_ui::WorkspaceState,
@@ -164,6 +165,7 @@ impl Workbench {
             preview: Default::default(),
             video: Default::default(),
             shaders: Default::default(),
+            noise: Default::default(),
             line_activity: Default::default(),
             workspace: Default::default(),
             asset_revision: 0,
@@ -259,6 +261,9 @@ impl Workbench {
     }
 
     pub fn ui(&mut self, ctx: &egui::Context, canceled: bool) {
+        if canceled {
+            self.cancel_noise_bounds_drag();
+        }
         let _language = crate::i18n::Scope::enter(self.options.language);
         crate::numeric::configure(ctx, self.options.numeric_drag);
         self.poll_audio_notes();

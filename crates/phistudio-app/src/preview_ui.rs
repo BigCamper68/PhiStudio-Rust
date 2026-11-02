@@ -159,6 +159,8 @@ impl Workbench {
         }
     }
     pub(crate) fn close_fullscreen_preview(&mut self) {
+        self.cancel_noise_preview_editor();
+        self.noise.sample_target = None;
         self.preview.drag = None;
         self.preview.touches.clear();
         self.preview.blocked = false;
@@ -216,11 +218,16 @@ impl Workbench {
                 self.paint_preview(ui, rect);
                 let exit = self.fullscreen_exit_rect(rect);
                 ui.interact(exit, egui::Id::new("fullscreen-HUD-return"), Sense::hover());
+                self.noise_preview_editor(ui, rect);
+                self.noise_sample_input(ui, rect);
                 let events = ui.input(|i| i.events.clone());
                 self.fullscreen_input(&events, rect, exit);
             });
     }
     fn preview_move(&mut self, pos: egui::Pos2) {
+        if self.noise_preview_move(pos) {
+            return;
+        }
         if let Some(d) = &mut self.preview.drag {
             if d.exit {
                 return;
@@ -243,18 +250,32 @@ impl Workbench {
         }
     }
     fn preview_press(&mut self, pos: egui::Pos2, rect: Rect, exit: Rect) {
+        if self.noise_preview_press(pos) {
+            return;
+        }
         if rect.contains(pos) {
             self.preview.drag = Some(crate::preview_ui::PreviewDrag {
                 origin: pos,
                 last: pos,
                 vertical: None,
                 moved: false,
-                exit: exit.contains(pos),
+                exit: self.noise.sample_target.is_none() && exit.contains(pos),
             });
         }
     }
     fn preview_release(&mut self, pos: egui::Pos2, rect: Rect) {
         self.preview_move(pos);
+        if self.noise.sample_target.is_some() {
+            self.noise_sample_release(pos);
+            self.noise_preview_end_gesture();
+            self.preview.drag = None;
+            return;
+        }
+        if self.noise.preview_original.is_some() {
+            self.noise_preview_end_gesture();
+            self.preview.drag = None;
+            return;
+        }
         if let Some(d) = self.preview.drag.take()
             && !d.moved
         {
@@ -280,6 +301,7 @@ impl Workbench {
                     egui::TouchPhase::Start => {
                         self.preview.touches.insert(id.0);
                         if self.preview.touches.len() > 1 {
+                            self.cancel_noise_bounds_drag();
                             self.preview.blocked = true;
                             self.preview.drag = None;
                         } else if !self.preview.blocked {
@@ -301,6 +323,7 @@ impl Workbench {
                         }
                     }
                     egui::TouchPhase::Cancel => {
+                        self.cancel_noise_bounds_drag();
                         self.preview.touches.clear();
                         self.preview.drag = None;
                         self.preview.blocked = false;
@@ -328,6 +351,342 @@ impl Workbench {
                 }
                 _ => {}
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod noise_edit_tests {
+    use super::*;
+    use phistudio_core::{
+        ChartDocument,
+        noise_fields::{self as noise, Format},
+    };
+    fn editor(format: Format) -> Workbench {
+        let mut app = Workbench::new(ChartDocument::empty("Field gestures", 120.).unwrap(), None);
+        app.advanced.right_mode = crate::advanced_ui::RightMode::NoiseFields;
+        app.noise.format = format;
+        app.add_noise();
+        app.options.snap_x = false;
+        app.options.snap_time = false;
+        app.open_noise_preview_editor();
+        let ctx = egui::Context::default();
+        for _ in 0..2 {
+            let _ = ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(egui::Pos2::ZERO, vec2(1000., 700.))),
+                    ..Default::default()
+                },
+                |ctx| app.fullscreen_preview(ctx),
+            );
+        }
+        app
+    }
+    fn point_editor(
+        format: Format,
+        track: noise::Track,
+        target: crate::noise_ui::SampleTarget,
+    ) -> Workbench {
+        let mut app = editor(format);
+        app.close_fullscreen_preview();
+        app.noise.animation = true;
+        app.noise.track = track;
+        app.add_noise();
+        app.open_noise_sample(target);
+        draw_point(&mut app);
+        app
+    }
+    fn draw_point(app: &mut Workbench) {
+        let ctx = egui::Context::default();
+        for _ in 0..2 {
+            let _ = ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(egui::Pos2::ZERO, vec2(1000., 700.))),
+                    ..Default::default()
+                },
+                |ctx| app.fullscreen_preview(ctx),
+            );
+        }
+    }
+    fn point(app: &Workbench) -> serde_json::Value {
+        let (_, field) = app.noise_preview_override().unwrap();
+        field[app.noise.track.key()][app.noise.key_selected.unwrap()].clone()
+    }
+    #[test]
+    fn preview_points_stay_open_snap_and_apply_with_one_undo() {
+        use crate::noise_ui::SampleTarget;
+        for (format, track, target, name) in [
+            (
+                Format::Native,
+                noise::Track::Move,
+                SampleTarget::Position,
+                "endPosition",
+            ),
+            (
+                Format::Native,
+                noise::Track::Scale,
+                SampleTarget::Anchor,
+                "anchor",
+            ),
+            (
+                Format::Next,
+                noise::Track::Rotate,
+                SampleTarget::Anchor,
+                "anchor",
+            ),
+        ] {
+            let mut app = point_editor(format, track, target);
+            app.lanes = 9;
+            app.division = 8;
+            app.options.snap_x = true;
+            app.options.snap_time = true;
+            let source = app.editor.document().as_json().clone();
+            for p in [[0.13, 0.77], [0.86, 0.27]] {
+                let pos = pos2(
+                    app.preview.rect.left() + app.preview.rect.width() * p[0],
+                    app.preview.rect.bottom() - app.preview.rect.height() * p[1],
+                );
+                input(
+                    &mut app,
+                    &[
+                        touch(1, egui::TouchPhase::Start, pos),
+                        touch(1, egui::TouchPhase::End, pos),
+                    ],
+                );
+                assert!(app.preview.fullscreen);
+                assert_eq!(app.noise.sample_target, Some(target));
+                assert!(app.preview.pick.is_none());
+                assert_eq!(app.editor.document().as_json(), &source);
+            }
+            let value = point(&app);
+            let expected = if format == Format::Native {
+                [0.875, 0.25]
+            } else {
+                [506.25, -225.]
+            };
+            assert_eq!(value[name]["x"], serde_json::json!(expected[0]));
+            assert_eq!(value[name]["y"], serde_json::json!(expected[1]));
+            assert!(app.apply_noise_sample());
+            assert!(!app.preview.fullscreen);
+            assert!(app.noise.sample_target.is_none());
+            assert!(app.editor.undo());
+            assert_eq!(app.editor.document().as_json(), &source);
+        }
+    }
+    #[test]
+    fn preview_point_drag_cancel_and_scrub_preserve_prior_staged_choice() {
+        use crate::noise_ui::SampleTarget;
+        let mut app = point_editor(Format::Next, noise::Track::ScaleX, SampleTarget::Anchor);
+        let source = app.editor.document().as_json().clone();
+        let initial = point(&app);
+        let pos = pos2(
+            app.preview.rect.left() + app.preview.rect.width() * 0.75,
+            app.preview.rect.bottom() - app.preview.rect.height() * 0.25,
+        );
+        input(
+            &mut app,
+            &[
+                touch(1, egui::TouchPhase::Start, pos),
+                touch(1, egui::TouchPhase::End, pos),
+            ],
+        );
+        let staged = point(&app);
+        assert_ne!(staged, initial);
+        draw_point(&mut app);
+        let a = app.noise.preview_handles[0].center();
+        let b = a + vec2(-80., -40.);
+        input(
+            &mut app,
+            &[
+                touch(1, egui::TouchPhase::Start, a),
+                touch(1, egui::TouchPhase::Move, b),
+            ],
+        );
+        assert_ne!(point(&app), staged);
+        input(
+            &mut app,
+            &[
+                touch(2, egui::TouchPhase::Start, b),
+                touch(1, egui::TouchPhase::End, b),
+                touch(2, egui::TouchPhase::End, b),
+            ],
+        );
+        assert_eq!(point(&app), staged);
+        let a = app.preview.rect.center_bottom() - vec2(200., 40.);
+        let beat = app.beat;
+        input(
+            &mut app,
+            &[
+                touch(1, egui::TouchPhase::Start, a),
+                touch(1, egui::TouchPhase::End, a + vec2(0., 30.)),
+            ],
+        );
+        assert!(app.beat > beat);
+        assert_eq!(point(&app), staged);
+        app.close_fullscreen_preview();
+        assert!(app.noise.sample_target.is_none());
+        assert!(app.flush_noise_draft());
+        assert_eq!(app.editor.document().as_json(), &source);
+    }
+    fn touch(id: u64, phase: egui::TouchPhase, pos: egui::Pos2) -> egui::Event {
+        egui::Event::Touch {
+            device_id: egui::TouchDeviceId(0),
+            id: egui::TouchId(id),
+            phase,
+            pos,
+            force: 0.,
+        }
+    }
+    fn input(app: &mut Workbench, events: &[egui::Event]) {
+        let rect = app.preview.rect;
+        app.fullscreen_input(events, rect, app.fullscreen_exit_rect(rect));
+    }
+    #[test]
+    fn field_handles_stage_both_dialects_and_commit_as_one_undo() {
+        for format in [Format::Native, Format::Next] {
+            let mut app = editor(format);
+            let source = app.editor.document().as_json().clone();
+            let original = app.noise_preview_override().unwrap().1;
+            let a = app.noise.preview_handles[0].center();
+            let b = a + vec2(50., -30.);
+            input(
+                &mut app,
+                &[
+                    touch(1, egui::TouchPhase::Start, a),
+                    touch(1, egui::TouchPhase::Move, b),
+                    touch(1, egui::TouchPhase::End, b),
+                ],
+            );
+            let modified = app.noise_preview_override().unwrap().1;
+            assert_ne!(original, modified);
+            let before = noise::bounds(&original).unwrap();
+            let after = noise::bounds(&modified).unwrap();
+            assert_eq!(before[1], after[1]);
+            assert!(after[0][0] > before[0][0] && after[0][1] > before[0][1]);
+            assert_eq!(app.editor.document().as_json(), &source);
+            assert!(app.preview.pick.is_none());
+            assert!(app.flush_noise_draft());
+            app.noise.preview_original = None;
+            app.close_fullscreen_preview();
+            assert!(app.editor.undo());
+            assert_eq!(app.editor.document().as_json(), &source);
+        }
+    }
+    #[test]
+    fn background_swipes_scrub_and_center_handle_preserves_dimensions() {
+        let mut app = editor(Format::Native);
+        let original = app.noise_preview_override().unwrap().1;
+        let a = app.preview.rect.center_bottom() - vec2(100., 30.);
+        let b = a + vec2(0., 50.);
+        let beat = app.beat;
+        input(
+            &mut app,
+            &[
+                touch(1, egui::TouchPhase::Start, a),
+                touch(1, egui::TouchPhase::Move, b),
+                touch(1, egui::TouchPhase::End, b),
+            ],
+        );
+        assert!(app.beat > beat);
+        assert_eq!(app.noise_preview_override().unwrap().1, original);
+        let a = app.noise.preview_handles[2].center();
+        let b = a + vec2(40., -20.);
+        input(
+            &mut app,
+            &[
+                touch(2, egui::TouchPhase::Start, a),
+                touch(2, egui::TouchPhase::End, b),
+            ],
+        );
+        let before = noise::bounds(&original).unwrap();
+        let after = noise::bounds(&app.noise_preview_override().unwrap().1).unwrap();
+        for axis in 0..2 {
+            assert!(
+                ((after[1][axis] - after[0][axis]) - (before[1][axis] - before[0][axis])).abs()
+                    < 1e-9
+            );
+        }
+        app.close_fullscreen_preview();
+        assert!(app.noise_preview_override().is_none());
+        assert!(app.flush_noise_draft());
+        assert_eq!(noise::fields(app.editor.document()).unwrap()[0], original);
+    }
+    #[test]
+    fn preview_grid_snap_uses_main_density_and_taps_do_not_change_geometry() {
+        for format in [Format::Native, Format::Next] {
+            let mut app = editor(format);
+            app.lanes = 9;
+            app.division = 8;
+            app.options.snap_x = true;
+            app.options.snap_time = true;
+            let original = app.noise_preview_override().unwrap().1;
+            let a = app.noise.preview_handles[0].center();
+            input(
+                &mut app,
+                &[
+                    touch(1, egui::TouchPhase::Start, a),
+                    touch(1, egui::TouchPhase::End, a),
+                ],
+            );
+            assert_eq!(app.noise_preview_override().unwrap().1, original);
+            let b = a + vec2(63., -53.);
+            input(
+                &mut app,
+                &[
+                    touch(2, egui::TouchPhase::Start, a),
+                    touch(2, egui::TouchPhase::End, b),
+                ],
+            );
+            let bounds = noise::bounds(&app.noise_preview_override().unwrap().1).unwrap();
+            let scales = if format == Format::Native {
+                [1., 1.]
+            } else {
+                [1350., 900.]
+            };
+            for (axis, scale) in scales.into_iter().enumerate() {
+                let n = (bounds[0][axis] / scale + if format == Format::Native { 0. } else { 0.5 })
+                    * 8.;
+                assert!((n - n.round()).abs() < 1e-9);
+            }
+        }
+        let mut options: phistudio_core::EditorOptions = serde_json::from_str("{}").unwrap();
+        assert!(options.noise_preview_grid);
+        options.noise_preview_grid = false;
+        let saved = serde_json::to_string(&options).unwrap();
+        let restored: phistudio_core::EditorOptions = serde_json::from_str(&saved).unwrap();
+        assert!(!restored.noise_preview_grid);
+    }
+    #[test]
+    fn second_finger_and_touch_cancel_restore_only_the_current_drag() {
+        for second_finger in [false, true] {
+            let mut app = editor(Format::Next);
+            let original = app.noise_preview_override().unwrap().1;
+            let a = app.noise.preview_handles[0].center();
+            let b = a + vec2(40., -20.);
+            input(
+                &mut app,
+                &[
+                    touch(1, egui::TouchPhase::Start, a),
+                    touch(1, egui::TouchPhase::Move, b),
+                ],
+            );
+            assert_ne!(app.noise_preview_override().unwrap().1, original);
+            let phase = if second_finger {
+                egui::TouchPhase::Start
+            } else {
+                egui::TouchPhase::Cancel
+            };
+            input(&mut app, &[touch(2, phase, b)]);
+            input(
+                &mut app,
+                &[
+                    touch(1, egui::TouchPhase::Move, b + vec2(30., 30.)),
+                    touch(1, egui::TouchPhase::End, b),
+                ],
+            );
+            assert_eq!(app.noise_preview_override().unwrap().1, original);
+            assert!(app.preview.pick.is_none());
+            assert!(app.noise.preview_original.is_some());
         }
     }
 }

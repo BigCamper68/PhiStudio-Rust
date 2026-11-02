@@ -34,6 +34,9 @@ impl Workbench {
 
     pub(crate) fn default_tool_key(&mut self, key: egui::Key, modifiers: egui::Modifiers) -> bool {
         use egui::Key;
+        if self.advanced.right_mode == crate::advanced_ui::RightMode::NoiseFields {
+            return self.noise_key(key, modifiers);
+        }
         if self.advanced.right_mode == crate::advanced_ui::RightMode::Shaders {
             return self.shader_key(key, modifiers);
         }

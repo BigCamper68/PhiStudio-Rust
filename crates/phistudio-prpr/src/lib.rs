@@ -108,3 +108,13 @@ pub struct Preview {
 }
 
 pub use effects::shader_preset;
+
+impl Preview {
+    /// Stage field geometry without rebuilding the chart or touching editor history.
+    pub fn set_noise_field_override(
+        &mut self,
+        field: Option<(usize, phistudio_core::noise_fields::Field)>,
+    ) {
+        self.noise_fields.set_override(field);
+    }
+}

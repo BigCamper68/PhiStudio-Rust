@@ -23,6 +23,12 @@ pub(crate) enum RightMode {
     Events,
     Storyboard,
     Shaders,
+    NoiseFields,
+}
+impl RightMode {
+    pub(crate) fn dedicated(self) -> bool {
+        matches!(self, Self::Shaders | Self::NoiseFields)
+    }
 }
 pub(crate) use phistudio_core::story_tools::StoryId;
 #[derive(Default)]

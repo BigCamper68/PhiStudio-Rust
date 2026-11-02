@@ -140,7 +140,7 @@ impl Workbench {
         let stories = self
             .story_selection()
             .into_iter()
-            .filter(|id| id.line == self.line)
+            .filter(|id| events.contains(&id.line))
             .collect();
         self.set_object_selection(selected, stories);
     }
@@ -235,9 +235,13 @@ impl Workbench {
             && self.multi_line.events == events
             && !self.multi_line.lines.is_empty()
             && if events {
-                self.advanced.right_mode == crate::advanced_ui::RightMode::Events
+                matches!(
+                    self.advanced.right_mode,
+                    crate::advanced_ui::RightMode::Events
+                        | crate::advanced_ui::RightMode::Storyboard
+                )
             } else {
-                self.advanced.right_mode != crate::advanced_ui::RightMode::Shaders
+                !self.advanced.right_mode.dedicated()
             }
     }
     pub(crate) fn target_lines(&self, events: bool) -> Vec<usize> {
@@ -449,7 +453,7 @@ impl Workbench {
         ui.checkbox(&mut self.multi_line.enabled, tr("Edit multiple lines"));
         ui.horizontal_wrapped(|ui| {
             ui.selectable_value(&mut self.multi_line.events, false, tr("Notes"));
-            ui.selectable_value(&mut self.multi_line.events, true, tr("Events"));
+            ui.selectable_value(&mut self.multi_line.events, true, tr("Events / Storyboard"));
             ui.add_enabled_ui(!self.multi_line.events, |ui| {
                 ui.checkbox(&mut self.multi_line.merged, tr("Overlay note lines"));
             });

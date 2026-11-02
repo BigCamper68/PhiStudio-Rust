@@ -165,21 +165,22 @@ pub struct ChartDocument {
 }
 
 impl ChartDocument {
-    // Match the supplied Java StreamIo.MAX_CHART_BYTES.
-    pub const MAX_JSON_BYTES: usize = 128 * 1024 * 1024;
+    // Shared limit for chart parsing, imports, storage and recovery.
+    pub const MAX_JSON_BYTES: usize = 256 * 1024 * 1024;
 
     pub fn parse(json: &str) -> Result<Self, ChartError> {
         if json.len() > Self::MAX_JSON_BYTES {
-            return Err(ChartError::Invalid("Chart JSON exceeds 128 MiB".into()));
+            return Err(ChartError::Invalid("Chart JSON exceeds 256 MiB".into()));
         }
         Self::from_value(serde_json::from_str(json)?)
     }
 
-    pub fn from_value(root: Value) -> Result<Self, ChartError> {
+    pub fn from_value(mut root: Value) -> Result<Self, ChartError> {
         let invalid = |message: &str| ChartError::Invalid(message.into());
         if !root.is_object() || !root.get("META").is_some_and(Value::is_object) {
             return Err(invalid("Expected an RPE chart object with META"));
         }
+        crate::noise_fields::export::restore(&mut root)?;
         let changes: Vec<BpmChange> = serde_json::from_value(
             root.get("BPMList")
                 .cloned()

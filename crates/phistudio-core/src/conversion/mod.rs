@@ -44,7 +44,7 @@ fn invalid(message: impl Into<String>) -> ChartError {
 
 pub fn decode_chart(source: &str) -> Result<DecodedChart, ChartError> {
     if source.len() > ChartDocument::MAX_JSON_BYTES {
-        return Err(invalid("Chart exceeds 128 MiB"));
+        return Err(invalid("Chart exceeds 256 MiB"));
     }
     let source = source
         .trim_start()

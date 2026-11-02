@@ -19,6 +19,7 @@ mod layout_regressions;
 mod line_activity;
 mod line_tools;
 mod media;
+mod noise_ui;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 #[doc(hidden)]
 pub mod note_grid_probe;

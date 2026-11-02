@@ -24,6 +24,7 @@ pub(super) fn finish(app: &mut Workbench) {
         Some(Gesture::Event(crate::event_grid::EventGesture::Edit { moved, .. })) => *moved,
         Some(Gesture::Story(story)) => story.id.is_some() && story.moved,
         Some(Gesture::Shader(shader)) => shader.edits_existing(),
+        Some(Gesture::Noise(noise)) => noise.edits_existing(),
         _ => false,
     };
     let properties_scroll = app.properties_scroll;
@@ -172,6 +173,7 @@ pub(super) fn finish(app: &mut Workbench) {
         }
         Some(Gesture::Event(gesture)) => crate::event_grid::finish(app, gesture),
         Some(Gesture::Story(d)) => crate::story_grid::finish(app, *d),
+        Some(Gesture::Noise(d)) => crate::noise_ui::grid::finish(app, *d),
         Some(Gesture::Shader(d)) => crate::shader_ui::grid::finish(app, *d),
         Some(
             Gesture::Move {

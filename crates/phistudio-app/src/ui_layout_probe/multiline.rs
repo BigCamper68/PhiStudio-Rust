@@ -47,12 +47,34 @@ pub(super) async fn run(
     app.multi_line.enabled = true;
     app.multi_line.lines = vec![0, 1, 2];
     app.multi_line.widths = [180., 230.];
+    for line in [0, 1, 2] {
+        app.execute(phistudio_core::Command::EditStoryboard {
+            line,
+            kind: phistudio_core::StoryKind::ScaleX,
+            index: None,
+            event: Some(phistudio_core::StoryEvent::new(
+                phistudio_core::StoryKind::ScaleX,
+                phistudio_core::Beat::new(1, 0, 1)?,
+                phistudio_core::Beat::new(3, 0, 1)?,
+            )),
+        });
+    }
+    raw = app.editor.document().as_json().clone();
+    preview
+        .replace_chart(app.editor.document(), None, &app.project_options)
+        .await?;
     let mut cases = vec![];
     for (events, merged, label) in [
         (false, false, "columns"),
         (false, true, "overlay"),
         (true, false, "events"),
+        (true, false, "storyboard"),
     ] {
+        app.advanced.right_mode = if label == "storyboard" {
+            RightMode::Storyboard
+        } else {
+            RightMode::Events
+        };
         app.multi_line.events = events;
         app.multi_line.merged = merged;
         for offset in [0., 160.] {
@@ -86,6 +108,7 @@ pub(super) async fn run(
             }
         }
     }
+    app.advanced.right_mode = RightMode::Events;
     app.multi_line.events = false;
     app.multi_line.merged = false;
     // A compact grid may fit only one column. Bring the second source line
@@ -183,7 +206,7 @@ pub(super) async fn run(
         )?,
     )?;
     println!(
-        "PASS: multiple-line columns/overlay/events, scrolling and source-line picking in native GPU frames"
+        "PASS: multiple-line columns/overlay/events/storyboard, scrolling and source-line picking in native GPU frames"
     );
     Ok(())
 }

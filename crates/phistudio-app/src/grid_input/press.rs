@@ -21,6 +21,12 @@ pub(super) fn begin(app: &mut Workbench, grid: Grid, pos: Pos2, additive: bool) 
         app.drag = Some(gesture);
         return;
     }
+    if (grid.rect.contains(pos) || grid.event_rect.contains(pos))
+        && app.advanced.right_mode == crate::advanced_ui::RightMode::NoiseFields
+    {
+        app.drag = crate::noise_ui::grid::begin_dual(app, grid, pos, additive);
+        return;
+    }
     if grid.event_rect.contains(pos)
         && app.advanced.right_mode == crate::advanced_ui::RightMode::Shaders
     {

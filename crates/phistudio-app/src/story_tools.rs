@@ -168,8 +168,15 @@ impl Workbench {
     pub(crate) fn paste_story_selection(&mut self, original_time: bool) {
         self.paste_selection(false, original_time);
     }
+    pub(crate) fn visible_story_ids(&self) -> Result<Vec<StoryId>, ChartError> {
+        let mut ids = vec![];
+        for line in self.target_lines(true) {
+            ids.extend(story_tools::all(self.editor.document(), line)?);
+        }
+        Ok(ids)
+    }
     pub(crate) fn select_all_stories(&mut self, invert: bool) {
-        match story_tools::all(self.editor.document(), self.line) {
+        match self.visible_story_ids() {
             Ok(mut ids) => {
                 if invert {
                     let old = self.story_selection();
@@ -254,7 +261,13 @@ impl Workbench {
                                 "Selection range must be ordered".into(),
                             ));
                         }
-                        story_tools::range(self.editor.document(), self.line, start, end)
+                        self.target_lines(true)
+                            .into_iter()
+                            .map(|line| {
+                                story_tools::range(self.editor.document(), line, start, end)
+                            })
+                            .collect::<Result<Vec<_>, _>>()
+                            .map(|groups| groups.into_iter().flatten().collect::<Vec<_>>())
                     })();
                     match result {
                         Ok(mut ids) => {

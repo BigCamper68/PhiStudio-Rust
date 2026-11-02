@@ -36,7 +36,7 @@ fn copy_hash(
         }
         fp.bytes += n as u64;
         if fp.bytes > MAX_FILE {
-            return Err(invalid("Version file exceeds 128 MiB"));
+            return Err(invalid("Version file exceeds 256 MiB"));
         }
         sha.update(&buffer[..n]);
         for b in &buffer[..n] {

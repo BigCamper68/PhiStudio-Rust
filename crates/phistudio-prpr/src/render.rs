@@ -73,7 +73,7 @@ impl Preview {
                     bad_notes,
                     |touches| {
                         self.noise_fields
-                            .filter_touches(touches, chart_seconds as f32, aspect, dt)
+                            .filter_touches(touches, chart_seconds, aspect, dt)
                     },
                 );
                 self.judge

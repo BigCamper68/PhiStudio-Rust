@@ -19,6 +19,11 @@ pub fn show(app: &mut Workbench, ui: &mut egui::Ui, canceled: bool, resizing_sid
             return;
         }
     }
+    if app.advanced.right_mode == crate::advanced_ui::RightMode::NoiseFields {
+        app.refresh_noise();
+        crate::noise_ui::timeline::show(app, ui, canceled, resizing_sidebar);
+        return;
+    }
     app.multi_line
         .lines
         .retain(|i| *i < app.editor.document().line_count());
@@ -32,7 +37,7 @@ pub fn show(app: &mut Workbench, ui: &mut egui::Ui, canceled: bool, resizing_sid
         return;
     }
     let (frame, _) = ui.allocate_exact_size(size, Sense::hover());
-    let shaders = app.advanced.right_mode == crate::advanced_ui::RightMode::Shaders;
+    let shaders = app.advanced.right_mode.dedicated();
     let area = Rect::from_min_max(
         frame.min
             + vec2(
@@ -221,6 +226,14 @@ pub fn show(app: &mut Workbench, ui: &mut egui::Ui, canceled: bool, resizing_sid
     if !shaders {
         let original_line = app.line;
         let base_grid = grid;
+        // Paint through column gutters before each pane draws its notes.
+        if app.multi_active(false) && !app.multi_line.merged {
+            let y = grid.baseline();
+            grid_painter.line_segment(
+                [pos2(grid.rect.left(), y), pos2(grid.rect.right(), y)],
+                Stroke::new(1.5_f32, accent()),
+            );
+        }
         for (line, grid) in app.line_panels(base_grid, false) {
             app.line = line;
             let pane_clip = Rect::from_min_max(
@@ -506,8 +519,6 @@ pub fn show(app: &mut Workbench, ui: &mut egui::Ui, canceled: bool, resizing_sid
     }
     if app.advanced.right_mode == crate::advanced_ui::RightMode::Shaders {
         crate::shader_ui::grid::paint(app, &painter, grid.events());
-    } else if crate::story_grid::active(app) {
-        crate::story_grid::paint(app, &painter, grid.events());
     } else {
         let original_line = app.line;
         for (line, panel) in app.line_panels(grid, true) {
@@ -522,7 +533,11 @@ pub fn show(app: &mut Workbench, ui: &mut egui::Ui, canceled: bool, resizing_sid
                     grid.event_rect.bottom(),
                 ),
             );
-            crate::event_grid::paint(app, &painter.with_clip_rect(clip), panel.events());
+            if crate::story_grid::active(app) {
+                crate::story_grid::paint(app, &painter.with_clip_rect(clip), panel.events());
+            } else {
+                crate::event_grid::paint(app, &painter.with_clip_rect(clip), panel.events());
+            }
             if app.multi_active(true) {
                 painter.with_clip_rect(clip).text(
                     pos2(panel.event_rect.left() + 4., panel.event_rect.top() - 30.),

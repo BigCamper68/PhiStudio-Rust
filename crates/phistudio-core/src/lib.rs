@@ -2,6 +2,7 @@
 mod advanced;
 mod array_edit;
 mod formula;
+pub mod noise_fields;
 pub mod shaders;
 pub mod skins;
 pub mod vcs;

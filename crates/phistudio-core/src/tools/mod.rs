@@ -144,4 +144,5 @@ pub(crate) struct ToolDelta {
 
 #[path = "../clone_events.rs"]
 mod clone_operation;
+pub(crate) use clone_operation::java_easing;
 pub use clone_operation::{CloneSpec, ValueProfile, clone_events};

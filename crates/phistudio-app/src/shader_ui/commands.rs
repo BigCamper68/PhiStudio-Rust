@@ -23,6 +23,9 @@ impl Workbench {
     }
 
     pub(crate) fn flush_shader_draft(&mut self) -> bool {
+        if self.advanced.right_mode == RightMode::NoiseFields {
+            return self.flush_noise_draft();
+        }
         if self.advanced.right_mode != RightMode::Shaders {
             return true;
         }

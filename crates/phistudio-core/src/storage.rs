@@ -28,7 +28,7 @@ pub fn save_chart(document: &ChartDocument, path: &Path) -> Result<(), ChartErro
         output.flush()?;
     }
     if staged.as_file().metadata()?.len() > ChartDocument::MAX_JSON_BYTES as u64 {
-        return Err(ChartError::Invalid("Saved chart exceeds 128 MiB".into()));
+        return Err(ChartError::Invalid("Saved chart exceeds 256 MiB".into()));
     }
     staged.as_file().sync_all()?;
     staged.persist(path).map_err(|e| ChartError::Io(e.error))?;

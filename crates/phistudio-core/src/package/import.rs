@@ -43,8 +43,10 @@ pub fn import_project(
                 fs::create_dir_all(target)?;
                 continue;
             }
-            if entry.size() > 128 * MIB || entry.compressed_size() > 128 * MIB {
-                return Err(invalid("ZIP entry exceeds 128 MiB"));
+            if entry.size() > ChartDocument::MAX_JSON_BYTES as u64
+                || entry.compressed_size() > ChartDocument::MAX_JSON_BYTES as u64
+            {
+                return Err(invalid("ZIP entry exceeds 256 MiB"));
             }
             if total + entry.size() > 512 * MIB {
                 return Err(invalid("Extracted package exceeds 512 MiB"));
@@ -55,10 +57,11 @@ pub fn import_project(
                 .create_new(true)
                 .open(&target)?;
             let copied = io::copy(
-                &mut (&mut entry).take((128 * MIB).min(512 * MIB - total) + 1),
+                &mut (&mut entry)
+                    .take((ChartDocument::MAX_JSON_BYTES as u64).min(512 * MIB - total) + 1),
                 &mut output,
             )?;
-            if copied > 128 * MIB || total + copied > 512 * MIB {
+            if copied > ChartDocument::MAX_JSON_BYTES as u64 || total + copied > 512 * MIB {
                 return Err(invalid("Package exceeds the extraction limit"));
             }
             total += copied;
@@ -68,7 +71,7 @@ pub fn import_project(
         let mut input = File::open(source)?.take(ChartDocument::MAX_JSON_BYTES as u64 + 1);
         let mut output = File::create(payload.join("chart.data"))?;
         if io::copy(&mut input, &mut output)? > ChartDocument::MAX_JSON_BYTES as u64 {
-            return Err(invalid("Chart exceeds 128 MiB"));
+            return Err(invalid("Chart exceeds 256 MiB"));
         }
         files.push(PathBuf::from("chart.data"));
     }
@@ -86,7 +89,7 @@ pub(super) fn read_text(path: &Path) -> Result<String, ChartError> {
         .take(ChartDocument::MAX_JSON_BYTES as u64 + 1)
         .read_to_string(&mut text)?;
     if text.len() > ChartDocument::MAX_JSON_BYTES {
-        return Err(invalid("Chart exceeds 128 MiB"));
+        return Err(invalid("Chart exceeds 256 MiB"));
     }
     Ok(text)
 }
@@ -171,7 +174,7 @@ pub(super) fn prepare_workspace(
         save_chart(&decoded.document, &workspace.join(&working))?;
         let size = workspace.join(&working).metadata()?.len();
         total_generated += size;
-        if size > 128 * MIB || total_generated > 512 * MIB {
+        if size > ChartDocument::MAX_JSON_BYTES as u64 || total_generated > 512 * MIB {
             return Err(invalid(
                 "Converted chart data exceeds the package size limit",
             ));

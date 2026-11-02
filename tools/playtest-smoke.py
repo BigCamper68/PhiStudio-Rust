@@ -7,7 +7,7 @@ parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--outpu
 OUT=args.output.resolve();OUT.mkdir(parents=True,exist_ok=True)
 def xdo(*args):return subprocess.check_output(['xdotool',*map(str,args)],text=True).strip()
 completed=[]
-for mode in args.modes or ['miss','play','good','bad','retina','noise-blocked','noise-ready','noise-subtract','noise-latch','noise-enter','noise-retina']:
+for mode in args.modes or ['miss','play','good','bad','retina','noise-blocked','noise-ready','noise-subtract','noise-latch','noise-enter','noise-retina','noise-next-blocked','noise-next-ready','noise-next-subtract']:
  target=OUT/mode;target.mkdir(exist_ok=True);(target/'ready').unlink(missing_ok=True)
  with (target/'run.log').open('w')as log:
   p=subprocess.Popen([ROOT/'target/debug/examples/playtest-input',target,mode],cwd=ROOT,stdout=log,stderr=log)
@@ -52,16 +52,16 @@ for mode in args.modes or ['miss','play','good','bad','retina','noise-blocked','
    report=json.loads((target/'report.json').read_text())
    print(mode,{'counts':report['counts'],'score':report['score'],'audio_cutoffs':sorted({r['cutoff'] for r in report['noise_audio']})},flush=True)
    if mode=='miss':assert report['counts']==[0,0,0,4]and report['score']==0
-   elif mode in ['noise-blocked','noise-retina']:assert report['counts']==[0,0,0,4]
+   elif mode in ['noise-blocked','noise-retina','noise-next-blocked']:assert report['counts']==[0,0,0,4]
    elif mode=='noise-enter':assert report['counts'][0]+report['counts'][1]==3 and report['counts'][2:]==[0,1]
    elif mode=='noise-latch':assert report['counts'][0]+report['counts'][1]==2 and report['counts'][2:]==[0,2]
    elif mode=='good':assert report['counts']==[0,1,0,3]
    elif mode=='bad':assert report['counts']==[0,0,1,3]
    else:assert report['counts'][0]+report['counts'][1]==4 and report['counts'][2:]==[0,0]
-   if mode in ['noise-blocked','noise-retina','noise-latch','noise-enter']:
+   if mode in ['noise-blocked','noise-retina','noise-latch','noise-enter','noise-next-blocked']:
     assert any(r['cutoff']==1500 for r in report['noise_audio'] if 2.1<r['seconds']<2.6),report['noise_audio']
     assert all(r['cutoff']==22000 for r in report['noise_audio'] if r['seconds']>3.15),report['noise_audio']
-   if mode in ['noise-ready','noise-subtract']:
+   if mode in ['noise-ready','noise-subtract','noise-next-ready','noise-next-subtract']:
     assert all(r['cutoff']==22000 for r in report['noise_audio']),report['noise_audio']
    completed.append(mode)
   finally:

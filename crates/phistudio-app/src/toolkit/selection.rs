@@ -85,31 +85,30 @@ impl Workbench {
 
     pub(crate) fn select_scope(&mut self, scope: Scope, invert: bool) {
         if crate::story_grid::active(self) && scope != Scope::Notes {
-            let result = phistudio_core::story_tools::all(self.editor.document(), self.line)
-                .and_then(|mut stories| {
-                    let mut normal = Selection::default();
-                    if scope == Scope::Both {
-                        for line in self.target_lines(false) {
-                            normal.notes.extend(
-                                Selection::all(
-                                    self.editor.document(),
-                                    line,
-                                    self.events.layer,
-                                    true,
-                                    false,
-                                )?
-                                .notes,
-                            );
-                        }
+            let result = self.visible_story_ids().and_then(|mut stories| {
+                let mut normal = Selection::default();
+                if scope == Scope::Both {
+                    for line in self.target_lines(false) {
+                        normal.notes.extend(
+                            Selection::all(
+                                self.editor.document(),
+                                line,
+                                self.events.layer,
+                                true,
+                                false,
+                            )?
+                            .notes,
+                        );
                     }
-                    if invert {
-                        let old = self.selection();
-                        normal.notes.retain(|id| !old.notes.contains(id));
-                        let old = self.story_selection();
-                        stories.retain(|id| !old.contains(id));
-                    }
-                    Ok((normal, stories))
-                });
+                }
+                if invert {
+                    let old = self.selection();
+                    normal.notes.retain(|id| !old.notes.contains(id));
+                    let old = self.story_selection();
+                    stories.retain(|id| !old.contains(id));
+                }
+                Ok((normal, stories))
+            });
             match result {
                 Ok((normal, stories)) => {
                     self.set_object_selection(normal, stories);

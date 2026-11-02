@@ -119,7 +119,7 @@ pub(crate) fn transfer(
         }
         bytes += n as u64;
         if bytes > MAX_FILE {
-            return Err(invalid("Version file exceeds 128 MiB"));
+            return Err(invalid("Version file exceeds 256 MiB"));
         }
         for b in &buf[..n] {
             hash = (hash ^ *b as u64).wrapping_mul(0x100000001b3);
@@ -208,7 +208,7 @@ pub(crate) fn snapshot(
     let mut total = 0;
     let override_bytes = serde_json::to_vec(doc.as_json())?;
     if override_bytes.len() as u64 > MAX_FILE {
-        return Err(invalid("Chart exceeds 128 MiB"));
+        return Err(invalid("Chart exceeds 256 MiB"));
     }
     for relative in files {
         let name = relative.to_string_lossy().replace('\\', "/");

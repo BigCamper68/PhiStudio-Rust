@@ -1,5 +1,7 @@
 //! Build 160 JudgeControl block tests and FingerManagement's per-finger latch.
-use super::model::{BlockArea, Pose};
+#[cfg(test)]
+use super::model::BlockArea;
+use super::model::Pose;
 use macroquad::prelude::{Touch, TouchPhase, Vec2, vec2};
 use std::collections::HashSet;
 
@@ -52,6 +54,7 @@ impl Input {
     pub fn suppressed(&self, id: u64) -> bool {
         self.suppressed.contains(&id)
     }
+    #[cfg(test)]
     pub fn filter(
         &mut self,
         touches: &mut Vec<Touch>,
@@ -60,11 +63,29 @@ impl Input {
         aspect: f32,
         dt: f32,
     ) {
-        let fields: Vec<_> = areas
+        let samples: Vec<_> = areas
             .iter()
-            .filter(|a| a.visible(t) && a.active(t))
-            .map(|a| (a.pose(t, aspect), a.is_subtract))
+            .filter(|a| a.visible(t))
+            .map(|a| phistudio_core::noise_fields::Sample {
+                pose: a.pose(t, aspect),
+                y_scale: 1.,
+                phase: if a.active(t) { 2 } else { 0 },
+                opacity: 1.,
+                subtract: a.is_subtract,
+                color: [255, 84, 84],
+            })
             .collect();
+        self.filter_samples(touches, &samples, aspect, dt, false);
+    }
+    pub fn filter_samples(
+        &mut self,
+        touches: &mut Vec<Touch>,
+        samples: &[phistudio_core::noise_fields::Sample],
+        aspect: f32,
+        dt: f32,
+        single: bool,
+    ) {
+        let fields: Vec<_> = samples.iter().filter(|a| a.phase == 2).collect();
         self.suppressed.clear();
         self.positions.clear();
         for hover in &mut self.hovers {
@@ -79,7 +100,7 @@ impl Input {
             }
             let position = touch_world(touch.position, aspect);
             let blocked = self.blocked.contains(&touch.id)
-                || (!ended && position.is_finite() && contains(&fields, position));
+                || (!ended && position.is_finite() && contains_samples(&fields, position, single));
             if blocked {
                 self.suppressed.insert(touch.id);
                 if !ended {
@@ -131,6 +152,26 @@ fn inside(pose: Pose, p: Vec2, margin: f32) -> bool {
     local.x <= half.x && local.y <= half.y
 }
 
+fn contains_samples(
+    fields: &[&phistudio_core::noise_fields::Sample],
+    p: Vec2,
+    single: bool,
+) -> bool {
+    let (mut normal, mut count, mut inset, mut expanded) = (false, 0, false, 0);
+    for s in fields {
+        let p = s.pose.center + (p - s.pose.center) / vec2(1., s.y_scale);
+        if s.subtract {
+            count += usize::from(inside(s.pose, p, 0.));
+            expanded += usize::from(inside(s.pose, p, INSET));
+        } else {
+            normal |= inside(s.pose, p, 0.);
+            inset |= inside(s.pose, p, -INSET);
+        }
+    }
+    let parity = |n| if single { n == 1 } else { n % 2 == 1 };
+    (normal ^ parity(count)) && (inset ^ parity(expanded))
+}
+#[cfg(test)]
 fn contains(fields: &[(Pose, bool)], p: Vec2) -> bool {
     let (mut normal, mut subtract, mut inset_normal, mut expanded_subtract) =
         (false, false, false, false);

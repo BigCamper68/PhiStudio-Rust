@@ -79,6 +79,12 @@ impl Workbench {
                                 }
                             });
                             ui.separator();
+                            if self.advanced.right_mode == crate::advanced_ui::RightMode::NoiseFields {
+                                ui.checkbox(&mut self.options.snap_x,crate::i18n::tr("Snap field X to grid"));
+                                ui.checkbox(&mut self.options.snap_time,crate::i18n::tr("Snap time to grid"));
+                                ui.checkbox(&mut self.options.noise_preview_grid, crate::i18n::tr("Field preview grid"));
+                                ui.separator();
+                            }
                             ui.add(
                                 egui::Slider::new(&mut self.zoom, 24. ..=280.).text(crate::i18n::tr("px / beat")),
                             );
@@ -95,7 +101,9 @@ impl Workbench {
         if !self.show_projects && self.compact_properties {
             let mut open = true;
             crate::i18n::window(
-                if self.advanced.right_mode == crate::advanced_ui::RightMode::Shaders {
+                if self.advanced.right_mode == crate::advanced_ui::RightMode::NoiseFields {
+                    "Noise Field properties"
+                } else if self.advanced.right_mode == crate::advanced_ui::RightMode::Shaders {
                     "Shader properties"
                 } else if self.advanced.story_selected.is_some() {
                     "Storyboard properties"
@@ -129,7 +137,10 @@ impl Workbench {
                     .id_source("note-properties-scroll")
                     .max_height(ui.available_height().max(80.))
                     .touch_show(ui, |ui| {
-                        if self.advanced.right_mode == crate::advanced_ui::RightMode::Shaders {
+                        if self.advanced.right_mode == crate::advanced_ui::RightMode::NoiseFields {
+                            self.noise_properties(ui)
+                        } else if self.advanced.right_mode == crate::advanced_ui::RightMode::Shaders
+                        {
                             self.shader_properties(ui)
                         } else if self.advanced.story_selected.is_some() {
                             self.story_properties(ui)

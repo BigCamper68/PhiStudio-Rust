@@ -15,6 +15,7 @@ pub struct NoteId {
 
 #[derive(Clone, Debug)]
 pub enum Command {
+    EditNoise(crate::noise_fields::Action),
     EditShader {
         baseline: Value,
         action: crate::shaders::ShaderAction,
@@ -114,6 +115,7 @@ enum NotesShape {
 
 #[derive(Debug)]
 enum Delta {
+    Noise(crate::noise_fields::Delta),
     Lines(crate::line_management::LineDelta),
     LineField {
         line: usize,

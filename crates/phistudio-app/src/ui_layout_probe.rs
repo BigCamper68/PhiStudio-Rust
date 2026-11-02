@@ -10,6 +10,7 @@ mod audio;
 mod audio_notes;
 mod line_tools;
 mod multiline;
+mod noise;
 mod note_properties;
 mod properties;
 mod versions;
@@ -65,7 +66,13 @@ fn paint_observed(
         }
     });
     preview.set_editor_options(&app.options, app.line)?;
-    preview.render(0., preview.target_viewport());
+    app.sync_noise_preview(preview, &mut None, true)?;
+    let time = if app.noise_preview_override().is_some() {
+        app.editor.document().tempo().seconds_at(app.beat)
+    } else {
+        0.
+    };
+    preview.render(time, preview.target_viewport());
     gui.draw();
     unsafe { macroquad::miniquad::gl::glFinish() };
     Ok(panel)
@@ -90,6 +97,12 @@ pub async fn run() -> Result<()> {
     app.note_highlights = preview.highlighted_notes();
     app.select(Some(NoteId { line: 0, index: 0 }));
     let mut gui = Gui::new();
+    if std::env::args().nth(2).as_deref() == Some("noise-live") {
+        return noise::live(&mut gui, &mut app, &mut preview, &out).await;
+    }
+    if std::env::args().nth(2).as_deref() == Some("noise-fields") {
+        return noise::run(&mut gui, &mut app, &mut preview, &out).await;
+    }
     if std::env::args().nth(2).as_deref() == Some("project-versions") {
         return versions::run(&mut gui, &mut app, &mut preview, &out).await;
     }

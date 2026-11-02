@@ -114,6 +114,7 @@ pub enum Gesture {
     Event(crate::event_grid::EventGesture),
     Story(Box<crate::story_grid::StoryGesture>),
     Shader(Box<crate::shader_ui::grid::ShaderGesture>),
+    Noise(Box<crate::noise_ui::grid::NoiseGesture>),
     Tap {
         origin: Pos2,
         grid: Grid,

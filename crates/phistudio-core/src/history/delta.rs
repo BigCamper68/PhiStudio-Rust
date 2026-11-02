@@ -33,6 +33,10 @@ impl Delta {
                 })
             };
         Ok(Some(match command {
+            Command::EditNoise(action) => {
+                return crate::noise_fields::prepare(doc, action)
+                    .map(|v| v.map(|(delta, label)| (Self::Noise(delta), label)));
+            }
             command @ (Command::AddLine { .. }
             | Command::AddLines { .. }
             | Command::DuplicateLine(_)
@@ -181,6 +185,7 @@ impl Delta {
                 }
             }
             Self::Shader(delta) => delta.apply(doc, forward),
+            Self::Noise(delta) => delta.apply(doc, forward),
             Self::Advanced(delta) => delta.apply(doc, forward),
             Self::Extras(delta) => delta.apply(doc, forward),
             Self::Groups(delta) => delta.apply(doc, forward),

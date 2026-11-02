@@ -505,3 +505,211 @@ fn touch_taps_create_in_two_columns_and_vertical_swipes_do_not_place_notes() {
     }
     assert_eq!(app.editor.document().note_count(), 2);
 }
+
+fn storyboard_app() -> Workbench {
+    let mut app = app();
+    app.open_storyboard();
+    app.multi_line.events = true;
+    app
+}
+fn story(app: &mut Workbench, line: usize) {
+    use phistudio_core::{StoryEvent, StoryKind};
+    app.execute(Command::EditStoryboard {
+        line,
+        kind: StoryKind::ScaleX,
+        index: None,
+        event: Some(StoryEvent::new(
+            StoryKind::ScaleX,
+            Beat::ONE,
+            Beat::new(3, 0, 1).unwrap(),
+        )),
+    });
+}
+#[test]
+fn storyboard_columns_create_on_the_pressed_line_and_cancel_without_committing() {
+    use phistudio_core::StoryKind;
+    let mut app = storyboard_app();
+    let g = grid(&app);
+    let panels = app.line_panels(g, true);
+    assert_eq!(panels.len(), 2);
+    app.set_tool(Tool::Event);
+    for (line, panel) in panels {
+        let x = panel.event_rect.left() + panel.event_rect.width() / 12.;
+        let a = pos2(x, g.y(1.));
+        let b = pos2(x, g.y(3.));
+        let before = app.editor.document().as_json().clone();
+        input(
+            &mut app,
+            vec![button(a, true, false), Event::PointerMoved(b)],
+        );
+        assert_eq!(app.editor.document().as_json(), &before);
+        grid_input::handle(&mut app, &[], g, g.full_rect(), |_| true, true);
+        assert_eq!(app.editor.document().as_json(), &before);
+        input(
+            &mut app,
+            vec![
+                button(a, true, false),
+                Event::PointerMoved(b),
+                button(b, false, false),
+            ],
+        );
+        let rows = app
+            .editor
+            .document()
+            .story_events(line, StoryKind::ScaleX)
+            .unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].start_time, Beat::ONE);
+        assert_eq!(rows[0].end_time, Beat::new(3, 0, 1).unwrap());
+    }
+}
+#[test]
+fn storyboard_multi_box_group_move_copy_delete_and_undo_keep_source_lines() {
+    use phistudio_core::StoryKind;
+    let mut app = storyboard_app();
+    for line in [0, 1] {
+        story(&mut app, line);
+    }
+    let source = app.editor.document().as_json().clone();
+    let g = grid(&app);
+    let panels = app.line_panels(g, true);
+    app.set_tool(Tool::BoxSelect);
+    let a = pos2(panels[0].1.event_rect.left() + 2., g.y(0.5));
+    let b = pos2(panels[1].1.event_rect.right() - 2., g.y(4.));
+    input(
+        &mut app,
+        vec![
+            button(a, true, false),
+            Event::PointerMoved(b),
+            button(b, false, false),
+        ],
+    );
+    assert_eq!(
+        app.story_selection()
+            .iter()
+            .map(|id| id.line)
+            .collect::<Vec<_>>(),
+        vec![0, 1]
+    );
+    let a = pos2(
+        panels[0].1.event_rect.left() + panels[0].1.event_rect.width() / 12.,
+        g.y(2.),
+    );
+    let b = pos2(a.x, g.y(4.));
+    input(
+        &mut app,
+        vec![
+            button(a, true, false),
+            Event::PointerMoved(b),
+            button(b, false, false),
+        ],
+    );
+    for line in [0, 1] {
+        assert_eq!(
+            app.editor
+                .document()
+                .story_events(line, StoryKind::ScaleX)
+                .unwrap()[0]
+                .start_time,
+            Beat::new(3, 0, 1).unwrap()
+        );
+    }
+    app.history_step(false);
+    assert_eq!(app.editor.document().as_json(), &source);
+    app.select_all_stories(false);
+    assert_eq!(app.story_selection().len(), 2);
+    app.copy_selection(false);
+    assert_eq!(app.tools.clipboard.as_ref().unwrap().len(), 2);
+    app.beat = 8.;
+    app.paste_selection(false, false);
+    for line in [0, 1] {
+        assert_eq!(
+            app.editor
+                .document()
+                .story_events(line, StoryKind::ScaleX)
+                .unwrap()
+                .len(),
+            2
+        );
+    }
+    app.history_step(false);
+    assert_eq!(app.editor.document().as_json(), &source);
+    app.select_all_stories(false);
+    app.delete_selected();
+    for line in [0, 1] {
+        assert!(
+            app.editor
+                .document()
+                .story_events(line, StoryKind::ScaleX)
+                .unwrap()
+                .is_empty()
+        );
+    }
+    app.history_step(false);
+    assert_eq!(app.editor.document().as_json(), &source);
+    app.select_all_stories(false);
+    app.reconcile_multi_selection();
+    assert_eq!(app.story_selection().len(), 2);
+    app.multi_line.lines = vec![1];
+    app.reconcile_multi_selection();
+    assert_eq!(
+        app.story_selection()
+            .iter()
+            .map(|id| id.line)
+            .collect::<Vec<_>>(),
+        vec![1]
+    );
+}
+#[test]
+fn storyboard_erase_across_columns_and_horizontal_navigation_use_the_shared_view() {
+    use phistudio_core::StoryKind;
+    let mut app = storyboard_app();
+    for line in [0, 1] {
+        story(&mut app, line);
+    }
+    let source = app.editor.document().as_json().clone();
+    let g = grid(&app);
+    let panels = app.line_panels(g, true);
+    let points: Vec<_> = panels
+        .iter()
+        .map(|(_, p)| pos2(p.event_rect.left() + p.event_rect.width() / 12., g.y(2.)))
+        .collect();
+    app.set_tool(Tool::Erase);
+    input(
+        &mut app,
+        vec![
+            button(points[0], true, false),
+            Event::PointerMoved(points[1]),
+            button(points[1], false, false),
+        ],
+    );
+    for line in [0, 1] {
+        assert!(
+            app.editor
+                .document()
+                .story_events(line, StoryKind::ScaleX)
+                .unwrap()
+                .is_empty()
+        );
+    }
+    app.history_step(false);
+    assert_eq!(app.editor.document().as_json(), &source);
+    app.set_tool(Tool::Select);
+    app.options.lock_horizontal = true;
+    app.multi_line.widths[1] = 500.;
+    let panels = app.line_panels(g, true);
+    let a = pos2(panels[0].1.event_rect.center().x, g.y(5.));
+    let b = a - vec2(70., 0.);
+    let beat = app.beat;
+    input(
+        &mut app,
+        vec![
+            button(a, true, false),
+            Event::PointerMoved(b),
+            button(b, false, false),
+        ],
+    );
+    assert!(app.multi_line.offsets[1] > 0.);
+    assert_eq!(app.beat, beat);
+    assert_eq!(app.editor.document().as_json(), &source);
+}

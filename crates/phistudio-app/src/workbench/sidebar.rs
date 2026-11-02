@@ -28,6 +28,27 @@ impl Workbench {
                             .touch_show_y(ui, |ui| {
                                 self.sidebar_preview(ui);
                                 if self.advanced.right_mode
+                                    == crate::advanced_ui::RightMode::NoiseFields
+                                {
+                                    if !self.compact_properties {
+                                        if self.properties_scroll {
+                                            ui.scroll_to_cursor(Some(Align::TOP));
+                                            self.properties_scroll = false;
+                                        }
+                                        if ui
+                                            .button(format!(
+                                                "{} ↗",
+                                                crate::i18n::tr("Noise Field properties")
+                                            ))
+                                            .clicked()
+                                        {
+                                            self.compact_properties = true;
+                                        }
+                                        self.noise_properties(ui);
+                                    }
+                                    return;
+                                }
+                                if self.advanced.right_mode
                                     == crate::advanced_ui::RightMode::Shaders
                                 {
                                     if !self.compact_properties {

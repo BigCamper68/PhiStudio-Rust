@@ -9,6 +9,7 @@ use egui::{Align2, Color32, FontId, Pos2, Rect, Shape, Stroke, pos2, vec2};
 use phistudio_core::{Beat, EventType, LineEvent, StoryEvent, StoryKind};
 
 pub struct StoryGesture {
+    pub line: usize,
     pub id: Option<StoryId>,
     pub kind: StoryKind,
     pub original: StoryEvent,
@@ -77,6 +78,7 @@ pub fn begin(app: &mut Workbench, grid: Grid, pos: Pos2, additive: bool) -> Gest
             .unwrap_or(start);
         let event = StoryEvent::new(kind, start, end);
         return Gesture::Story(Box::new(StoryGesture {
+            line: app.line,
             id: None,
             kind,
             original: event.clone(),
@@ -111,6 +113,7 @@ pub fn begin(app: &mut Workbench, grid: Grid, pos: Pos2, additive: bool) -> Gest
             .map(|c| c.first)
             .unwrap_or(event.start_time);
             return Gesture::Story(Box::new(StoryGesture {
+                line: app.line,
                 id: Some(id),
                 kind,
                 original: event.clone(),
@@ -144,46 +147,57 @@ pub fn begin(app: &mut Workbench, grid: Grid, pos: Pos2, additive: bool) -> Gest
 }
 pub fn box_hits(app: &Workbench, grid: Grid, area: Rect) -> Vec<StoryId> {
     let mut ids = vec![];
-    for kind in StoryKind::EDITABLE {
-        for (index, event) in app
-            .editor
-            .document()
-            .story_events(app.line, kind)
-            .unwrap_or_default()
-            .into_iter()
-            .enumerate()
-        {
-            if area.intersects(rect(grid, kind, &event).intersect(grid.rect)) {
-                ids.push(StoryId {
-                    line: app.line,
-                    kind,
-                    index,
-                });
+    let base = app.multi_base(grid);
+    for (line, panel) in app.line_panels(base, true) {
+        let grid = panel.events();
+        for kind in StoryKind::EDITABLE {
+            for (index, event) in app
+                .editor
+                .document()
+                .story_events(line, kind)
+                .unwrap_or_default()
+                .into_iter()
+                .enumerate()
+            {
+                if area.intersects(
+                    rect(grid, kind, &event)
+                        .intersect(grid.rect)
+                        .intersect(base.event_rect),
+                ) {
+                    ids.push(StoryId { line, kind, index });
+                }
             }
         }
     }
     ids
 }
 pub fn hits(app: &Workbench, grid: Grid, pos: Pos2) -> Vec<StoryId> {
-    if !grid.rect.contains(pos) {
+    let base = app.multi_base(grid);
+    if !base.event_rect.contains(pos) {
         return vec![];
     }
-    let kind = kind_at(grid, pos);
-    app.editor
-        .document()
-        .story_events(app.line, kind)
-        .unwrap_or_default()
-        .iter()
-        .enumerate()
-        .filter(|(_, e)| {
-            pos.y >= grid.y(e.end_time.as_f64()) - 8. && pos.y <= grid.y(e.start_time.as_f64()) + 8.
-        })
-        .map(|(index, _)| StoryId {
-            line: app.line,
-            kind,
-            index,
-        })
-        .collect()
+    let mut ids = vec![];
+    for (line, panel) in app.line_panels(base, true) {
+        let grid = panel.events();
+        if !grid.rect.contains(pos) {
+            continue;
+        }
+        let kind = kind_at(grid, pos);
+        ids.extend(
+            app.editor
+                .document()
+                .story_events(line, kind)
+                .unwrap_or_default()
+                .iter()
+                .enumerate()
+                .filter(|(_, e)| {
+                    pos.y >= grid.y(e.end_time.as_f64()) - 8.
+                        && pos.y <= grid.y(e.start_time.as_f64()) + 8.
+                })
+                .map(|(index, _)| StoryId { line, kind, index }),
+        );
+    }
+    ids
 }
 pub fn update(d: &mut StoryGesture, pos: Pos2) {
     d.moved |= pos.distance(d.origin) > 8.;
@@ -217,6 +231,9 @@ pub fn finish(app: &mut Workbench, d: StoryGesture) {
         return;
     }
     if d.id.is_none() || d.moved {
+        if d.id.is_none() {
+            app.line = d.line;
+        }
         app.apply_story(d.id, d.kind, Some(d.event));
     }
 }
@@ -271,12 +288,24 @@ pub fn paint(app: &Workbench, painter: &egui::Painter, grid: Grid) {
         }) => (stories.iter().copied().collect(), Some(*beats)),
         _ => (Default::default(), None),
     };
-    for kind in StoryKind::EDITABLE.iter().copied() {
+    let separator = if app.multi_active(true) {
+        Stroke::new(1.5_f32, accent().linear_multiply(0.6))
+    } else {
+        Stroke::new(1_f32, border())
+    };
+    for (column_index, kind) in StoryKind::EDITABLE.iter().copied().enumerate() {
         let col = column(grid, kind);
         painter.line_segment(
             [col.left_top(), col.left_bottom()],
-            Stroke::new(1_f32, border()),
+            if column_index == 0 {
+                separator
+            } else {
+                Stroke::new(1_f32, border())
+            },
         );
+        if app.multi_active(true) && column_index + 1 == StoryKind::EDITABLE.len() {
+            painter.line_segment([col.right_top(), col.right_bottom()], separator);
+        }
         let (label, font) = header_label(painter, kind, col.width());
         let header = Rect::from_min_max(
             pos2(col.left() + 1., col.top() - 20.),
@@ -327,6 +356,7 @@ pub fn paint(app: &Workbench, painter: &egui::Painter, grid: Grid) {
     }
     if let Some(Gesture::Story(d)) = &app.drag
         && d.id.is_none()
+        && d.line == app.line
     {
         block(&p, grid, d.kind, &d.event, true);
     }

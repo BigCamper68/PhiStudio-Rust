@@ -10,6 +10,7 @@ impl Workbench {
                 RightMode::Events => "Events",
                 RightMode::Storyboard => "Storyboard",
                 RightMode::Shaders => "Shaders",
+                RightMode::NoiseFields => "Noise Fields",
             }))
             .touch_show_ui(ui, |ui| {
                 ui.selectable_value(&mut next, RightMode::Events, crate::i18n::tr("Events"));
@@ -19,9 +20,14 @@ impl Workbench {
                     crate::i18n::tr("Storyboard"),
                 );
                 ui.selectable_value(&mut next, RightMode::Shaders, crate::i18n::tr("Shaders"));
+                ui.selectable_value(
+                    &mut next,
+                    RightMode::NoiseFields,
+                    crate::i18n::tr("Noise Fields"),
+                );
             });
         if next != before {
-            if before == RightMode::Shaders && !self.flush_shader_draft() {
+            if !self.flush_shader_draft() {
                 return;
             }
             self.advanced.right_mode = next;
@@ -33,6 +39,13 @@ impl Workbench {
             self.shaders.animation = None;
             if next == RightMode::Storyboard {
                 self.open_storyboard();
+            }
+            if next == RightMode::NoiseFields {
+                self.show_context = true;
+                self.show_edit = false;
+                self.compact_properties = false;
+                self.set_tool(crate::workbench::Tool::Select);
+                self.refresh_noise();
             }
             if next == RightMode::Shaders {
                 self.show_context = true;

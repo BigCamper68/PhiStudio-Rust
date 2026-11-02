@@ -1,9 +1,134 @@
-# Noise Fields in Preview
+# Noise Fields
 
-Preview reads the existing top-level `blockAreaList` in RPE documents and imported
-Phigros charts. Field times and event times are seconds on the chart cursor;
-they are independent of BPM and the audio offset. No Noise Field editor or new
-saved-data format is introduced. Unknown extensions remain in the document.
+Choose **Noise Fields** in the timeline workspace selector. The workspace follows
+Events/Storyboard: two simultaneous timelines, an inspector, and the shared
+transport and Preview. Fields occupy the left grid; selecting one exposes all
+of its animation columns in the right grid. Both surfaces share time, zoom and
+the draggable divider. The mobile inspector can float
+and uses the same touch scrolling and dropdown controls as the other editors.
+
+- Create a field with **+ Field**, or select that tool and draw its lifetime
+  upwards in the left grid. Place normal and subtract fields anywhere along X.
+  Empty-space drags pan horizontally or scrub time; horizontal wheel gestures
+  and Shift+wheel also pan. The left grid extends in both X directions without
+  a boundary and uses the same vertical grid count as Events, configured in
+  **Grid → Vertical grid lines**. This adjusts only the thin grid and X snapping
+  step. Numbered X columns and field widths stay fixed; labels begin at X1.
+  Creation and moves snap to the fine vertical grid and beat divisions. The Grid
+  window also controls X/time snapping. Changing density never moves existing
+  fields or resizes their numbered columns. The first controls above the
+  left grid, **< X >**, can jump to distant columns. All animation columns fit the right
+  grid's width, like Events, with horizontal navigation disabled. The workspace
+  selector is first above the right grid, followed by the field list. Choosing
+  a field in that list centers its column on the left and seeks to its lifetime,
+  including when choosing the current field again after manually panning away.
+- Edit its name, appearance/activation/disappearance, rectangle and RGB color.
+  Geometry, RGB and the miniature rectangle preview appear first in the inspector.
+  **Edit field in Preview** opens a live full-screen geometry editor: drag either
+  corner to resize, or the center handle to move the rectangle. Live drafts keep
+  their ordinary lifetime, fade, activation and subtraction behavior. All fields
+  share the original mask/parity pass while editing; no visibility is forced.
+  Geometry and point edits both preview the actual animation at the current time.
+ Swipe elsewhere
+  vertically to scrub chart time, including inside a full-screen field. The
+  spatial grid uses the main vertical count and horizontal division; X/time snap
+  switches control its X/Y alignment. **Field preview grid**, available below
+  horizontal settings in **Grid** and in the full-screen toolbar, controls both
+  full-screen and miniature grid visibility independently of snapping.
+  **Apply field** commits the full-screen session as one Undo entry; Cancel,
+  Escape or Back restores the inspector's original draft. Interrupted touch
+  gestures restore the current drag without discarding earlier staged edits.
+  **Apply field** in the inspector commits its pending edits;
+  Save, playback, export and workspace navigation also apply valid pending edits.
+- The right grid exposes native Move/Scale/Rotate point keys, or Next
+  Activation/Move X/Move Y/Scale X/Scale Y/Rotate interval tracks, plus Color.
+  With the placement tool active, drawing in a column creates that track's key.
+  Blocks share Storyboard's interval frames and selection grips. Animation value
+  captions use the same renderer as Events: intervals up to 28 pixels hide their
+  captions, narrow/tall blocks show endpoints separately, and other blocks use
+  one compact start-to-end label. Captions are clipped to their own block.
+  Native keys show outgoing interpolation intervals between real point keys; a
+  terminal point is a short endpoint cap. New native animations use two sampled
+  point keys one Grid tick apart. New Next animations also start at one Grid
+  tick. Draw upwards without releasing to set their length. Upper native grips
+  move the following point (or create an endpoint for a terminal point), while
+  lower grips move the start. No interval-duration extension is added to native
+  JSON. Dragging the middle moves the entire animation interval; native moves
+  shift both real endpoints, with shared points shifted only once for groups.
+  Short blocks keep their middle available for moving. Resize previews and
+  cancellation use the same reversible gesture path.
+  Selection, box selection, clipboard and erasing act on the focused field or
+  animation column. Native keys have separate outgoing X/Y easing and scale/rotation anchors.
+  Next intervals include 29 easings, easing windows, Bezier, instant values,
+  anchors, transform references/steps and link-group metadata. **Pick anchor**
+  and **Pick position** open the shared Preview grid with a labeled coordinate
+  point. Tap to place it or drag its marker; swiping elsewhere scrubs chart time.
+  The point remains staged until **Apply field** confirms the session as one
+  Undo entry. Cancel/Back/Escape restores the previous draft, including implicit
+  anchors. Geometry changes appear in live Preview without writing the chart.
+  Color uses the
+  shared RGB palette for static colors and both key endpoints.
+- Select, cycle overlapping intervals, box-select, drag/resize, erase, reorder,
+  copy/cut/paste, duplicate, select all, and Undo/Redo use the project history.
+  **+ Field** / **+ Keyframe** select the drawing tool. **Add field at cursor** /
+  **Add key at cursor** immediately insert at the transport position. Cursor
+  field creation places field #N exactly in XN, bypassing fine X snapping and
+  current panning. If that column is offscreen, it is revealed immediately;
+  the transport position is preserved. Visible columns keep their camera position. A timeline
+  drag, including a group move or paired native endpoints, creates one history entry. Canceling
+  touch input discards the gesture. New keys begin at the current channel value.
+
+## Saved formats and Phira Pro
+
+The new-field format selector lists rpe-next first and defaults to it for new
+projects. Selecting an existing field never converts its source format.
+
+Native fields retain `bottomLeftPercentage`/`topRightPercentage`, four timestamps
+in chart seconds, `isSubtract`, and native keys/eases 0..14. The editor displays
+beats through the current BPM map without rounding unchanged source seconds.
+Native lifetime moves shift native animation by the same seconds delta.
+
+Next fields retain `bottomLeft`/`topRight` in the centered 1350×900 canvas,
+beat triples, multiple `activeIntervals`, `readyFlash` seconds, `isInvert` and
+independent interval tracks. Authoring Next data raises `META.RPEVersion` to at
+least 220; Undo restores the former version. Animation runs in chart time, does
+not apply the audio offset twice, and retains values across gaps. Cumulative
+center transforms apply X scale, Y scale, clockwise rotation, then absolute
+movement. Standard Next easing includes its own Elastic InOut period; ordinary
+RPE line playback still uses the pinned prpr tween table. The optional
+**Single inversion only** setting edits `noiseAreaOptions.ignoreTripleInversion`.
+Next 230 custom shader skins/layers are retained as unknown JSON, not authored.
+
+Saving retains the source dialect, raw key order and unknown properties. Names
+use `phiStudioName` for native data and `Name` for Next. `editorPositionX` stores
+only a field column's layout, matching rpe-next's editor metadata; moving it
+horizontally never moves the playable rectangle. View offsets are independent
+of chart edits. RGB authoring uses
+`phiStudioColor`; `phiStudioColorEvents` contains standard beat-based RGB interval
+keys. These editor extensions are not part of the original Phigros protocol.
+
+Phira Pro's native field parser does not read these color extensions. When a
+project contains custom field colors, **Export chart** creates a snapshot with
+Line2Area marker lines named `isSubtract0.png` / `isSubtract1.png`, the required
+1×1 guide resources, geometry/scale tracks, RGB `extended.colorEvents`, and
+lifecycle speed codes 1/2/3/4. Geometry and RGB curves are adaptively baked to
+linear events with byte-valued RGB endpoints; guide names avoid resource-folder collisions. Native colors and
+Next colors share this adapter. Uncolored exports retain the original fields.
+The working document and editor Undo history are never converted during export.
+
+`phiStudioNoiseSource` stores the source fields and hashes of the generated lines
+and BPM map. Reimport restores exact authoring data only when those generated
+tracks are unchanged. External edits are kept when either hash differs.
+
+Line2Area uses the player's immediate show behavior and fixed 0.5-second Ready
+material. Colored export rejects custom Ready durations that cannot be represented,
+reversed/out-of-lifetime native phases, and excessive sample counts. Keep a
+project copy for authoring; a JSON Save alone does not package Phira Pro guides.
+The adapter bakes the native geometry on a 3:2 canvas, as the Java reference does;
+non-3:2 rotated percentage fields can differ from the native projection in Phira
+Pro. This is a player protocol limit, not a change to Preview's native geometry.
+
+## Preview and Playtest
 
 The integration renders HiddenBefore, Disabled, Ready, Active and HiddenAfter,
 including the 0.5-second show fade and 0.5-second Ready interval. A short
@@ -14,7 +139,7 @@ move order. Keys are sorted in the renderer's copy. Easing follows GetEase's
 visual time directly; it does not advance a stateful animation incrementally.
 
 The GPU path follows the supplied Phigros Android build 160 gameplay prefab:
-six camera masks at one eighth of canvas dimensions, subtraction parity,
+six camera masks at one eighth of canvas dimensions, native subtraction masks,
 BlockCompose, EdgeMask pass 1, additive DisabledBlock and premultiplied
 ActiveBlock composition. Disabled cameras also include Ready objects, preserving
 the translucent red base beneath the Ready shine. This prefab has `edgeSize=1`; the glow-ring shader in a
@@ -45,7 +170,8 @@ Other fingers remain usable. Ready/Disabled fields never block new contacts.
 
 A documented, reversible prpr patch provides a callback after native input merging,
 viewport normalization and timestamping, before all four note kinds are judged.
-Block logic lives in the integration layer. Pause, seek, retry, project replacement
+Native blocking rules live in the integration layer. Next input uses the same
+continuous geometry as its masks, with the selected inversion mode. Pause, seek, retry, project replacement
 and exit clear contact state and restore audio. The original ten touch-hover slots,
 11.5 sprite scale and 0.1-second animation use the extracted tight sprite mesh and
 shader effects. Music cutoff moves to 1500 Hz over 0.1 seconds while any finger is
@@ -78,12 +204,14 @@ of that PR's different glow pipeline. Attribution is recorded in THIRD_PARTY.md.
 
 ```sh
 cargo test -p phistudio-prpr --lib --locked
-cargo test -p phistudio-core --test chart_conversion --locked
+cargo test -p phistudio-core --test noise_fields --locked
+cargo test -p phistudio-app noise_ui::tests --locked
 cargo build -p phistudio-prpr --example noise-fields --example playtest-input --locked
 python3 tools/verify-noise-fields.py
 # With a working GL context (for example private Xvfb with Mesa llvmpipe):
 xvfb-run -a target/debug/examples/noise-fields
 xvfb-run -a python3 tools/playtest-smoke.py
+xvfb-run -a target/debug/examples/ui-layout-probe artifacts/checks/noise-ui noise-fields 873x393
 ```
 
 The GPU probe checks five phases, hidden-field cleanup, exact repeated seeks,
@@ -101,3 +229,23 @@ judgement counts and low-pass transitions. Pure tests cover independent fingers,
 release/cancel/lost-contact cleanup, animated hit geometry and edge tolerances.
 The GPU probe can also take an extracted RPE JSON as its second argument to capture
 Desultory Signals around beats 322, 331.5, 332, 333 and 333.5 (202 BPM).
+
+The editor regression tests also cover sparse history, exact undo of missing/null
+containers, invalid-batch rollback, native seconds versus Next beats, new-key
+sampling, resource packaging, animated RGB export and safe source restoration.
+The Next fixture contains 61 fields and 2,074 samples generated upstream, checked
+at six aspect ratios and in reverse time order. The GPU probe covers colored
+Disabled/Ready/Active states, color animation, canceled color masks, Next XOR
+and the exactly-one-inversion option. UI captures exercise phone/tablet widths,
+three locales, native/Next inspectors and the shared palette.
+
+Reference revisions for authoring and interoperability:
+
+- [rpe-next](https://github.com/kclg-YSJ/rpe-next/tree/a9c5bc2b776513bac015516e916258be2f452f81):
+  format and editor behavior, independently implemented; no implementation source
+  is copied from this reference.
+- [PhiStudio Java](https://github.com/BigCamper68/PhiStudio/tree/bb2e9b34520a97b10e9012c26101aec061b9a004):
+  NoiseField forms, Line2Area export and color-material mapping (MIT notice retained).
+- [Phira Pro](https://github.com/Phira-Pro/Phira-Pro/tree/d4b62e04d7d827d481812e49cee0b69d0fab46ad):
+  marker/color protocol and Next compatibility. Fixture file hashes and its
+  original rpe-next generator revision are retained beside the regression data.

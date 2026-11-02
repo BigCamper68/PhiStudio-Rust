@@ -20,8 +20,7 @@ pub(crate) struct Frame {
     pub selection: Selection,
 }
 pub(crate) fn frame(app: &mut Workbench, grid: Grid) -> Option<Frame> {
-    if app.tool != Tool::Select || app.advanced.right_mode == crate::advanced_ui::RightMode::Shaders
-    {
+    if app.tool != Tool::Select || app.advanced.right_mode.dedicated() {
         return None;
     }
     let selection = app.selection();

@@ -185,6 +185,7 @@ pub(crate) async fn run(options: Options) -> Result<()> {
         app.file.clone(),
         app.asset_revision,
     );
+    let mut noise_override = None;
     let mut applied_skin: Option<String> = None;
     let mut frame = 0_u32;
     let mut input_blocked = false;
@@ -370,6 +371,10 @@ pub(crate) async fn run(options: Options) -> Result<()> {
             app.resource_warning = preview.resource_warning().map(str::to_owned);
             app.note_highlights = preview.highlighted_notes();
             rendered = key;
+        }
+        if let Err(error) = app.sync_noise_preview(&mut preview, &mut noise_override, chart_changed)
+        {
+            app.error = Some(format!("Could not update field Preview: {error}"));
         }
         app.audio_guide.generation_requested = app.audio_notes.show;
         app.audio_guide.update(

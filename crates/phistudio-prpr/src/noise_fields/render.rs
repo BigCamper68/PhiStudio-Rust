@@ -1,10 +1,7 @@
 //! BlockRender's mask, subtraction, dilation and composition passes, adapted
 //! to the shared Macroquad context. Shader arithmetic and material values come
 //! from the supplied Phigros build; see SOURCE.json.
-use super::{
-    input::Input,
-    model::{BlockArea, Pose},
-};
+use super::input::Input;
 use anyhow::{Context, Result};
 use macroquad::{
     miniquad::{BlendFactor, BlendState, BlendValue, Equation, PipelineParams, UniformType},
@@ -173,7 +170,11 @@ impl Drop for Targets {
 pub(super) struct Renderer {
     programs: Vec<Program>,
     sprite: Program,
+    xor_sprite: Program,
+    resolve_xor: Program,
     pack: Program,
+    color_pack: Program,
+    colors: super::colors::Colors,
     targets: Option<Targets>,
     textures: [Texture2D; 4],
     hover: Program,
@@ -211,36 +212,50 @@ impl Renderer {
             shader!("EdgeMask_1", None),
             shader!("DisabledBlock_0", additive),
             shader!("ActiveBlock_0", over),
+            Program::new(
+                include_str!("shaders/DisabledBlock_0.vert"),
+                &super::colors::material(include_str!("shaders/DisabledBlock_0.frag"), false),
+                additive,
+            )
+            .context("Colored DisabledBlock")?,
+            Program::new(
+                include_str!("shaders/ActiveBlock_0.vert"),
+                &super::colors::material(include_str!("shaders/ActiveBlock_0.frag"), true),
+                over,
+            )
+            .context("Colored ActiveBlock")?,
         ];
         let props: serde_json::Value = serde_json::from_str(include_str!("assets/materials.json"))?;
         programs[2].properties(&props["6"]);
         programs[5].properties(&props["8"]);
-        programs[6].properties(&props["5"]);
+        programs[7].properties(&props["8"]);
         // BlockRender.CopyReadyTouchParamsToActive copies these at Start.
-        let active = &programs[6];
-        for name in ["_ShineSpeed", "_ShineBrightness", "_ShineColor"] {
-            active.properties(&serde_json::json!({name: props["10"][name]}));
-        }
-        for (source, target) in [
-            ("_DisplaceMap_ST", "_TouchDisplaceMap_ST"),
-            ("_DisplaceSpeed", "_TouchDisplaceSpeed"),
-            ("_DisplaceStrength", "_TouchDisplaceStrength"),
-            ("_DisplaceDirection", "_TouchDisplaceDirection"),
-            ("_GlowColor", "_TouchGlowColor"),
-            ("_BackgroundPixelScale", "_TouchBackgroundPixelScale"),
-        ] {
-            active.properties(&serde_json::json!({target: props["12"][source]}));
-        }
-        active.properties(&props["12"]);
-        // The unprefixed displacement properties above belong to ActiveBlock.
-        for name in [
-            "_DisplaceMap_ST",
-            "_DisplaceSpeed",
-            "_DisplaceStrength",
-            "_DisplaceDirection",
-            "_BackgroundPixelScale",
-        ] {
-            active.properties(&serde_json::json!({name: props["5"][name]}));
+        for active in [&programs[6], &programs[8]] {
+            active.properties(&props["5"]);
+            for name in ["_ShineSpeed", "_ShineBrightness", "_ShineColor"] {
+                active.properties(&serde_json::json!({name: props["10"][name]}));
+            }
+            for (source, target) in [
+                ("_DisplaceMap_ST", "_TouchDisplaceMap_ST"),
+                ("_DisplaceSpeed", "_TouchDisplaceSpeed"),
+                ("_DisplaceStrength", "_TouchDisplaceStrength"),
+                ("_DisplaceDirection", "_TouchDisplaceDirection"),
+                ("_GlowColor", "_TouchGlowColor"),
+                ("_BackgroundPixelScale", "_TouchBackgroundPixelScale"),
+            ] {
+                active.properties(&serde_json::json!({target: props["12"][source]}));
+            }
+            active.properties(&props["12"]);
+            // The unprefixed displacement properties above belong to ActiveBlock.
+            for name in [
+                "_DisplaceMap_ST",
+                "_DisplaceSpeed",
+                "_DisplaceStrength",
+                "_DisplaceDirection",
+                "_BackgroundPixelScale",
+            ] {
+                active.properties(&serde_json::json!({name: props["5"][name]}));
+            }
         }
         let touch_shine = [
             "_TouchPosShineSpeed",
@@ -299,6 +314,20 @@ impl Renderer {
                     BlendFactor::One,
                 )),
             )?,
+            xor_sprite: Program::new(
+                VERT,
+                SPRITE,
+                Some(BlendState::new(
+                    Equation::Add,
+                    BlendFactor::OneMinusValue(BlendValue::DestinationColor),
+                    BlendFactor::OneMinusValue(BlendValue::SourceColor),
+                )),
+            )?,
+            resolve_xor: Program::new(
+                VERT,
+                "#version 100\nprecision highp float; varying vec2 uv; uniform sampler2D _MainTex; void main(){float v=texture2D(_MainTex,uv).r; gl_FragColor=vec4(v,v,0.0,1.0);}",
+                None,
+            )?,
             hover: Program::new(
                 VERT,
                 "#version 100\nprecision highp float; varying vec2 uv; uniform sampler2D Texture; void main(){vec4 c=texture2D(Texture,uv); c.rgb*=c.a; gl_FragColor=c;}",
@@ -308,6 +337,8 @@ impl Renderer {
             hover_indices: hover_sprite.indices,
             touch_shine,
             pack: Program::new(VERT, PACK, None)?,
+            color_pack: Program::new(VERT, super::colors::PACK, None)?,
+            colors: Default::default(),
             targets: None,
             textures,
         })
@@ -316,12 +347,14 @@ impl Renderer {
     pub(super) fn render(
         &mut self,
         res: &mut Resource,
-        areas: &[BlockArea],
+        areas: &[phistudio_core::noise_fields::Sample],
         input: &Input,
         full: (i32, i32, i32, i32),
+        xor: bool,
+        single: bool,
     ) {
         let t = res.time as f32;
-        if !areas.iter().any(|a| a.visible(t)) && input.hovers.iter().all(|h| h.scale == 0.) {
+        if areas.is_empty() && input.hovers.iter().all(|h| h.scale == 0.) {
             return;
         }
         let Some(target) = res.chart_target.as_mut() else {
@@ -348,33 +381,42 @@ impl Renderer {
         for (i, buffer) in rt.iter().enumerate().take(6) {
             camera(*buffer);
             clear_background(BLANK);
-            gl_use_material(self.sprite.material);
-            for area in areas.iter().filter(|a| a.visible(t)) {
-                let phase = if area.active(t) {
+            gl_use_material(if xor && i % 2 == 1 {
+                self.xor_sprite.material
+            } else {
+                self.sprite.material
+            });
+            for area in areas.iter() {
+                let phase = if area.phase == 2 {
                     0
-                } else if area.ready(t) {
+                } else if area.phase == 1 {
                     2
                 } else {
                     4
                 };
                 // Disabled cameras include the Ready layer (original culling
                 // masks 40960 / 81920). Ready adds shine over the red base.
-                if phase + usize::from(area.is_subtract) != i
-                    && !(phase == 2 && i == 4 + usize::from(area.is_subtract))
+                if phase + usize::from(area.subtract) != i
+                    && !(phase == 2 && i == 4 + usize::from(area.subtract))
                 {
                     continue;
                 }
-                let fade = area.fade(t);
-                let pose = area.pose(t, res.aspect_ratio);
-                let points = project(pose, res.aspect_ratio, res.config.flip_x(), vp, (w, h));
+                let fade = area.opacity;
+                let points = area
+                    .corners()
+                    .map(|p| project_point(p, res.aspect_ratio, res.config.flip_x(), vp, (w, h)));
                 if points.iter().all(|p| p.is_finite()) {
                     mesh(
                         points,
                         Color::new(
                             1.,
-                            if area.is_subtract { fade } else { 1. },
+                            if area.subtract { fade } else { 1. },
                             1.,
-                            if area.is_subtract { 0.1 } else { fade },
+                            if area.subtract {
+                                if xor { 1. } else { 0.1 }
+                            } else {
+                                fade
+                            },
                         ),
                         None,
                     );
@@ -384,7 +426,12 @@ impl Renderer {
             unsafe { get_internal_gl() }.flush();
         }
         for (program, out, input) in [(0, 6, 1), (1, 7, 3), (1, 8, 5)] {
-            self.programs[program].pass(rt[out], &[("_MainTex", rt[input].texture)], true);
+            let p = if xor {
+                &self.resolve_xor
+            } else {
+                &self.programs[program]
+            };
+            p.pass(rt[out], &[("_MainTex", rt[input].texture)], true);
         }
         self.programs[2].pass(
             rt[9],
@@ -416,42 +463,6 @@ impl Renderer {
             &[("_MainTex", composed), ("_ComposeRT", rt[9].texture)],
             true,
         );
-        self.pack.pass(
-            rt[13],
-            &[
-                ("Active", rt[9].texture),
-                ("Ready", rt[10].texture),
-                ("Normal", rt[4].texture),
-                ("Subtract", rt[8].texture),
-            ],
-            true,
-        );
-        camera(rt[14]);
-        clear_background(BLANK);
-        gl_use_default_material();
-        mesh(
-            [Vec2::ZERO, vec2(1., 0.), Vec2::ONE, vec2(0., 1.)],
-            WHITE,
-            Some(source),
-        );
-        unsafe { get_internal_gl() }.flush();
-        camera(output);
-        clear_background(BLANK);
-        mesh(
-            [Vec2::ZERO, vec2(1., 0.), Vec2::ONE, vec2(0., 1.)],
-            WHITE,
-            Some(source),
-        );
-        unsafe { get_internal_gl() }.flush();
-        self.programs[5].pass(
-            output,
-            &[
-                ("_ComposeRT", rt[11].texture),
-                ("_DisplaceMap", self.textures[0]),
-                ("_SparkMap", self.textures[1]),
-            ],
-            false,
-        );
         camera(rt[15]);
         clear_background(BLANK);
         gl_use_material(self.hover.material);
@@ -476,7 +487,58 @@ impl Renderer {
         }
         gl_use_default_material();
         unsafe { get_internal_gl() }.flush();
-        let p = &self.programs[6];
+        let palette = self.colors.update(
+            areas,
+            res.aspect_ratio,
+            res.config.flip_x(),
+            vp,
+            (w, h),
+            single || !xor,
+        );
+        let mut masks = vec![
+            ("Active", rt[9].texture),
+            ("Ready", rt[10].texture),
+            ("Normal", rt[4].texture),
+            ("Subtract", rt[8].texture),
+        ];
+        let pack = if palette.is_some() {
+            masks.push(("Hover", rt[15].texture));
+            &self.color_pack
+        } else {
+            &self.pack
+        };
+        pack.pass(rt[13], &masks, true);
+        camera(rt[14]);
+        clear_background(BLANK);
+        gl_use_default_material();
+        mesh(
+            [Vec2::ZERO, vec2(1., 0.), Vec2::ONE, vec2(0., 1.)],
+            WHITE,
+            Some(source),
+        );
+        unsafe { get_internal_gl() }.flush();
+        camera(output);
+        clear_background(BLANK);
+        mesh(
+            [Vec2::ZERO, vec2(1., 0.), Vec2::ONE, vec2(0., 1.)],
+            WHITE,
+            Some(source),
+        );
+        unsafe { get_internal_gl() }.flush();
+        if let Some(texture) = palette {
+            self.programs[7].material.set_texture("_Palette", texture);
+            self.programs[8].material.set_texture("_Palette", texture);
+        }
+        self.programs[if palette.is_some() { 7 } else { 5 }].pass(
+            output,
+            &[
+                ("_ComposeRT", rt[11].texture),
+                ("_DisplaceMap", self.textures[0]),
+                ("_SparkMap", self.textures[1]),
+            ],
+            false,
+        );
+        let p = &self.programs[if palette.is_some() { 8 } else { 6 }];
         p.material
             .set_uniform("_TouchPosCount", input.positions.len() as i32);
         for (i, position) in input.positions.iter().enumerate() {
@@ -497,19 +559,18 @@ impl Renderer {
         );
         p.vec4("_ProjectionParams", vec4(1., 0.1, 100., 0.01));
         p.vec4("_EffectRT_TexelSize", vec4(1. / ew, 1. / eh, ew, eh));
-        p.pass(
-            output,
-            &[
-                ("_MaskRT", rt[13].texture),
-                ("_EffectRT", rt[12].texture),
-                ("Texture", self.textures[0]),
-                ("_SparkMap", self.textures[1]),
-                ("_NoiseMap", self.textures[2]),
-                ("_SceneColor", rt[14].texture),
-                ("_TouchHoverRT", rt[15].texture),
-            ],
-            false,
-        );
+        let mut textures = vec![
+            ("_MaskRT", rt[13].texture),
+            ("_EffectRT", rt[12].texture),
+            ("Texture", self.textures[0]),
+            ("_SparkMap", self.textures[1]),
+            ("_NoiseMap", self.textures[2]),
+            ("_SceneColor", rt[14].texture),
+        ];
+        if palette.is_none() {
+            textures.push(("_TouchHoverRT", rt[15].texture));
+        }
+        p.pass(output, &textures, false);
         pop_camera_state();
     }
 }
@@ -540,17 +601,7 @@ fn mesh(points: [Vec2; 4], color: Color, texture: Option<Texture2D>) {
     gl.draw_mode(DrawMode::Triangles);
     gl.geometry(&vertices, &[0, 1, 2, 0, 2, 3]);
 }
-fn project(
-    pose: Pose,
-    aspect: f32,
-    flip: bool,
-    vp: (i32, i32, i32, i32),
-    size: (u32, u32),
-) -> [Vec2; 4] {
-    pose.corners()
-        .map(|p| project_point(p, aspect, flip, vp, size))
-}
-fn project_point(
+pub(super) fn project_point(
     p: Vec2,
     aspect: f32,
     flip: bool,

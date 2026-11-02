@@ -1,6 +1,6 @@
 mod curves;
 
-pub(crate) use curves::{draw_curve, easing_fields, shader_easing_fields};
+pub(crate) use curves::{draw_curve, draw_sampled_curve, easing_fields, shader_easing_fields};
 mod events;
 mod line;
 mod properties;

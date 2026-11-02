@@ -21,6 +21,12 @@ const ROLES: [&str; 11] = [
 ];
 #[derive(Clone)]
 enum Target {
+    Noise {
+        field: usize,
+        keyframe: Option<(usize, bool)>,
+        session: u64,
+        revision: u64,
+    },
     Note {
         id: phistudio_core::NoteId,
         session: u64,
@@ -97,6 +103,19 @@ impl Workbench {
                     revision: self.editor.revision(),
                 },
                 rgba,
+            );
+        }
+    }
+    pub(crate) fn open_noise_color(&mut self, keyframe: Option<(usize, bool)>, rgb: [u8; 3]) {
+        if let Some(field) = self.noise.selected {
+            self.open_color(
+                Target::Noise {
+                    field,
+                    keyframe,
+                    session: self.session,
+                    revision: self.editor.revision(),
+                },
+                [rgb[0], rgb[1], rgb[2], 255],
             );
         }
     }
@@ -187,7 +206,9 @@ impl Workbench {
                                     });
                                     let alpha = !matches!(
                                         p.target,
-                                        Target::Story { .. } | Target::Note { .. }
+                                        Target::Story { .. }
+                                            | Target::Note { .. }
+                                            | Target::Noise { .. }
                                     );
                                     changed |= ui
                                         .add_enabled(
@@ -305,6 +326,22 @@ impl Workbench {
                         note.tint_hit_effects = Some([rgba[0], rgba[1], rgba[2]]);
                         self.execute(phistudio_core::Command::UpdateNote { id, note });
                     }
+                } else {
+                    self.error = Some("Selection changed. Reopen the color palette.".into());
+                }
+            }
+            if let Target::Noise {
+                field,
+                keyframe,
+                session,
+                revision,
+            } = &p.target
+            {
+                if *session == self.session
+                    && *revision == self.editor.revision()
+                    && self.noise.selected == Some(*field)
+                {
+                    self.apply_noise_color(*keyframe, [rgba[0], rgba[1], rgba[2]]);
                 } else {
                     self.error = Some("Selection changed. Reopen the color palette.".into());
                 }

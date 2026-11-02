@@ -87,7 +87,9 @@
     "Texture PNG rows match Unity GPU orientation. Original material values and shader arithmetic retained.",
     "Ten touch positions represented as separate vec4 uniforms selected by an equivalent GLES2 helper; Macroquad has no uniform-array descriptor.",
     "Playtest filters normalized native touches through one documented prpr hook. Upstream judgement and score algorithms are retained.",
-    "Audio uses sasa one-pole low-pass with measured backend sample rate, 1500 Hz target and 0.1-second transition; Unity DSP waveform identity is not claimed."
+    "Audio uses sasa one-pole low-pass with measured backend sample rate, 1500 Hz target and 0.1-second transition; Unity DSP waveform identity is not claimed.",
+    "Native geometry and easing are shared with phistudio-core for authoring and export; the playback model reexports that implementation.",
+    "Optional RGB material variants are generated in memory, with a palette and packed hover mask to retain the eight-sampler limit. Extracted shader files and their hashes are unchanged."
   ],
   "files": {
     "shaders/ActiveBlock_0.frag": {

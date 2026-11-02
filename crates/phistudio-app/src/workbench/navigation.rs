@@ -142,7 +142,7 @@ impl Workbench {
             self.show_grid_settings = false;
         } else if self.preview.floating {
             self.preview.floating = false;
-        } else if !self.shader_back() {
+        } else if !self.noise_back() && !self.shader_back() {
             self.close_requested = true;
         }
     }

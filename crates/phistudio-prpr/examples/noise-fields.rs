@@ -150,6 +150,8 @@ async fn run() -> Result<()> {
         active.bytes == preview.snapshot().bytes,
         "Replacing chart changed same frame"
     );
+    check_editor_fields(&mut preview, &base, &options, &area, &hidden, &out).await?;
+    preview.replace_chart(&document, None, &options).await?;
     for (name, aspect) in [("square", 1.), ("portrait", 0.75), ("wide", 2.4)] {
         let mut options = options.clone();
         options.aspect_ratio = Some(aspect);
@@ -200,4 +202,146 @@ fn raw_with_area(base: &serde_json::Value, area: serde_json::Value) -> serde_jso
     let mut raw = base.clone();
     raw["blockAreaList"] = json!([area]);
     raw
+}
+
+async fn check_editor_fields(
+    preview: &mut Preview,
+    base: &ChartDocument,
+    options: &ProjectOptions,
+    area: &serde_json::Value,
+    hidden: &Image,
+    out: &std::path::Path,
+) -> Result<()> {
+    let vp = preview.target_viewport();
+    let count = |image: &Image, axis: usize| {
+        image
+            .bytes
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|p| (0..3).all(|i| i == axis || p[axis] as u16 > p[i] as u16 + 20))
+            .count()
+    };
+    let mut raw = base.as_json().clone();
+    for (name, rgb, axis) in [("green", [0, 255, 0], 1), ("blue", [20, 40, 255], 2)] {
+        let mut field = area.clone();
+        field["phiStudioColor"] = json!(rgb);
+        raw["blockAreaList"] = json!([field]);
+        let doc = ChartDocument::from_value(raw.clone())?;
+        preview.replace_chart(&doc, None, options).await?;
+        for (phase, t) in [("disabled", 1.25), ("ready", 1.75), ("active", 3.)] {
+            preview.render(t, vp);
+            let frame = preview.snapshot();
+            ensure!(
+                count(&frame, axis) > 1000,
+                "Colored {name} {phase} lost its palette"
+            );
+            frame.export_png(out.join(format!("{name}-{phase}.png")).to_str().unwrap());
+            preview.render(0., vp);
+            preview.render(t, vp);
+            ensure!(
+                frame.bytes == preview.snapshot().bytes,
+                "Colored field changed after seek"
+            );
+        }
+        let mut subtract = raw["blockAreaList"][0].clone();
+        subtract["isSubtract"] = json!(true);
+        raw["blockAreaList"].as_array_mut().unwrap().push(subtract);
+        preview
+            .replace_chart(&ChartDocument::from_value(raw.clone())?, None, options)
+            .await?;
+        preview.render(3., vp);
+        ensure!(
+            preview.snapshot().bytes == hidden.bytes,
+            "Colored subtract masks left stale pixels"
+        );
+    }
+    let mut field = area.clone();
+    field["phiStudioColorEvents"] = json!([{"startTime":[2,0,1],"endTime":[6,0,1],"start":[0,255,0],"end":[20,40,255],"easingType":1}]);
+    raw["blockAreaList"] = json!([field]);
+    preview
+        .replace_chart(&ChartDocument::from_value(raw.clone())?, None, options)
+        .await?;
+    preview.render(2., vp);
+    let first = preview.snapshot();
+    preview.render(3., vp);
+    ensure!(
+        first.bytes != preview.snapshot().bytes,
+        "Color animation did not reach GPU"
+    );
+    // Exercise the emitted JSON through the real parser, without the editor's
+    // authoring backup restoration. This also validates strict RGB byte types.
+    let colored_doc = ChartDocument::from_value(raw.clone())?;
+    let (mut exported, resources) =
+        phistudio_core::noise_fields::export::prepare(&colored_doc, &[])?;
+    exported
+        .as_object_mut()
+        .unwrap()
+        .shift_remove(phistudio_core::noise_fields::export::SOURCE);
+    let root = tempfile::tempdir()?;
+    for (name, bytes) in resources {
+        let path = root.path().join(name);
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(path, bytes)?;
+    }
+    let exported = ChartDocument::from_value(exported)?;
+    preview
+        .replace_chart(&exported, Some(root.path()), options)
+        .await?;
+    preview.render(3., vp);
+    ensure!(
+        preview.note_count() == 0,
+        "Generated field guides introduced notes"
+    );
+    let next = json!({"Name":"Next GPU","bottomLeft":{"x":-405.,"y":-270.},"topRight":{"x":405.,"y":270.},"appearTime":[2,0,1],"disappearTime":[10,0,1],"activeIntervals":[{"startTime":[4,0,1],"endTime":[8,0,1]}],"isInvert":false});
+    raw["blockAreaList"] = json!([next.clone()]);
+    preview
+        .replace_chart(&ChartDocument::from_value(raw.clone())?, None, options)
+        .await?;
+    preview.render(3., vp);
+    let next_active = preview.snapshot();
+    ensure!(count(&next_active, 0) > 1000, "Next field is invisible");
+    next_active.export_png(out.join("next-active.png").to_str().unwrap());
+    preview.render(1.75, vp);
+    preview
+        .snapshot()
+        .export_png(out.join("next-ready.png").to_str().unwrap());
+    preview.render(3., vp);
+    ensure!(
+        next_active.bytes == preview.snapshot().bytes,
+        "Next seek was stateful"
+    );
+    let mut sub = next.clone();
+    sub["isInvert"] = json!(true);
+    raw["blockAreaList"] = json!([sub.clone(), sub.clone(), sub.clone()]);
+    preview
+        .replace_chart(&ChartDocument::from_value(raw.clone())?, None, options)
+        .await?;
+    preview.render(3., vp);
+    ensure!(
+        count(&preview.snapshot(), 0) > 1000,
+        "Three Next inversions lost XOR coverage"
+    );
+    raw["noiseAreaOptions"] = json!({"ignoreTripleInversion":true});
+    preview
+        .replace_chart(&ChartDocument::from_value(raw.clone())?, None, options)
+        .await?;
+    preview.render(3., vp);
+    ensure!(
+        preview.snapshot().bytes == hidden.bytes,
+        "Single inversion option did not cancel three overlaps"
+    );
+    raw["noiseAreaOptions"] = json!({"ignoreTripleInversion":false});
+    raw["blockAreaList"] = json!([next, sub.clone(), sub.clone(), sub]);
+    preview
+        .replace_chart(&ChartDocument::from_value(raw)?, None, options)
+        .await?;
+    preview.render(3., vp);
+    ensure!(
+        preview.snapshot().bytes == hidden.bytes,
+        "Next normal union XOR subtract coverage did not cancel"
+    );
+    Ok(())
 }

@@ -16,8 +16,9 @@ impl Workbench {
                     .id_source("editor-tools-scroll")
                     .touch_show_x(ui, |ui| {
                         ui.horizontal(|ui| {
-                            let shaders =
-                                self.advanced.right_mode == crate::advanced_ui::RightMode::Shaders;
+                            let noise = self.advanced.right_mode
+                                == crate::advanced_ui::RightMode::NoiseFields;
+                            let shaders = self.advanced.right_mode.dedicated();
                             for (tool, label, color) in [
                                 (Tool::Select, "Select", text()),
                                 (Tool::Place(NoteKind::Tap), "Tap", tap()),
@@ -26,7 +27,9 @@ impl Workbench {
                                 (Tool::Place(NoteKind::Drag), "Drag", drag()),
                                 (
                                     Tool::Event,
-                                    if shaders {
+                                    if noise {
+                                        self.noise_placement_label()
+                                    } else if shaders {
                                         self.shader_placement_label()
                                     } else {
                                         "+ Event"
@@ -37,7 +40,8 @@ impl Workbench {
                                 (Tool::Erase, "Erase", flick()),
                             ] {
                                 if shaders
-                                    && (matches!(tool, Tool::Place(_)) || tool == Tool::BoxSelect)
+                                    && (matches!(tool, Tool::Place(_))
+                                        || (!noise && tool == Tool::BoxSelect))
                                 {
                                     continue;
                                 }
@@ -57,6 +61,10 @@ impl Workbench {
                             ui.separator();
                             if ui.button(crate::i18n::tr("Grid")).clicked() {
                                 self.show_grid_settings = !self.show_grid_settings;
+                            }
+                            if noise {
+                                self.noise_toolbar(ui);
+                                return;
                             }
                             if shaders {
                                 self.shader_toolbar(ui);

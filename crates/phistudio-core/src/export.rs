@@ -166,9 +166,10 @@ pub fn prepare_project_export(
         .filter_map(serde_json::Value::as_str)
         .map(str::len)
         .sum();
-    let chart_bytes = document.to_json()?;
+    let (noise_chart, noise_resources) = crate::noise_fields::export::prepare(document, &files)?;
+    let chart_bytes = serde_json::to_vec_pretty(&noise_chart)?;
     if chart_bytes.len() > ChartDocument::MAX_JSON_BYTES {
-        return Err(invalid("Chart exceeds 128 MiB"));
+        return Err(invalid("Chart exceeds 256 MiB"));
     }
     let mut builder = tempfile::Builder::new();
     builder.prefix("phistudio-export-").suffix(".pez");
@@ -197,7 +198,9 @@ pub fn prepare_project_export(
                 continue;
             }
             count += 1;
-            if count + sources.len() > if extra.is_some() { 1021 } else { 1022 } {
+            if count + sources.len() + noise_resources.len()
+                > if extra.is_some() { 1021 } else { 1022 }
+            {
                 return Err(invalid("Package contains too many files"));
             }
             let mut source =
@@ -217,6 +220,11 @@ pub fn prepare_project_export(
                 return Err(invalid("Package exceeds the export size limit"));
             }
         }
+        for (path, bytes) in &noise_resources {
+            zip.start_file(path_text(path)?, options)
+                .map_err(|e| invalid(e.to_string()))?;
+            zip.write_all(bytes)?;
+        }
         for (path, source) in &sources {
             zip.start_file(path, options)
                 .map_err(|e| invalid(e.to_string()))?;
@@ -229,7 +237,7 @@ pub fn prepare_project_export(
         }
         zip.start_file(path_text(&chart_path)?, options)
             .map_err(|e| invalid(e.to_string()))?;
-        zip.write_all(chart_bytes.as_bytes())?;
+        zip.write_all(&chart_bytes)?;
         zip.start_file("info.yml", options)
             .map_err(|e| invalid(e.to_string()))?;
         zip.write_all(manifest.as_bytes())?;

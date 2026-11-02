@@ -76,8 +76,9 @@ impl ValueProfile {
 }
 
 /// Direct translation of PhiStudio model/Easing.java applyUnclamped (bb2e9b3).
-/// This belongs to the Java clone operation; playback retains the original prpr.
-fn java_easing(kind: i32, input: f64) -> f64 {
+/// Used by Java-style clone tools and standard Noise Field interval curves.
+/// Ordinary RPE line playback retains the original prpr tweens.
+pub(crate) fn java_easing(kind: i32, input: f64) -> f64 {
     let t = if input.is_finite() {
         input.clamp(0., 1.)
     } else {

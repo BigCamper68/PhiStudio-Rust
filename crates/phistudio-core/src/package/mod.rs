@@ -1,5 +1,5 @@
 //! Import into a new private workspace before switching the active editor.
-//! Limits match Java PackageLimits. No archive member can escape its workspace.
+//! Chart entries share the document size limit. No archive member can escape its workspace.
 mod paths;
 use paths::{common_directory, safe_inside};
 pub(crate) use paths::{inventory, private_vcs_path, relative};

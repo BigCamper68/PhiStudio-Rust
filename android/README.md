@@ -1,6 +1,6 @@
 # Android build
 
-PhiStudio Rust 1.27.0 uses application ID `com.phistudio.rust`, versionCode 46,
+PhiStudio Rust uses application ID `com.phistudio.rust`,
 Android 8.0 or newer (API 26), and arm64-v8a. Rust supplies the editor and renderer;
 Java supplies the Android activity, input and document access.
 

@@ -96,6 +96,13 @@ async fn run() -> Result<()> {
             "bottomLeftPercentage":{"x":0.2,"y":0.2}, "topRightPercentage":{"x":0.8,"y":0.8},
             "appearTime":0., "enableTime":0., "disableTime":6., "disappearTime":6.
         });
+        if mode.starts_with("noise-next-") {
+            area = serde_json::json!({"bottomLeft":{"x":-405.,"y":-270.},"topRight":{"x":405.,"y":270.},"appearTime":[0,0,1],"disappearTime":[12,0,1],"activeIntervals":[{"startTime":[0,0,1],"endTime":[12,0,1]}],"phiStudioColor":[20,120,255]});
+            if mode == "noise-next-ready" {
+                area["activeIntervals"] =
+                    serde_json::json!([{"startTime":[12,0,1],"endTime":[14,0,1]}]);
+            }
+        }
         if mode == "noise-ready" {
             area["enableTime"] = serde_json::json!(6.);
             area["disableTime"] = serde_json::json!(7.);
@@ -108,9 +115,12 @@ async fn run() -> Result<()> {
             area["disableTime"] = serde_json::json!(1.8);
             area["disappearTime"] = serde_json::json!(1.8);
         }
-        let fields = if mode == "noise-subtract" {
+        let fields = if mode == "noise-subtract" || mode == "noise-next-subtract" {
             let mut subtract = area.clone();
             subtract["isSubtract"] = serde_json::json!(true);
+            if mode == "noise-next-subtract" {
+                subtract["isInvert"] = serde_json::json!(true);
+            }
             serde_json::json!([area, subtract])
         } else {
             serde_json::json!([area])
@@ -156,6 +166,14 @@ async fn run() -> Result<()> {
     )?;
     if mode == "retina" || mode == "noise-retina" {
         preview.fit_display([2388., 1343.25], 16. / 9.);
+    }
+    // Software GL can use a smaller render target while real input still uses
+    // the full physical window. Pixel/material regressions run separately.
+    if let Ok(width) = std::env::var("PHISTUDIO_PLAYTEST_PROBE_WIDTH")
+        && let Ok(width) = width.parse::<u32>()
+        && (320..=4096).contains(&width)
+    {
+        preview.fit_display([width as f32, width as f32 * 9. / 16.], 16. / 9.);
     }
     for _ in 0..10 {
         preview.render(0., preview.target_viewport());

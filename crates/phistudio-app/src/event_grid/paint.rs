@@ -35,11 +35,20 @@ pub(super) fn header_label(painter: &egui::Painter, kind: EventType, width: f32)
 
 pub fn paint(app: &mut Workbench, painter: &egui::Painter, grid: Grid) {
     let clipped = painter.with_clip_rect(grid.rect.intersect(painter.clip_rect()));
+    let separator = if app.multi_active(true) {
+        Stroke::new(1.5_f32, accent().linear_multiply(0.6))
+    } else {
+        Stroke::new(1_f32, border())
+    };
     for (i, kind) in EventType::ALL.into_iter().enumerate() {
         let col = column(grid, kind);
         painter.line_segment(
             [col.left_top(), col.left_bottom()],
-            Stroke::new(1_f32, border()),
+            if i == 0 {
+                separator
+            } else {
+                Stroke::new(1_f32, border())
+            },
         );
         painter.text(
             pos2(col.center().x, grid.rect.top() - 11.),
@@ -49,10 +58,7 @@ pub fn paint(app: &mut Workbench, painter: &egui::Painter, grid: Grid) {
             color(kind),
         );
         if i == 4 {
-            painter.line_segment(
-                [col.right_top(), col.right_bottom()],
-                Stroke::new(1_f32, border()),
-            );
+            painter.line_segment([col.right_top(), col.right_bottom()], separator);
         }
     }
     for (id, event) in app.event_rows().iter() {
@@ -190,27 +196,44 @@ pub(super) fn draw(
         })
         .collect();
     p.add(Shape::line(points, Stroke::new(1.5_f32, c)));
-    let value = |number: f64| {
-        if number.fract() == 0. {
-            format!("{number:.0}")
-        } else {
-            format!("{number:.2}")
+    paint_interval_labels(
+        p,
+        rect,
+        &number_label(event.start),
+        &number_label(event.end),
+    );
+    if selected {
+        for y in [start, end] {
+            p.circle_filled(pos2(col.center().x, y), 4.5, accent());
         }
-    };
-    // Labels belong to event endpoints, not to the shrinking visible fragment.
-    // Keep them in the draw list while the viewport scissor clips their glyphs.
-    if col.width() < 65. && rect.height() > 44. {
+    }
+}
+
+/// Shared endpoint captions stay legible in dense animation timelines.
+pub(crate) fn number_label(number: f64) -> String {
+    if number.fract() == 0. {
+        format!("{number:.0}")
+    } else {
+        format!("{number:.2}")
+    }
+}
+pub(crate) fn paint_interval_labels(p: &egui::Painter, rect: Rect, start: &str, end: &str) {
+    if start.is_empty() && end.is_empty() {
+        return;
+    }
+    // Labels retain endpoint anchors while the caller supplies the viewport scissor.
+    if rect.width() < 65. && rect.height() > 44. {
         p.text(
             rect.left_top() + vec2(4., 4.),
             Align2::LEFT_TOP,
-            value(event.end),
+            end,
             FontId::monospace(10.),
             text(),
         );
         p.text(
             rect.left_bottom() + vec2(4., -4.),
             Align2::LEFT_BOTTOM,
-            value(event.start),
+            start,
             FontId::monospace(10.),
             text(),
         );
@@ -218,14 +241,9 @@ pub(super) fn draw(
         p.text(
             rect.left_top() + vec2(4., 4.),
             Align2::LEFT_TOP,
-            format!("{} → {}", value(event.start), value(event.end)),
+            format!("{start} → {end}"),
             FontId::monospace(10.),
             text(),
         );
-    }
-    if selected {
-        for y in [start, end] {
-            p.circle_filled(pos2(col.center().x, y), 4.5, accent());
-        }
     }
 }

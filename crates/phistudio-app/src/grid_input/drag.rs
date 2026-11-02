@@ -85,6 +85,7 @@ pub(super) fn update(app: &mut Workbench, pos: Pos2) {
         }
         Gesture::Event(gesture) => crate::event_grid::update(gesture, pos),
         Gesture::Story(d) => crate::story_grid::update(d, pos),
+        Gesture::Noise(d) => crate::noise_ui::grid::update(app, d, pos),
         Gesture::Shader(d) => crate::shader_ui::grid::update(app, d, pos),
         Gesture::Tap {
             origin,
@@ -92,11 +93,12 @@ pub(super) fn update(app: &mut Workbench, pos: Pos2) {
             moved,
             intent,
         } => {
-            let panel_scroll = if matches!(intent, Intent::SelectEvent(..)) {
-                app.multi_active(true)
-            } else {
-                app.multi_active(false) && !app.multi_line.merged
-            };
+            let panel_scroll =
+                if matches!(intent, Intent::SelectEvent(..) | Intent::SelectStory(..)) {
+                    app.multi_active(true)
+                } else {
+                    app.multi_active(false) && !app.multi_line.merged
+                };
             let delta = pos - *origin;
             *moved |= delta.length() > SLOP;
             if *moved {
@@ -107,10 +109,13 @@ pub(super) fn update(app: &mut Workbench, pos: Pos2) {
                         intent,
                         Intent::Select(..)
                             | Intent::SelectEvent(..)
+                            | Intent::SelectStory(..)
                             | Intent::Place(..)
                             | Intent::Pan
-                    ) && (!matches!(intent, Intent::SelectEvent(..))
-                        || app.multi_active(true))
+                    ) && (!matches!(
+                        intent,
+                        Intent::SelectEvent(..) | Intent::SelectStory(..)
+                    ) || app.multi_active(true))
                         && (!app.options.lock_horizontal || panel_scroll)
                         && grid.rect.contains(*origin)
                         && delta.x.abs() > 18.

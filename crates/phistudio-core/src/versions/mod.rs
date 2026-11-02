@@ -22,7 +22,7 @@ use std::{
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
-const MAX_FILE: u64 = 128 * 1024 * 1024;
+const MAX_FILE: u64 = ChartDocument::MAX_JSON_BYTES as u64;
 const MAX_TOTAL: u64 = 1032 * 1024 * 1024;
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Fingerprint {

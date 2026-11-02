@@ -14,6 +14,7 @@ use egui::{Align2, Color32, FontId, Pos2, Rect, Shape, Stroke, pos2, vec2};
 pub use paint::paint;
 #[cfg(test)]
 use paint::{draw, header_label};
+pub(crate) use paint::{number_label, paint_interval_labels};
 use phistudio_core::{Beat, Command, EventId, EventType, LineEvent};
 
 pub enum EventGesture {

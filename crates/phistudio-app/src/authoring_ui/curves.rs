@@ -1,12 +1,15 @@
 use super::*;
 
 pub(crate) fn draw_curve(ui: &mut egui::Ui, kind: EventType, event: &LineEvent) {
+    let curve = phistudio_prpr::EventCurve::new(kind, event);
+    draw_sampled_curve(ui, |t| curve.sample(t as f32));
+}
+pub(crate) fn draw_sampled_curve(ui: &mut egui::Ui, sample: impl Fn(f64) -> f32) {
     let rect = crate::plot::square(ui);
     let p = ui.painter_at(rect);
     p.rect_filled(rect, 2., base());
     let inner = rect.shrink(8.);
-    let curve = phistudio_prpr::EventCurve::new(kind, event);
-    let values: Vec<_> = (0..=96).map(|i| curve.sample(i as f32 / 96.)).collect();
+    let values: Vec<_> = (0..=96).map(|i| sample(i as f64 / 96.)).collect();
     let lo = values
         .iter()
         .copied()
