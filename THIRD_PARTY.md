@@ -43,6 +43,8 @@ licenses remain applicable. This document does not relicense third-party work.
 | fastblur | [fschutt/fastblur](https://github.com/fschutt/fastblur), 0.1.1 | MIT; `licenses/fastblur-LICENSE.txt` |
 | fs2 | [danburkert/fs2-rs](https://github.com/danburkert/fs2-rs), 0.4.3 | MIT OR Apache-2.0; consult the pinned crate source |
 | chrono | [chronotope/chrono](https://github.com/chronotope/chrono), 0.4.45 | MIT OR Apache-2.0; consult the pinned crate source |
+| Wasmi | [wasmi-labs/wasmi](https://github.com/wasmi-labs/wasmi), 2.0.0 | MIT OR Apache-2.0; MIT notice in `licenses/Wasmi-LICENSE-MIT.txt`; portable plugin interpreter, including Wasmi companion crates |
+| libloading | [nagisa/rust_libloading](https://github.com/nagisa/rust_libloading), 0.8.9 | ISC; notice in `licenses/libloading-LICENSE.txt`; native plugin library loading |
 | Oboe bindings | [katyo/oboe-rs](https://github.com/katyo/oboe-rs), 0.6.1 | Apache-2.0; consult the dependency source and its bundled Oboe notices |
 | sasa | [Mivik/sasa](https://github.com/Mivik/sasa), revision `e76229b` | The pinned manifest does not declare an SPDX license; consult its upstream source and notices |
 

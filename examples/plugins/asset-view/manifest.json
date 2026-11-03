@@ -1,0 +1,9 @@
+{
+  "api": 1,
+  "id": "example.asset-view",
+  "name": "Asset view",
+  "version": "0.1.0",
+  "description": "Reads bundled and project resources, with image canvases, preview overlays and timeline images.",
+  "backend": { "kind": "wasm", "entry": "plugin.wasm" },
+  "capabilities": ["services", "project_read", "ui", "preview", "timeline"]
+}

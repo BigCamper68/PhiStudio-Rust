@@ -1,0 +1,9 @@
+{
+  "api": 1,
+  "id": "example.chart-envelope",
+  "name": "Chart envelope",
+  "version": "0.1.0",
+  "description": "A streamed custom chart format preserving canonical RPE bytes behind a small binary header.",
+  "backend": { "kind": "wasm", "entry": "plugin.wasm" },
+  "capabilities": ["formats", "services", "document_read"]
+}

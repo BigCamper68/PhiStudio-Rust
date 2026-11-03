@@ -198,6 +198,23 @@ pub fn request_export_video(path: &std::path::Path, name: &str, token: u64) -> a
         Ok(())
     })
 }
+pub fn request_export_file(path: &std::path::Path, name: &str, token: u64) -> anyhow::Result<()> {
+    with_bridge(|env, class| {
+        let path = env.new_string(path.to_string_lossy())?;
+        let name = env.new_string(name)?;
+        env.call_static_method(
+            class,
+            "requestExportFile",
+            "(Ljava/lang/String;Ljava/lang/String;J)V",
+            &[
+                JValue::Object(&path),
+                JValue::Object(&name),
+                JValue::Long(token as i64),
+            ],
+        )?;
+        Ok(())
+    })
+}
 
 pub fn request_media(kind: &str, token: u64) -> anyhow::Result<()> {
     let bridge = BRIDGE

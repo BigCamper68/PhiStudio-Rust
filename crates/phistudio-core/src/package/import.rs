@@ -6,6 +6,24 @@ pub fn import_project(
     display_name: &str,
     package: bool,
 ) -> Result<ImportedProject, ChartError> {
+    import_project_checked(source, projects, display_name, package, || true)
+}
+
+pub fn import_project_checked(
+    source: &Path,
+    projects: &Path,
+    display_name: &str,
+    package: bool,
+    active: impl Fn() -> bool,
+) -> Result<ImportedProject, ChartError> {
+    let check = || {
+        if active() {
+            Ok(())
+        } else {
+            Err(invalid("Project import was cancelled"))
+        }
+    };
+    check()?;
     fs::create_dir_all(projects)?;
     let staged = tempfile::Builder::new()
         .prefix("project-")
@@ -25,6 +43,7 @@ pub fn import_project(
         let mut names = HashSet::new();
         let mut total = 0;
         for index in 0..archive.len() {
+            check()?;
             let mut entry = archive
                 .by_index(index)
                 .map_err(|e| invalid(e.to_string()))?;
@@ -56,11 +75,19 @@ pub fn import_project(
                 .write(true)
                 .create_new(true)
                 .open(&target)?;
-            let copied = io::copy(
-                &mut (&mut entry)
-                    .take((ChartDocument::MAX_JSON_BYTES as u64).min(512 * MIB - total) + 1),
-                &mut output,
-            )?;
+            let mut input = (&mut entry)
+                .take((ChartDocument::MAX_JSON_BYTES as u64).min(512 * MIB - total) + 1);
+            let mut copied = 0;
+            let mut buffer = vec![0; 64 * 1024];
+            loop {
+                check()?;
+                let read = input.read(&mut buffer)?;
+                if read == 0 {
+                    break;
+                }
+                std::io::Write::write_all(&mut output, &buffer[..read])?;
+                copied += read as u64;
+            }
             if copied > ChartDocument::MAX_JSON_BYTES as u64 || total + copied > 512 * MIB {
                 return Err(invalid("Package exceeds the extraction limit"));
             }
@@ -75,10 +102,13 @@ pub fn import_project(
         }
         files.push(PathBuf::from("chart.data"));
     }
+    check()?;
     let description = prepare_workspace(staged.path(), files, display_name)?;
+    check()?;
     crate::storage::write_json(&staged.path().join(DESCRIPTION), &description)?;
     // Validate before publishing, including the persisted description paths.
     described_project(staged.path(), &description)?;
+    check()?;
     let workspace = staged.keep();
     described_project(&workspace, &description)
 }

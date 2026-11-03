@@ -1,0 +1,9 @@
+{
+  "api": 1,
+  "id": "example.service-lab",
+  "name": "Service interception lab",
+  "version": "0.1.0",
+  "description": "A virtual service replaced by a plugin provider, with cancellable interception and a real control panel.",
+  "backend": { "kind": "wasm", "entry": "plugin.wasm" },
+  "capabilities": ["hooks", "services", "ui"]
+}

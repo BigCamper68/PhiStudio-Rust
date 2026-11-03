@@ -31,6 +31,7 @@ mod picking;
 mod playback_smoke;
 mod playtest_ui;
 mod plot;
+mod plugins;
 mod preview_ui;
 mod scroll;
 mod settings;

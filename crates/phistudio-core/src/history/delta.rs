@@ -170,6 +170,7 @@ impl Delta {
             }
         }
         match self {
+            Self::Patch(delta) => delta.apply(doc, forward),
             Self::Lines(delta) => delta.apply(doc, forward),
             Self::LineField {
                 line,

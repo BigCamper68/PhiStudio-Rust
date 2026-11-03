@@ -1,10 +1,15 @@
 //! Import into a new private workspace before switching the active editor.
 //! Chart entries share the document size limit. No archive member can escape its workspace.
+mod bundle;
 mod paths;
+pub use bundle::{
+    MAX_PROJECT_BYTES, MAX_PROJECT_ENTRIES, MAX_PROJECT_FILE_BYTES, ProjectArchive, ProjectMember,
+    project_entry_path, write_project_archive,
+};
 use paths::{common_directory, safe_inside};
 pub(crate) use paths::{inventory, private_vcs_path, relative};
 mod import;
-pub use import::import_project;
+pub use import::{import_project, import_project_checked};
 
 mod metadata;
 use metadata::{described_project, read_description};

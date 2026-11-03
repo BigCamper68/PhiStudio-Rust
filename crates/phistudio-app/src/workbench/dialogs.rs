@@ -2,6 +2,7 @@ use super::*;
 
 impl Workbench {
     pub(super) fn dialogs(&mut self, ctx: &egui::Context) {
+        self.plugin_windows(ctx);
         self.workspace_window(ctx);
         self.playtest_setup(ctx);
         self.video_window(ctx);
@@ -142,6 +143,7 @@ impl Workbench {
                     .id_source("note-properties-scroll")
                     .max_height(ui.available_height().max(80.))
                     .touch_show(ui, |ui| {
+                        self.plugin_panels(ui, phistudio_sdk::PanelLocation::Inspector);
                         if self.advanced.right_mode == crate::advanced_ui::RightMode::NoiseFields {
                             self.noise_properties(ui)
                         } else if self.advanced.right_mode == crate::advanced_ui::RightMode::Shaders

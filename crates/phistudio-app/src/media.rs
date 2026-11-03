@@ -55,6 +55,8 @@ struct MediaSource {
     path: PathBuf,
     name: String,
     owned: bool,
+    _provider: Option<phistudio_plugins::Artifact>,
+    _export: Option<phistudio_core::ProjectExport>,
 }
 impl Drop for MediaSource {
     fn drop(&mut self) {
@@ -65,7 +67,31 @@ impl Drop for MediaSource {
 }
 impl MediaFile {
     pub fn new(path: PathBuf, name: String, owned: bool) -> Self {
-        Self(Arc::new(MediaSource { path, name, owned }))
+        Self(Arc::new(MediaSource {
+            path,
+            name,
+            owned,
+            _provider: None,
+            _export: None,
+        }))
+    }
+    pub fn from_provider(artifact: phistudio_plugins::Artifact) -> Self {
+        Self(Arc::new(MediaSource {
+            path: artifact.path().to_owned(),
+            name: artifact.name().to_owned(),
+            owned: false,
+            _provider: Some(artifact),
+            _export: None,
+        }))
+    }
+    pub fn from_export(package: phistudio_core::ProjectExport) -> Self {
+        Self(Arc::new(MediaSource {
+            path: package.path().to_owned(),
+            name: package.name.clone(),
+            owned: false,
+            _provider: None,
+            _export: Some(package),
+        }))
     }
     pub fn path(&self) -> &Path {
         &self.0.path
@@ -140,7 +166,7 @@ impl MediaFile {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     pub(crate) fn wav_bytes() -> Vec<u8> {
         let data_len = 960_u32;

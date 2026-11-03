@@ -1,0 +1,9 @@
+{
+  "api": 1,
+  "id": "example.preview-fx",
+  "name": "Preview FX",
+  "version": "0.1.0",
+  "description": "Transient preset/custom GLSL preview passes with live uniforms and compile-error diagnostics.",
+  "backend": { "kind": "wasm", "entry": "plugin.wasm" },
+  "capabilities": ["preview", "ui"]
+}

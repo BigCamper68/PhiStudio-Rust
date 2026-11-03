@@ -80,7 +80,7 @@ impl Workbench {
             .button(crate::i18n::tr("Clear selection · Esc"))
             .clicked()
         {
-            self.select(None);
+            self.request_editor_action(phistudio_sdk::EditorAction::ClearSelection);
         }
         ui.separator();
         if ui.button(crate::i18n::tr("Tools…")).clicked() {

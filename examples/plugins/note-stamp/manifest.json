@@ -1,0 +1,9 @@
+{
+  "api": 1,
+  "id": "example.note-stamp",
+  "name": "Note stamp",
+  "version": "0.1.0",
+  "description": "An external tap tool using host coordinates, document queries and one undoable transaction.",
+  "backend": { "kind": "wasm", "entry": "plugin.wasm" },
+  "capabilities": ["input", "document_read", "document_edit", "services"]
+}

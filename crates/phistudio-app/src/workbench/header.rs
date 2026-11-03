@@ -81,6 +81,7 @@ impl Workbench {
                                     self.save_action();
                                     ui.close_menu();
                                 }
+                                self.plugin_editor_menu(ui, phistudio_sdk::EditorMenu::File);
                             });
                     });
                     ui.menu_button(crate::i18n::tr("Windows"), |ui| {
@@ -145,6 +146,7 @@ impl Workbench {
                                     crate::i18n::tr("Grid settings"),
                                 );
                                 ui.checkbox(&mut self.advanced.history, crate::i18n::tr("History"));
+                                self.plugin_editor_menu(ui, phistudio_sdk::EditorMenu::Windows);
                                 if compact {
                                     ui.separator();
                                     ui.with_layout(egui::Layout::top_down(Align::Min), |ui| {
@@ -186,9 +188,8 @@ impl Workbench {
                         )
                         .on_hover_text(crate::i18n::tr("Play / pause · Space"))
                         .clicked()
-                        && self.flush_shader_draft()
                     {
-                        self.transport.playing = !self.transport.playing;
+                        self.request_editor_playback(!self.transport.playing, true);
                     }
                     if !compact && ui.button(crate::i18n::tr("Save")).clicked() {
                         self.save_action();

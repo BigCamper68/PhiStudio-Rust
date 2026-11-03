@@ -17,6 +17,7 @@ prpr-l10n.workspace = true
 sasa.workspace = true
 glyph_brush = "0.7"
 phistudio-core.workspace = true
+phistudio-sdk.workspace = true
 image = { workspace = true, features = ["gif"] }
 fastblur = "=0.1.1"
 serde_yaml = "0.9.34"

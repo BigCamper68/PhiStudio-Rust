@@ -264,3 +264,6 @@ mod text_ime_tests;
 
 #[cfg(test)]
 mod first_tap_tests;
+
+#[cfg(test)]
+mod event_value_ime_tests;

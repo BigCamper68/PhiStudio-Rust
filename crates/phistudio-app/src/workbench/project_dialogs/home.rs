@@ -5,7 +5,9 @@ impl Workbench {
         self.project_covers
             .get_or_insert_with(crate::covers::Covers::new)
             .update(ctx);
-        let blocked = self.workspace.view.is_some()
+        let blocked = self.plugin_provider_modal()
+            || self.plugin_file_hook_modal()
+            || self.workspace.view.is_some()
             || self.files.busy
             || self.files.recovery.is_some()
             || self.files.new_chart.is_some()
@@ -65,8 +67,21 @@ impl Workbench {
                             {
                                 self.show_projects = false;
                             }
+                            if ui
+                                .add_enabled(
+                                    !blocked,
+                                    egui::Button::new(crate::i18n::tr("Plugins"))
+                                        .min_size(egui::vec2(76., 32.)),
+                                )
+                                .clicked()
+                            {
+                                self.plugins.open = true;
+                            }
                         });
                     });
+                    if let Some(version) = option_env!("PHISTUDIO_ANDROID_BUILD") {
+                        ui.small(format!("PhiStudio Rust {version}"));
+                    }
                     ui.add_space(12.);
                     ui.add_enabled_ui(!blocked, |ui| {
                         let layout = if spare >= 0. {
@@ -128,7 +143,9 @@ impl Workbench {
                         ui.colored_label(flick(), crate::i18n::tr(error));
                     }
                 });
-                let blocked = self.workspace.view.is_some()
+                let blocked = self.plugin_provider_modal()
+                    || self.plugin_file_hook_modal()
+                    || self.workspace.view.is_some()
                     || self.files.busy
                     || self.files.recovery.is_some()
                     || self.files.new_chart.is_some()

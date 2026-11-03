@@ -1,10 +1,13 @@
 plugins { id 'com.android.application' }
 
+def editorVersionCode = 65
+def editorVersionName = '1.31.0'
 def nativeOutput = layout.buildDirectory.dir('rustJni')
 def ndkRoot = providers.environmentVariable('ANDROID_NDK_HOME')
 def noticesOutput = layout.buildDirectory.dir('generated/thirdPartyAssets')
 def buildRust = tasks.register('buildRust', Exec) {
     workingDir rootProject.projectDir.parentFile
+    environment 'PHISTUDIO_ANDROID_BUILD', "${editorVersionName} (${editorVersionCode})"
     doFirst {
         if (!ndkRoot.isPresent()) {
             throw new GradleException('Set ANDROID_NDK_HOME to the Android NDK directory before building an APK.')
@@ -52,8 +55,8 @@ android {
         applicationId 'com.phistudio.rust'
         minSdk 26
         targetSdk 35
-        versionCode 62
-        versionName '1.30.1'
+        versionCode editorVersionCode
+        versionName editorVersionName
         ndk { abiFilters 'arm64-v8a' }
     }
     sourceSets.main.jniLibs.srcDirs = [nativeOutput]

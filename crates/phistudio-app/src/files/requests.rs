@@ -2,7 +2,48 @@ use super::*;
 
 impl FileManager {
     pub(super) fn request(&mut self, app: &mut Workbench, request: FileRequest) {
+        let request = match request {
+            FileRequest::AfterHook { request, approval } => {
+                if !approval.current(app) {
+                    approval.cancel();
+                    return;
+                }
+                *request
+            }
+            request => {
+                let Some(request) = app.plugin_before_file_request(request) else {
+                    return;
+                };
+                request
+            }
+        };
         match request {
+            FileRequest::AfterHook { .. } => {}
+            FileRequest::ImportSource(source) => self.import_now(app, source),
+            #[cfg(any(target_os = "android", target_os = "ios"))]
+            FileRequest::ReadyExport(package) => {
+                if let Err(error) = self.pick_export(app, package) {
+                    app.error = Some(format!("{error:#}"));
+                }
+            }
+            request @ (FileRequest::ProviderPick(_)
+            | FileRequest::ProviderSnapshot(_)
+            | FileRequest::ProviderImport(_)
+            | FileRequest::ProviderResource(_)) => self.provider_request(app, request),
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
+            request @ FileRequest::ProviderWrite { .. } => self.provider_request(app, request),
+            #[cfg(any(target_os = "android", target_os = "ios"))]
+            request @ FileRequest::ProviderExport(_) => self.provider_request(app, request),
+            FileRequest::PluginPackage => {
+                #[cfg(any(target_os = "android", target_os = "ios"))]
+                if let Err(error) = self.pick_plugin(app) {
+                    app.error = Some(format!("{error:#}"));
+                }
+                #[cfg(not(any(target_os = "android", target_os = "ios")))]
+                {
+                    app.plugins.open = true;
+                }
+            }
             FileRequest::ImportRepository(workspace) => {
                 #[cfg(any(target_os = "android", target_os = "ios"))]
                 {
@@ -36,6 +77,9 @@ impl FileManager {
                 match result {
                     Ok(()) => {
                         self.pending = Some(Pending {
+                            provider: None,
+                            artifact: None,
+                            plugin: false,
                             repository: None,
                             token: self.token,
                             export: None,
@@ -115,10 +159,15 @@ impl FileManager {
                 self.worker = Some(receiver);
                 app.files.busy = true;
                 app.status = "Working…".into();
+                let version = app.plugin_version();
                 std::thread::spawn(move || {
                     let result = context.run(job).map(|(session, result)| match result {
                         crate::workspace_ui::WorkspaceResult::RepositoryExport(package) => {
-                            WorkerResult::Exported(package)
+                            WorkerResult::Exported {
+                                package,
+                                version,
+                                content: phistudio_sdk::FileContent::History,
+                            }
                         }
                         result => WorkerResult::Workspace { session, result },
                     });
@@ -335,6 +384,7 @@ impl FileManager {
                 });
             }
             FileRequest::ExportCurrent | FileRequest::ExportProject(_) => {
+                let version = app.plugin_version();
                 let snapshot = app.editor.document().clone();
                 let options = app.project_options.clone();
                 let chart = app.file.clone();
@@ -389,7 +439,11 @@ impl FileManager {
                             Some(chart),
                         )
                     })()
-                    .map(WorkerResult::Exported)
+                    .map(|package| WorkerResult::Exported {
+                        package,
+                        version,
+                        content: phistudio_sdk::FileContent::Project,
+                    })
                     .map_err(|e| e.to_string());
                     let _ = sender.send(result);
                 });

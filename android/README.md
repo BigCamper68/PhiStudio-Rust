@@ -15,7 +15,7 @@ cargo install cargo-ndk --locked
 export ANDROID_HOME=/path/to/android-sdk
 export ANDROID_NDK_HOME=/path/to/android-ndk
 cd android
-./gradlew :app:assembleDebug --no-daemon
+./gradlew :app:clean :app:assembleDebug --no-daemon
 ```
 
 The APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`.
@@ -23,6 +23,10 @@ Gradle builds the Rust library in release mode and packages it with the C++
 runtime, required license notices, and the shared application icon. Debug APKs
 use the local Android debug signing key; do not commit signing credentials.
 Use clean Gradle packaging before distributing a build to avoid stale payloads.
+Incremental APK updates can retain unused ZIP space after replacing native
+libraries. The APK verifier rejects excessive unused space. Android builds show
+their version name and code on the Projects screen; both come from
+`android/app/build.gradle` and distinguish installed test builds.
 
 On ARM64 Linux, the official NDK's Linux host tools may require an ARM64 overlay:
 
@@ -51,6 +55,28 @@ Project imports use Android's document picker and private working copies.
 Exports use the system destination picker. Editing, recovery and version history
 are stored privately; checking out a version does not publish it as the saved
 project until Save is pressed.
+
+## Software keyboard regression checks
+
+The editor requests IME only after a completed text-field tap. The Android
+controller retains a pending request until window/view focus is ready and posts
+show/retry work with cancellation tokens. Closing a field or suspending the app
+revokes queued work; completed requests do not reopen on focus restoration.
+The manifest uses `adjustResize` without a forced hidden keyboard state.
+
+Run the controller's focus/lifecycle cases on Java 17 from the `android` directory:
+
+```sh
+mkdir -p app/build/keyboard-tests
+javac -d app/build/keyboard-tests app/src/main/java/com/phistudio/rust/KeyboardController.java tests/KeyboardControllerTest.java
+java -cp app/build/keyboard-tests com.phistudio.rust.KeyboardControllerTest
+```
+
+The Rust workspace includes actual event Start/End Value touch-to-IME checks
+for all five event tracks, including taps delivered in one frame. These checks
+and APK verification do not replace testing an installed app with the device's
+keyboard. The reported device is Realme C21Y (RMX3261), Android 11 / realme UI R
+Edition; that device has not been available for runtime verification here.
 
 ## Signed builds in GitHub Actions
 

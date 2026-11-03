@@ -23,11 +23,15 @@ mod line_properties;
 mod note_extras;
 pub mod objects;
 mod package;
+mod patch;
 pub mod patterns;
+pub mod plugin_data;
 mod preferences;
 mod project_assets;
 mod project_management;
 mod project_options;
+mod source_location;
+pub use source_location::SourceLocation;
 mod recovery;
 pub mod resources;
 mod storage;
@@ -44,7 +48,10 @@ pub use beat::Beat;
 pub use conversion::{ChartFormat, DecodedChart, decode_chart, pec_height_signature};
 pub use document::{ChartDocument, ChartError, LineSummary, Note, NoteKind};
 pub use events::{EventId, EventType, LineEvent};
-pub use export::{ProjectExport, prepare_project_export};
+pub use export::{
+    ProjectExport, prepare_project_export, prepare_project_export_checked,
+    prepare_project_export_with_plugin_data, prepare_project_export_with_plugin_data_checked,
+};
 pub use groups::GroupAction;
 pub use history::{Command, Editor, NoteId};
 pub use library::{
@@ -56,8 +63,9 @@ pub use note_extras::{
     ControlKind, ControlPoint, NoteSoundGain, SOUND_GAIN_KEY, builtin_hitsound, validate_hitsound,
 };
 pub use package::{
-    ChartChoice, ImportedProject, import_project, load_project_options,
-    load_project_options_with_assets,
+    ChartChoice, ImportedProject, MAX_PROJECT_BYTES, MAX_PROJECT_ENTRIES, MAX_PROJECT_FILE_BYTES,
+    ProjectArchive, ProjectMember, import_project, import_project_checked, load_project_options,
+    load_project_options_with_assets, project_entry_path, write_project_archive,
 };
 pub use preferences::{
     AudioGuideOptions, EditorOptions, EditorPreferences, Language, MultiLinePreferences,

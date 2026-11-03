@@ -174,6 +174,7 @@ pub(crate) async fn run(options: Options) -> Result<()> {
     };
     app.resource_warning = preview.resource_warning().map(str::to_owned);
     let mut gui = gui::Gui::new();
+    app.start_plugins(storage_root.clone());
     app.audio_guide.set_cache_root(storage_root.clone());
     let mut files = files::FileManager::new(storage_root);
     app.preview.texture = Some(egui::TextureId::User(preview.texture_id()));
@@ -428,12 +429,16 @@ pub(crate) async fn run(options: Options) -> Result<()> {
         {
             app.error = Some(format!("Could not play hitsound: {error:#}"));
         }
+        let plugin_effects = app.plugin_preview_effects();
+        let plugin_effect_failures = preview.set_plugin_effects(&plugin_effects);
+        app.plugin_preview_effect_failures(plugin_effect_failures);
         if !app.show_projects && app.render_error.is_none() {
             preview.render(
                 app.editor.document().tempo().seconds_at(app.transport.beat),
                 preview.target_viewport(),
             );
         }
+        app.inspect_plugin_preview(&mut preview);
         if app.advanced.monitor || app.advanced.line_filter == 1 {
             app.advanced.line_states = preview.line_states();
         }
@@ -477,5 +482,6 @@ pub(crate) async fn run(options: Options) -> Result<()> {
     files
         .checkpoint(&app, app.close_confirmed)
         .map_err(anyhow::Error::msg)?;
+    app.plugins.shutdown().map_err(anyhow::Error::msg)?;
     Ok(())
 }

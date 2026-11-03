@@ -1,6 +1,14 @@
 use super::*;
 
 impl FileManager {
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    pub(super) fn pick_plugin(&mut self, app: &mut Workbench) -> anyhow::Result<()> {
+        self.pick(app)?;
+        if let Some(pending) = &mut self.pending {
+            pending.plugin = true;
+        }
+        Ok(())
+    }
     pub(super) fn media(&mut self, app: &mut Workbench, kind: MediaKind, file: MediaFile) {
         let (sender, receiver) = mpsc::channel();
         self.worker = Some(receiver);
@@ -25,6 +33,9 @@ impl FileManager {
         self.token += 1;
         mobile::request_media(kind.protocol(), self.token)?;
         self.pending = Some(Pending {
+            provider: None,
+            artifact: None,
+            plugin: false,
             repository: None,
             token: self.token,
             export: None,
@@ -42,6 +53,12 @@ impl FileManager {
         name: String,
         remove_source: bool,
     ) {
+        self.request(
+            app,
+            FileRequest::ImportSource(MediaFile::new(path, name, remove_source)),
+        );
+    }
+    pub(super) fn import_now(&mut self, app: &mut Workbench, source: MediaFile) {
         app.transport.playing = false;
         app.timeline.cancel_gesture();
         let projects = match self
@@ -61,12 +78,10 @@ impl FileManager {
         app.files.busy = true;
         app.status = "Importing…".into();
         std::thread::spawn(move || {
-            let result = import_project(&path, &projects, &name, true)
+            let result = import_project(source.path(), &projects, source.name(), true)
                 .map(WorkerResult::Imported)
                 .map_err(|e| e.to_string());
-            if remove_source {
-                let _ = std::fs::remove_file(path);
-            }
+            drop(source);
             let _ = sender.send(result);
         });
     }
@@ -81,6 +96,9 @@ impl FileManager {
         self.token += 1;
         mobile::request_export_package(package.path(), &package.name, self.token)?;
         self.pending = Some(Pending {
+            provider: None,
+            artifact: None,
+            plugin: false,
             repository: None,
             token: self.token,
             export: Some(package),
@@ -98,6 +116,9 @@ impl FileManager {
         self.token += 1;
         mobile::request_package(self.token)?;
         self.pending = Some(Pending {
+            provider: None,
+            artifact: None,
+            plugin: false,
             repository: None,
             token: self.token,
             export: None,

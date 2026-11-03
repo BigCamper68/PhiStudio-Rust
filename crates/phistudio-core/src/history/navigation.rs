@@ -1,11 +1,15 @@
 use super::*;
 
 impl Editor {
-    pub(super) fn record(&mut self, delta: Delta, label: &'static str) {
+    pub(super) fn record(
+        &mut self,
+        delta: Delta,
+        label: impl Into<std::borrow::Cow<'static, str>>,
+    ) {
         self.history.truncate(self.cursor);
         self.history.push(Entry {
             delta,
-            label,
+            label: label.into(),
             before: self.state,
             after: self.next_state,
         });

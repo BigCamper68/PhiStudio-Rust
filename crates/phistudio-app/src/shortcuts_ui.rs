@@ -41,7 +41,7 @@ fn bindings() -> Vec<(&'static str, Key, Modifiers)> {
         ("Nudge right ×4", Key::ArrowRight, s),
     ]
 }
-fn spelling(key: Key, m: Modifiers) -> String {
+pub(crate) fn spelling(key: Key, m: Modifiers) -> String {
     format!(
         "{}{}{}{:?}",
         if m.command || m.ctrl || m.mac_cmd {
@@ -56,6 +56,9 @@ fn spelling(key: Key, m: Modifiers) -> String {
 }
 impl Workbench {
     pub(crate) fn configured_tool_key(&mut self, key: Key, m: Modifiers) -> bool {
+        if self.plugin_key(key, m) {
+            return true;
+        }
         let pressed = spelling(key, m);
         for (_, original, mods) in bindings() {
             let default = spelling(original, mods);

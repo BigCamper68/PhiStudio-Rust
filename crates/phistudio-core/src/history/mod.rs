@@ -115,6 +115,7 @@ enum NotesShape {
 
 #[derive(Debug)]
 enum Delta {
+    Patch(crate::patch::PatchDelta),
     Noise(crate::noise_fields::Delta),
     Lines(crate::line_management::LineDelta),
     LineField {
@@ -156,7 +157,7 @@ enum Delta {
 #[derive(Debug)]
 struct Entry {
     delta: Delta,
-    label: &'static str,
+    label: std::borrow::Cow<'static, str>,
     before: u64,
     after: u64,
 }
@@ -228,14 +229,16 @@ impl Editor {
         self.history
             .iter()
             .enumerate()
-            .map(|(i, e)| (e.label, i < self.cursor))
+            .map(|(i, e)| (e.label.as_ref(), i < self.cursor))
             .collect()
     }
     pub fn history_cursor(&self) -> usize {
         self.cursor
     }
     pub fn undo_label(&self) -> Option<&str> {
-        self.cursor.checked_sub(1).map(|i| self.history[i].label)
+        self.cursor
+            .checked_sub(1)
+            .map(|i| self.history[i].label.as_ref())
     }
     pub fn last_target(&self) -> Option<EditTarget> {
         self.cursor

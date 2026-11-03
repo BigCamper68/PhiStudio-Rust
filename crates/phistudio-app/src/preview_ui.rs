@@ -37,6 +37,7 @@ pub(crate) struct PreviewDrag {
 }
 impl Workbench {
     pub(crate) fn open_fullscreen_preview(&mut self) {
+        self.cancel_plugin_input();
         self.preview.drag = None;
         self.preview.touches.clear();
         self.preview.blocked = false;
@@ -69,6 +70,7 @@ impl Workbench {
                 ),
             );
             self.preview.rect = rect;
+            self.plugin_preview_overlay(&painter.with_clip_rect(area), rect, "grid-preview");
         }
     }
     pub(crate) fn preview_aspect(&self) -> f32 {
@@ -110,6 +112,7 @@ impl Workbench {
         } else {
             ui.painter().rect_filled(rect, 0., base());
         }
+        self.plugin_preview_overlay(ui.painter(), rect, "preview");
     }
     pub(crate) fn sidebar_preview(&mut self, ui: &mut egui::Ui) {
         if self.options.preview_behind_grid {
@@ -153,11 +156,13 @@ impl Workbench {
         self.paint_preview(ui, rect);
         ui.painter()
             .rect_stroke(rect, 0., egui::Stroke::new(1_f32, border()));
-        if response.clicked() && !self.modal_open() {
+        let plugin_input = self.plugin_preview_input(ui, rect, Rect::NOTHING).is_some();
+        if response.clicked() && !self.modal_open() && !plugin_input {
             self.open_fullscreen_preview();
         }
     }
     pub(crate) fn close_fullscreen_preview(&mut self) {
+        self.cancel_plugin_input();
         self.cancel_noise_preview_editor();
         self.noise.sample_target = None;
         self.preview.drag = None;
@@ -195,11 +200,13 @@ impl Workbench {
     pub(crate) fn fullscreen_preview(&mut self, ctx: &egui::Context) {
         self.timeline.area = Rect::NOTHING;
         ctx.input_mut(|i| {
-            if i.consume_key(egui::Modifiers::NONE, egui::Key::Escape) {
+            if i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)
+                && !self.cancel_plugin_editor_action()
+            {
                 self.close_fullscreen_preview();
             }
-            if i.consume_key(egui::Modifiers::NONE, egui::Key::Space) {
-                self.transport.playing = !self.transport.playing;
+            if !self.modal_open() && i.consume_key(egui::Modifiers::NONE, egui::Key::Space) {
+                self.request_editor_playback(!self.transport.playing, false);
             }
         });
         egui::CentralPanel::default()
@@ -216,11 +223,16 @@ impl Workbench {
                 self.paint_preview(ui, rect);
                 let exit = self.fullscreen_exit_rect(rect);
                 ui.interact(exit, egui::Id::new("fullscreen-HUD-return"), Sense::hover());
-                self.noise_preview_editor(ui, rect);
-                self.noise_sample_input(ui, rect);
-                let events = ui.input(|i| i.events.clone());
-                self.fullscreen_input(&events, rect, exit);
+                if !self.modal_open() {
+                    self.noise_preview_editor(ui, rect);
+                    self.noise_sample_input(ui, rect);
+                    let events = self
+                        .plugin_preview_input(ui, rect, exit)
+                        .unwrap_or_else(|| ui.input(|i| i.events.clone()));
+                    self.fullscreen_input(&events, rect, exit);
+                }
             });
+        self.plugin_editor_action_window(ctx);
     }
     fn preview_move(&mut self, pos: egui::Pos2) {
         if self.noise_preview_move(pos) {

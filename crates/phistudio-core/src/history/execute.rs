@@ -1,6 +1,31 @@
 use super::*;
 
 impl Editor {
+    /// Apply an extension's edits as one validated, plugin-independent Undo entry.
+    pub fn apply_patch(
+        &mut self,
+        expected_revision: u64,
+        label: String,
+        operations: Vec<phistudio_sdk::PatchOperation>,
+    ) -> Result<bool, ChartError> {
+        if expected_revision != self.revision {
+            return Err(ChartError::Invalid(
+                "Document changed; run the plugin action again".into(),
+            ));
+        }
+        if label.trim().is_empty() || label.len() > 256 {
+            return Err(ChartError::Invalid(
+                "Transaction labels need 1–256 bytes".into(),
+            ));
+        }
+        let Some(delta) = crate::patch::prepare(&self.document, operations)? else {
+            return Ok(false);
+        };
+        delta.apply(&mut self.document, true);
+        self.record(Delta::Patch(delta), label);
+        Ok(true)
+    }
+
     pub fn execute(&mut self, command: Command) -> Result<bool, ChartError> {
         let Some((delta, label)) = Delta::prepare(&self.document, command)? else {
             return Ok(false);

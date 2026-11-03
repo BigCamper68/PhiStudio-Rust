@@ -1,0 +1,23 @@
+[package]
+name = "phistudio-plugins"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+phistudio-sdk.workspace = true
+phistudio-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+wasmi = { version = "=2.0.0", default-features = false, features = ["stable", "std", "validate", "portable-dispatch"] }
+tempfile.workspace = true
+image.workspace = true
+zip = { version = "8.3.0", default-features = false, features = ["deflate"] }
+
+[target.'cfg(any(target_os = "linux", target_os = "android", target_os = "macos", target_os = "windows"))'.dependencies]
+libloading = "=0.8.9"
+
+[dev-dependencies]
+wat = "1"

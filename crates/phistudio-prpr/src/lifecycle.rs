@@ -56,6 +56,7 @@ impl Preview {
         let mut noise_fields = noise_fields::NoiseFields::default();
         noise_fields.load(document).await?;
         let mut preview = Self {
+            extension_effects: Default::default(),
             noise_fields,
             anchors,
             offline_step: None,

@@ -53,6 +53,26 @@ def inspect(readobj, path):
     return record, defined, undefined
 
 
+def verify_zip_layout(apk, archive):
+    """Reject native-library-sized holes left by incremental APK packaging.
+
+    Alignment is stored in local-header extras and counted as live space.
+    Allow up to 1 MiB for data descriptors, the APK signing block and padding.
+    """
+    live = 0
+    with apk.open("rb") as stream:
+        for item in archive.infolist():
+            stream.seek(item.header_offset + 26)
+            name_len, extra_len = struct.unpack("<HH", stream.read(4))
+            live += 30 + name_len + extra_len + item.compress_size
+    unused = archive.start_dir - live
+    require(0 <= unused <= 1024 * 1024,
+            f"APK contains {unused} bytes outside live ZIP entries before its central directory. "
+            "Rebuild with :app:clean :app:assembleDebug before distributing it.")
+    return {"size": apk.stat().st_size, "live_local_entries": live,
+            "signing_padding_and_unused_bytes": unused}
+
+
 def verify_java_bridges(archive, sdk, temp):
     """Check declarations in the delivered DEX, including the touch timestamp.
 
@@ -121,6 +141,8 @@ def main():
     sdk = args.build_tools.resolve()
     badging = run(sdk / "aapt2", "dump", "badging", apk)
     require("package: name='com.phistudio.rust'" in badging, "Wrong Android package ID")
+    version = re.search(r"versionCode='(\d+)' versionName='([^']+)'", badging)
+    require(version, "APK version name/code are missing")
     require(re.search(r"^(?:minSdkVersion|sdkVersion):'26'$", badging, re.M), "APK minSdk must be 26")
     require(re.search(r"^targetSdkVersion:'35'$", badging, re.M), "APK targetSdk must be 35")
     require("com.phistudio.rust.MainActivity" in badging, "MainActivity is not launchable")
@@ -129,8 +151,10 @@ def main():
             "APK signature verification did not report a modern signing scheme")
     run(sdk / "zipalign", "-c", "-P", "16", "4", apk)
     report = {"apk": str(apk), "sha256": hashlib.file_digest(apk.open("rb"), "sha256").hexdigest(),
+              "version_code": int(version[1]), "version_name": version[2],
               "min_sdk": API, "page_size": PAGE, "runtime_checked": False, "native": {}}
     with ZipFile(apk) as archive, tempfile.TemporaryDirectory(prefix="phistudio-apk-") as temp:
+        report["zip_layout"] = verify_zip_layout(apk, archive)
         report["java_jni"] = verify_java_bridges(archive, sdk, temp)
         native = [i for i in archive.infolist() if i.filename.startswith("lib/") and i.filename.endswith(".so")]
         require(native, "APK contains no native library (was skipRust used?)")
@@ -164,6 +188,7 @@ def main():
             unresolved[name] = undefined
             dependencies.update(needed)
             report["native"][name] = {"size": item.file_size, "zip_offset": offset,
+                "sha256": hashlib.file_digest(library.open("rb"), "sha256").hexdigest(),
                 "load_alignment": [p["Alignment"] for p in loads], "needed": needed,
                 "required_jni": sorted(REQUIRED_JNI) if name == APP_LIBRARY else []}
         for dependency in sorted(dependencies - names):

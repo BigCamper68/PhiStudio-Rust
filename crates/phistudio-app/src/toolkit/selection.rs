@@ -84,6 +84,13 @@ impl Workbench {
     }
 
     pub(crate) fn select_scope(&mut self, scope: Scope, invert: bool) {
+        self.request_editor_action(phistudio_sdk::EditorAction::SelectScope {
+            scope: scope.into(),
+            invert,
+        });
+    }
+
+    pub(crate) fn select_scope_now(&mut self, scope: Scope, invert: bool) {
         if crate::story_grid::active(self) && scope != Scope::Notes {
             let result = self.visible_story_ids().and_then(|mut stories| {
                 let mut normal = Selection::default();

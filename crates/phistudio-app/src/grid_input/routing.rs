@@ -17,6 +17,8 @@ pub fn handle(
     eligible: impl Fn(Pos2) -> bool,
     canceled: bool,
 ) {
+    let adapted = app.plugin_grid_input(events, grid, area, &eligible, canceled);
+    let events = adapted.as_deref().unwrap_or(events);
     app.multi_line.base = Some(grid);
     if canceled {
         app.timeline.input.cycle = None;

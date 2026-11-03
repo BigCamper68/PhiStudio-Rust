@@ -93,7 +93,7 @@ impl Workbench {
         }
         self.shaders.code_view = false;
         self.timeline.cancel_gesture();
-        self.set_tool(crate::workbench::Tool::Select);
+        self.set_tool_now(crate::workbench::Tool::Select);
         self.windows.sidebar = true;
         self.windows.scroll_to_properties = true;
     }

@@ -1,0 +1,9 @@
+{
+  "api": 1,
+  "id": "example.editor-guides",
+  "name": "Editor guides",
+  "version": "0.1.0",
+  "description": "Passive preview guides, a synchronized custom timeline and a themed canvas.",
+  "backend": { "kind": "wasm", "entry": "plugin.wasm" },
+  "capabilities": ["preview", "timeline", "ui"]
+}

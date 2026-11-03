@@ -1,0 +1,9 @@
+{
+  "api": 1,
+  "id": "example.action-lab",
+  "name": "Editor action lab",
+  "version": "0.1.0",
+  "description": "Cancel native actions, quantize API seeks, and control playback and history through host/editor.",
+  "backend": { "kind": "wasm", "entry": "plugin.wasm" },
+  "capabilities": ["hooks", "ui", "services", "editor_control", "document_read", "document_edit"]
+}

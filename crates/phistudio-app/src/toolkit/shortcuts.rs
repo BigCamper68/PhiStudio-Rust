@@ -45,7 +45,7 @@ impl Workbench {
             match key {
                 Key::Z => self.history_step(true),
                 Key::V => self.paste_selection(true, false),
-                Key::A => self.select(None),
+                Key::A => self.request_editor_action(phistudio_sdk::EditorAction::ClearSelection),
                 _ => return false,
             }
         } else if modifiers.matches(command) {
@@ -64,11 +64,11 @@ impl Workbench {
             }
         } else if modifiers.matches(egui::Modifiers::NONE) {
             match key {
-                Key::Space => self.transport.playing = !self.transport.playing,
+                Key::Space => self.request_editor_playback(!self.transport.playing, false),
                 Key::Delete => self.delete_selected(),
                 Key::Escape => {
                     self.timeline.cancel_gesture();
-                    self.set_tool(Tool::Select);
+                    self.set_tool_now(Tool::Select);
                     if self.close_advanced_window() {
                         return true;
                     } else if self.windows.edit {

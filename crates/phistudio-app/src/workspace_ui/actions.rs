@@ -118,6 +118,7 @@ impl Workbench {
                 if changed {
                     self.workspace.resource_undo = undo;
                     self.asset_revision = self.asset_revision.wrapping_add(1);
+                    self.sync_plugin_project();
                     self.project_covers = None;
                     self.workspace.inspection = None;
                     self.workspace.image = None;

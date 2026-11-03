@@ -27,6 +27,10 @@ impl Workbench {
                             .max_height(ui.available_height())
                             .touch_show_y(ui, |ui| {
                                 self.sidebar_preview(ui);
+                                self.plugin_panels(ui, phistudio_sdk::PanelLocation::Sidebar);
+                                if !self.windows.floating_properties {
+                                    self.plugin_panels(ui, phistudio_sdk::PanelLocation::Inspector);
+                                }
                                 if self.advanced.right_mode
                                     == crate::advanced_ui::RightMode::NoiseFields
                                 {

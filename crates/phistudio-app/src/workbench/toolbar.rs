@@ -46,7 +46,8 @@ impl Workbench {
                                     .add_enabled(
                                         shaders || tool != Tool::Event || self.events.layer < 4,
                                         egui::SelectableLabel::new(
-                                            self.timeline.tool == tool,
+                                            self.timeline.tool == tool
+                                                && !self.plugin_tool_active(),
                                             RichText::new(crate::i18n::tr(label)).color(color),
                                         ),
                                     )
@@ -55,6 +56,7 @@ impl Workbench {
                                     self.set_tool(tool);
                                 }
                             }
+                            self.plugin_tools_toolbar(ui);
                             ui.separator();
                             if ui.button(crate::i18n::tr("Grid")).clicked() {
                                 self.windows.grid = !self.windows.grid;

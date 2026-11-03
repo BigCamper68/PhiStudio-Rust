@@ -5,6 +5,8 @@ use std::collections::BTreeSet;
 pub(crate) struct PickingState {
     pub target: Option<(RenderTarget, Material)>,
     pub sources: Vec<Option<NoteId>>,
+    pub inspection: BTreeMap<usize, Vec<usize>>,
+    pub inspection_offsets: Vec<usize>,
     pub visible_lines: BTreeSet<usize>,
     pub visible_ids: Vec<usize>,
     visible: Vec<bool>,
@@ -18,6 +20,8 @@ impl PickingState {
     }
     pub fn replace_sources(&mut self, sources: Vec<Option<NoteId>>) {
         self.sources = sources;
+        self.inspection.clear();
+        self.inspection_offsets.clear();
         self.visible_lines.clear();
         // Release the previous chart's potentially large buffers at the boundary.
         // Reuse capacity between picks within the same parsed chart.

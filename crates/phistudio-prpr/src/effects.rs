@@ -83,7 +83,8 @@ impl Preview {
         let disabled = !self.noise_fields.enabled()
             && (!self.editor_options.preview_shaders
                 || (self.chart.extra.effects.is_empty()
-                    && self.chart.extra.global_effects.is_empty()));
+                    && self.chart.extra.global_effects.is_empty()
+                    && !self.extension_effects.enabled()));
         if self.resource.no_effect != disabled {
             self.resource.no_effect = disabled;
             self.resource.config.disable_effect = disabled;
@@ -120,6 +121,9 @@ impl Preview {
         {
             effect.update(&self.resource);
             effect.render(&mut self.resource);
+        }
+        if self.editor_options.preview_shaders {
+            self.extension_effects.render(&mut self.resource);
         }
         let target = self.effect_target();
         unsafe { get_internal_gl() }.flush();

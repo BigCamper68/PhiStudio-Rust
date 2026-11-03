@@ -25,6 +25,20 @@ use std::collections::BTreeMap;
 
 const SLOP: f32 = 8.;
 
+/// Continue navigation after an extension's tap recognizer yields its gesture.
+pub(crate) fn begin_navigation(app: &mut Workbench, grid: Grid, origin: Pos2, intent: Intent) {
+    app.timeline.input.pointer_active = true;
+    app.timeline.navigation_axis = None;
+    app.timeline.input.panel_navigation = false;
+    app.timeline.input.panel_offset = app.multi_line.offsets[usize::from(app.multi_line.events)];
+    app.timeline.drag = Some(Gesture::Tap {
+        origin,
+        grid,
+        intent,
+        moved: true,
+    });
+}
+
 /// Shared interval editing for Storyboard and shader tracks. Input coordinates
 /// are already snapped in the track's clock; the pointer router owns the slop.
 pub(crate) struct IntervalDrag {

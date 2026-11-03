@@ -1,0 +1,9 @@
+{
+  "api": 1,
+  "id": "example.pixel-grid",
+  "name": "Pixel grid",
+  "version": "0.1.0",
+  "description": "Convert a tiny text pixel grid into an image through the portable resource-provider API.",
+  "backend": { "kind": "wasm", "entry": "plugin.wasm" },
+  "capabilities": ["resources", "services"]
+}

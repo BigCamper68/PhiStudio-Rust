@@ -2,6 +2,14 @@ use super::*;
 
 impl Workbench {
     pub(crate) fn copy_selection(&mut self, cut: bool) {
+        self.request_editor_action(if cut {
+            phistudio_sdk::EditorAction::Cut
+        } else {
+            phistudio_sdk::EditorAction::Copy
+        });
+    }
+
+    pub(crate) fn copy_selection_now(&mut self, cut: bool) {
         let result = self.timing_selection().and_then(|normal| {
             phistudio_core::objects::ObjectClipboard::copy(
                 self.editor.document(),
@@ -36,6 +44,13 @@ impl Workbench {
     }
 
     pub(crate) fn paste_selection(&mut self, mirrored: bool, original_time: bool) {
+        self.request_editor_action(phistudio_sdk::EditorAction::Paste {
+            mirrored,
+            original_time,
+        });
+    }
+
+    pub(crate) fn paste_selection_now(&mut self, mirrored: bool, original_time: bool) {
         let Some(clipboard) = self.tools.clipboard.clone() else {
             return;
         };
@@ -61,6 +76,10 @@ impl Workbench {
     }
 
     pub(crate) fn duplicate_selection(&mut self) {
+        self.request_editor_action(phistudio_sdk::EditorAction::Duplicate);
+    }
+
+    pub(crate) fn duplicate_selection_now(&mut self) {
         if !self.story_selection().is_empty() {
             let edit = phistudio_core::objects::ObjectClipboard::copy(
                 self.editor.document(),

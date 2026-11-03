@@ -2,14 +2,27 @@ use super::*;
 
 impl Workbench {
     pub fn modal_open(&self) -> bool {
-        self.workspace.view.is_some()
+        self.show_projects || self.modal_open_except_projects()
+    }
+
+    pub(crate) fn modal_open_except_projects(&self) -> bool {
+        self.plugin_editor_action_modal() || self.workflow_modal_open()
+    }
+
+    pub(crate) fn modal_open_except_editor_action(&self) -> bool {
+        self.show_projects || self.workflow_modal_open()
+    }
+
+    fn workflow_modal_open(&self) -> bool {
+        self.plugin_provider_modal()
+            || self.plugin_file_hook_modal()
+            || self.workspace.view.is_some()
             || self.line_tools.show
             || self.video.open
             || self.playtest.setup
             || self.playtest.active()
             || self.palette.is_some()
             || self.files.modal_open()
-            || self.show_projects
             || self.close_requested
     }
 
@@ -54,6 +67,16 @@ impl Workbench {
     }
 
     pub fn back(&mut self) {
+        if self.cancel_plugin_editor_action() {
+            return;
+        }
+        self.cancel_plugin_input();
+        if self.cancel_plugin_file_hook() {
+            return;
+        }
+        if self.cancel_plugin_provider_ui() {
+            return;
+        }
         if self.video_back() {
             return;
         }
@@ -83,6 +106,9 @@ impl Workbench {
         }
         if self.workspace.view.take().is_some() {
             self.workspace.audition = Some(None);
+            return;
+        }
+        if self.show_projects && !self.files.modal_open() && self.plugins.close_top(false) {
             return;
         }
         if std::mem::take(&mut self.show_projects) {
@@ -121,6 +147,9 @@ impl Workbench {
             return;
         }
         if self.windows.close_auxiliary() {
+            return;
+        }
+        if self.plugins.close_top(true) {
             return;
         }
         if self.preview.floating {

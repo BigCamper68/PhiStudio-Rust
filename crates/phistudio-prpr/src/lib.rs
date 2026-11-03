@@ -8,6 +8,7 @@ mod inspection;
 mod lifecycle;
 mod media;
 mod noise_fields;
+mod note_inspection;
 mod sound_gain;
 pub use sound_gain::render_hitsound_gain;
 mod playback;
@@ -23,6 +24,8 @@ mod curve;
 mod editor_audio;
 mod editor_options;
 mod effects;
+mod extension_effects;
+pub use extension_effects::{PreviewFilter, PreviewFilterFailure, PreviewFilterKey};
 pub use picking::LineState;
 pub use skin::inspect_skin;
 mod hud;
@@ -64,6 +67,7 @@ pub fn suspend_audio() {
 }
 
 pub struct Preview {
+    extension_effects: extension_effects::ExtensionEffects,
     noise_fields: noise_fields::NoiseFields,
     anchors: anchors::Anchors,
     offline_step: Option<f32>,

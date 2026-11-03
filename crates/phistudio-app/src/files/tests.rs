@@ -1,5 +1,38 @@
 use super::*;
 #[test]
+fn an_export_prepared_for_an_older_revision_is_discarded_before_a_destination_is_offered() {
+    let document = phistudio_core::ChartDocument::empty("Export source", 120.).unwrap();
+    let package =
+        phistudio_core::prepare_project_export(&document, &Default::default(), None, None).unwrap();
+    let path = package.path().to_owned();
+    let mut app = Workbench::new(document, None);
+    let version = app.plugin_version();
+    app.editor
+        .execute(phistudio_core::Command::AddNote {
+            line: 0,
+            note: Default::default(),
+        })
+        .unwrap();
+    let mut files = FileManager::new(None);
+    let (sender, receiver) = mpsc::channel();
+    files.worker = Some(receiver);
+    app.files.busy = true;
+    assert!(
+        sender
+            .send(Ok(WorkerResult::Exported {
+                package,
+                version,
+                content: phistudio_sdk::FileContent::Project,
+            }))
+            .is_ok()
+    );
+    files.update(&mut app);
+    assert!(!app.files.busy);
+    assert!(app.files.export_package.is_none());
+    assert!(!path.exists());
+    assert!(app.editor.is_dirty() && app.editor.can_undo());
+}
+#[test]
 fn closing_a_loading_resource_query_leaves_editor_unblocked_and_ignores_late_results() {
     let mut app = Workbench::new(
         phistudio_core::ChartDocument::empty("Query", 120.).unwrap(),
@@ -102,7 +135,7 @@ fn export_captures_unsaved_edits_without_saving_the_working_copy() {
         .recv_timeout(std::time::Duration::from_secs(3))
         .unwrap()
         .unwrap();
-    let WorkerResult::Exported(package) = result else {
+    let WorkerResult::Exported { package, .. } = result else {
         panic!("Expected package snapshot");
     };
     let imported = phistudio_core::import_project(

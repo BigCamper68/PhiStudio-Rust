@@ -45,6 +45,14 @@ impl Workbench {
     }
 
     pub(crate) fn history_step(&mut self, redo: bool) {
+        self.request_editor_action(if redo {
+            phistudio_sdk::EditorAction::Redo
+        } else {
+            phistudio_sdk::EditorAction::Undo
+        });
+    }
+
+    pub(crate) fn history_step_now(&mut self, redo: bool) {
         let anchor = self
             .editor
             .action_id(redo)
@@ -102,6 +110,11 @@ impl Workbench {
     }
 
     pub(crate) fn set_tool(&mut self, tool: Tool) {
+        self.request_editor_action(phistudio_sdk::EditorAction::SetTool { tool: tool.into() });
+    }
+
+    pub(crate) fn set_tool_now(&mut self, tool: Tool) {
+        self.stop_plugin_tool();
         if self.timeline.tool != tool {
             self.timeline.tool = tool;
             self.timeline.drag = None;
@@ -109,6 +122,10 @@ impl Workbench {
     }
 
     pub fn delete_selected(&mut self) {
+        self.request_editor_action(phistudio_sdk::EditorAction::DeleteSelection);
+    }
+
+    pub(crate) fn delete_selected_now(&mut self) {
         if !self.story_selection().is_empty() {
             let edit = phistudio_core::objects::delete(
                 self.editor.document(),

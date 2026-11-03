@@ -106,6 +106,7 @@ pub fn request_export_package(path: &Path, name: &str, token: u64) -> Result<()>
     unsafe { ps_export_document(path.as_ptr(), name.as_ptr(), token) };
     Ok(())
 }
+pub use request_export_package as request_export_file;
 
 // UIKit owns each string for the duration of the synchronous callback only.
 unsafe fn string(value: *const c_char) -> Option<String> {

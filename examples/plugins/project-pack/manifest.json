@@ -1,0 +1,9 @@
+{
+  "api": 1,
+  "id": "example.project-pack",
+  "name": "Project pack",
+  "version": "0.1.0",
+  "description": "Stream charts and binary resources through a custom project container without filesystem or ZIP dependencies in the guest.",
+  "backend": { "kind": "wasm", "entry": "plugin.wasm" },
+  "capabilities": ["formats", "services", "document_read", "project_read"]
+}

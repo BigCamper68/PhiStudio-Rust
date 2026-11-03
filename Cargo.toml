@@ -1,10 +1,10 @@
 [workspace]
-members = ["crates/phistudio-core", "crates/phistudio-prpr", "crates/phistudio-app", "crates/phistudio-audio"]
+members = ["crates/phistudio-core", "crates/phistudio-prpr", "crates/phistudio-app", "crates/phistudio-audio", "crates/phistudio-sdk", "crates/phistudio-plugins"]
 exclude = ["vendor/egui-miniquad", "vendor/phira"]
 resolver = "2"
 
 [workspace.package]
-version = "1.30.1"
+version = "1.31.0"
 edition = "2024"
 license = "GPL-3.0-only"
 rust-version = "1.88"
@@ -26,6 +26,8 @@ sasa = { git = "https://github.com/Mivik/sasa", rev = "e76229b", default-feature
 phistudio-core = { path = "crates/phistudio-core" }
 phistudio-prpr = { path = "crates/phistudio-prpr" }
 phistudio-audio = { path = "crates/phistudio-audio" }
+phistudio-sdk = { path = "crates/phistudio-sdk" }
+phistudio-plugins = { path = "crates/phistudio-plugins" }
 
 # The editor must share prpr's GL context. Registry Macroquad/Miniquad would
 # otherwise create a second, incompatible runtime through the egui adapter.
@@ -36,6 +38,14 @@ egui-miniquad = { path = "vendor/egui-miniquad" }
 
 [profile.dev]
 debug = 1
+
+# The portable interpreter executes guest instructions even in editor debug
+# builds; leaving its hot loop unoptimized makes small page queries take seconds.
+[profile.dev.package.wasmi]
+opt-level = 2
+
+[profile.dev.package.wasmi_core]
+opt-level = 2
 
 [profile.release]
 opt-level = 2

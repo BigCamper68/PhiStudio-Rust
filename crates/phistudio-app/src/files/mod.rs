@@ -1,6 +1,7 @@
 //! Platform pickers exchange paths to bounded private snapshots, never chart
 //! JSON over JNI. ZIP decoding and chart discovery run off the rendering thread.
 mod pickers;
+mod providers;
 mod requests;
 mod update;
 #[cfg(target_os = "android")]
@@ -17,6 +18,25 @@ use std::{
 
 #[cfg_attr(not(any(target_os = "android", target_os = "ios")), allow(dead_code))]
 pub enum FileRequest {
+    AfterHook {
+        request: Box<FileRequest>,
+        approval: crate::plugins::FileApproval,
+    },
+    ImportSource(MediaFile),
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    ReadyExport(phistudio_core::ProjectExport),
+    ProviderPick(phistudio_plugins::Operation),
+    ProviderSnapshot(phistudio_plugins::Operation),
+    ProviderImport(phistudio_plugins::Artifact),
+    ProviderResource(phistudio_plugins::Artifact),
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    ProviderWrite {
+        artifact: phistudio_plugins::Artifact,
+        path: PathBuf,
+    },
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    ProviderExport(phistudio_plugins::Artifact),
+    PluginPackage,
     ImportRepository(PathBuf),
     Workspace(crate::workspace_ui::WorkspaceJob),
     ImportSkin(MediaFile),
@@ -79,7 +99,41 @@ pub enum FileRequest {
     },
 }
 
+impl FileRequest {
+    pub(crate) fn provider_operation(&self) -> Option<&phistudio_plugins::Operation> {
+        match self {
+            Self::ProviderPick(operation) | Self::ProviderSnapshot(operation) => Some(operation),
+            Self::ProviderImport(artifact) | Self::ProviderResource(artifact) => {
+                Some(artifact.operation())
+            }
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
+            Self::ProviderWrite { artifact, .. } => Some(artifact.operation()),
+            #[cfg(any(target_os = "android", target_os = "ios"))]
+            Self::ProviderExport(artifact) => Some(artifact.operation()),
+            _ => None,
+        }
+    }
+}
+
 enum WorkerResult {
+    ProviderResource {
+        operation: phistudio_plugins::Operation,
+        kind: MediaKind,
+        result: Result<MediaFile, String>,
+    },
+    ProviderSource {
+        operation: phistudio_plugins::Operation,
+        result: Result<MediaFile, String>,
+    },
+    ProviderImported {
+        operation: phistudio_plugins::Operation,
+        result: Result<ImportedProject, String>,
+    },
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    ProviderWritten {
+        operation: phistudio_plugins::Operation,
+        result: Result<(), String>,
+    },
     Workspace {
         session: u64,
         result: crate::workspace_ui::WorkspaceResult,
@@ -111,7 +165,11 @@ enum WorkerResult {
         library: phistudio_core::ProjectLibrary,
     },
     Restored(phistudio_core::ProjectLibrary),
-    Exported(phistudio_core::ProjectExport),
+    Exported {
+        package: phistudio_core::ProjectExport,
+        version: phistudio_sdk::DocumentVersion,
+        content: phistudio_sdk::FileContent,
+    },
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     ExportWritten,
     Library(phistudio_core::ProjectLibrary),
@@ -146,6 +204,9 @@ pub struct FileManager {
 }
 #[cfg(any(target_os = "android", target_os = "ios"))]
 struct Pending {
+    provider: Option<phistudio_plugins::Operation>,
+    artifact: Option<phistudio_plugins::Artifact>,
+    plugin: bool,
     repository: Option<PathBuf>,
     token: u64,
     export: Option<phistudio_core::ProjectExport>,

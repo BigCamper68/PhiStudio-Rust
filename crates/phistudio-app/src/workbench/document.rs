@@ -20,8 +20,13 @@ impl Workbench {
         location: phistudio_core::ProjectLocation,
         unchanged: bool,
     ) {
+        let previous_assets = self.asset_root().map(Path::to_path_buf);
         self.file = Some(location.chart);
         self.asset_directory = location.assets;
+        if previous_assets.as_deref() != self.asset_root() {
+            self.asset_revision = self.asset_revision.wrapping_add(1);
+        }
+        self.sync_plugin_project();
         if unchanged {
             self.editor.mark_saved();
         }
@@ -57,10 +62,15 @@ impl Workbench {
 
     pub fn discard_and_open(&mut self, path: PathBuf) {
         self.files.pending_open = None;
-        self.load(path);
+        self.load_now(path);
     }
 
     pub(super) fn load(&mut self, path: PathBuf) {
+        if let Some(path) = self.plugin_before_load(path) {
+            self.load_now(path);
+        }
+    }
+    pub(crate) fn load_now(&mut self, path: PathBuf) {
         match load_chart(&path) {
             Ok(document) => {
                 let assets = self.files.pending_asset_directory.take();
@@ -95,6 +105,7 @@ impl Workbench {
         let presets = std::mem::take(&mut self.presets);
         let clipboard_history = std::mem::take(&mut self.clipboard_history);
         let preferences = self.preferences();
+        let plugins = std::mem::take(&mut self.plugins);
         let clipboard = self.tools.clipboard.clone();
         let last_deleted = self.files.last_deleted.clone();
         let floating = self.preview.floating;
@@ -102,6 +113,7 @@ impl Workbench {
         let managed_storage = self.managed_storage;
         let timeline_split = self.timeline.split;
         *self = Self::new(document, file);
+        self.plugins = plugins;
         if self
             .file
             .as_deref()
@@ -128,6 +140,7 @@ impl Workbench {
         self.apply_preferences(&preferences);
         self.files.last_deleted = last_deleted;
         self.tools.clipboard = clipboard;
+        self.sync_plugin_project();
     }
 
     pub(super) fn reload_project_options(&mut self) {
@@ -161,6 +174,11 @@ impl Workbench {
     }
 
     pub fn save(&mut self, path: PathBuf) {
+        if let Some(path) = self.plugin_before_save(path) {
+            self.save_now(path);
+        }
+    }
+    pub(crate) fn save_now(&mut self, path: PathBuf) {
         let result = (|| {
             if let Some(root) = &self.workspace.root
                 && phistudio_core::vcs::save_working_copy(

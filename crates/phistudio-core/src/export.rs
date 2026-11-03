@@ -39,6 +39,61 @@ pub fn prepare_project_export(
     assets: Option<&Path>,
     chart: Option<&Path>,
 ) -> Result<ProjectExport, ChartError> {
+    prepare_project_export_checked(document, options, assets, chart, || true)
+}
+
+pub fn prepare_project_export_checked(
+    document: &ChartDocument,
+    options: &ProjectOptions,
+    assets: Option<&Path>,
+    chart: Option<&Path>,
+    active: impl Fn() -> bool,
+) -> Result<ProjectExport, ChartError> {
+    prepare_project_export_with_plugin_data_checked(
+        document,
+        options,
+        assets,
+        chart,
+        phistudio_sdk::PluginDataExport::Preserve,
+        active,
+    )
+}
+
+pub fn prepare_project_export_with_plugin_data(
+    document: &ChartDocument,
+    options: &ProjectOptions,
+    assets: Option<&Path>,
+    chart: Option<&Path>,
+    policy: phistudio_sdk::PluginDataExport,
+) -> Result<ProjectExport, ChartError> {
+    prepare_project_export_with_plugin_data_checked(
+        document,
+        options,
+        assets,
+        chart,
+        policy,
+        || true,
+    )
+}
+
+pub fn prepare_project_export_with_plugin_data_checked(
+    document: &ChartDocument,
+    options: &ProjectOptions,
+    assets: Option<&Path>,
+    chart: Option<&Path>,
+    policy: phistudio_sdk::PluginDataExport,
+    active: impl Fn() -> bool,
+) -> Result<ProjectExport, ChartError> {
+    let check = || {
+        if active() {
+            Ok(())
+        } else {
+            Err(invalid("Project export was cancelled"))
+        }
+    };
+    check()?;
+    let exported = document.with_plugin_data_export(policy)?;
+    let document = exported.as_ref();
     let root = assets.map(Path::canonicalize).transpose()?;
     let mut files = root
         .as_deref()
@@ -46,6 +101,7 @@ pub fn prepare_project_export(
         .transpose()?
         .unwrap_or_default();
     files.sort();
+    check()?;
     if files
         .iter()
         .any(|path| path != Path::new("info.yml") && path.starts_with("info.yml"))
@@ -168,6 +224,7 @@ pub fn prepare_project_export(
         .sum();
     let (noise_chart, noise_resources) = crate::noise_fields::export::prepare(document, &files)?;
     let chart_bytes = serde_json::to_vec_pretty(&noise_chart)?;
+    check()?;
     if chart_bytes.len() > ChartDocument::MAX_JSON_BYTES {
         return Err(invalid("Chart exceeds 256 MiB"));
     }
@@ -184,6 +241,7 @@ pub fn prepare_project_export(
         let mut total = 0;
         let mut count = 0;
         for path in files {
+            check()?;
             let name = path
                 .file_name()
                 .unwrap_or_default()
@@ -203,11 +261,25 @@ pub fn prepare_project_export(
             {
                 return Err(invalid("Package contains too many files"));
             }
-            let mut source =
-                File::open(root.as_ref().unwrap().join(&path))?.take(128 * 1024 * 1024 + 1);
+            let source_path = root.as_ref().unwrap().join(&path);
+            let filtered = filtered_chart_resource(&source_path, policy, &active)?;
+            let mut source: Box<dyn Read> = match filtered {
+                Some(bytes) => Box::new(io::Cursor::new(bytes)),
+                None => Box::new(File::open(source_path)?.take(128 * 1024 * 1024 + 1)),
+            };
             zip.start_file(path_text(&path)?, options)
                 .map_err(|e| invalid(e.to_string()))?;
-            let size = io::copy(&mut source, &mut zip)?;
+            let mut size = 0;
+            let mut buffer = vec![0; 64 * 1024];
+            loop {
+                check()?;
+                let read = source.read(&mut buffer)?;
+                if read == 0 {
+                    break;
+                }
+                zip.write_all(&buffer[..read])?;
+                size += read as u64;
+            }
             total += size;
             if size > 128 * 1024 * 1024
                 || total
@@ -221,11 +293,13 @@ pub fn prepare_project_export(
             }
         }
         for (path, bytes) in &noise_resources {
+            check()?;
             zip.start_file(path_text(path)?, options)
                 .map_err(|e| invalid(e.to_string()))?;
             zip.write_all(bytes)?;
         }
         for (path, source) in &sources {
+            check()?;
             zip.start_file(path, options)
                 .map_err(|e| invalid(e.to_string()))?;
             zip.write_all(source.as_str().unwrap().as_bytes())?;
@@ -244,6 +318,7 @@ pub fn prepare_project_export(
         zip.finish().map_err(|e| invalid(e.to_string()))?;
     }
     file.as_file().sync_all()?;
+    check()?;
     if file.as_file().metadata()?.len() > 256 * 1024 * 1024 {
         return Err(invalid("Exported ZIP exceeds 256 MiB"));
     }
@@ -270,4 +345,94 @@ pub fn prepare_project_export(
             }
         ),
     })
+}
+
+fn filtered_chart_resource(
+    path: &Path,
+    policy: phistudio_sdk::PluginDataExport,
+    active: &impl Fn() -> bool,
+) -> Result<Option<Vec<u8>>, ChartError> {
+    if policy == phistudio_sdk::PluginDataExport::Preserve
+        || path
+            .extension()
+            .is_none_or(|s| !s.eq_ignore_ascii_case("json"))
+    {
+        return Ok(None);
+    }
+    struct Reader<'a> {
+        source: io::Take<File>,
+        active: &'a dyn Fn() -> bool,
+    }
+    impl Read for Reader<'_> {
+        fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+            if !(self.active)() {
+                return Err(io::Error::other("Project export was cancelled"));
+            }
+            self.source.read(buffer)
+        }
+    }
+    let source = File::open(path)?;
+    if source.metadata()?.len() > 128 * 1024 * 1024 {
+        return Err(invalid("Package exceeds the export size limit"));
+    }
+    let reader = Reader {
+        source: source.take(128 * 1024 * 1024 + 1),
+        active,
+    };
+    let value: serde_json::Value = match crate::json_io::read(reader) {
+        Ok(value) => value,
+        Err(error) if error.is_io() => return Err(error.into()),
+        Err(_) => return Ok(None),
+    };
+    // Resource JSON is opaque. Only editable RPE charts carry this namespace.
+    if !value.get("META").is_some_and(serde_json::Value::is_object)
+        || !value
+            .get("BPMList")
+            .is_some_and(serde_json::Value::is_array)
+        || !value
+            .get("judgeLineList")
+            .is_some_and(serde_json::Value::is_array)
+    {
+        return Ok(None);
+    }
+    match crate::plugin_data::export_value(&value, policy)? {
+        std::borrow::Cow::Borrowed(_) => Ok(None),
+        std::borrow::Cow::Owned(value) => {
+            let bytes = serde_json::to_vec_pretty(&value)?;
+            if bytes.len() > 128 * 1024 * 1024 {
+                return Err(invalid("Filtered chart exceeds 128 MiB"));
+            }
+            Ok(Some(bytes))
+        }
+    }
+}
+
+#[cfg(test)]
+mod plugin_data_tests {
+    use super::*;
+    use phistudio_sdk::{PLUGIN_DATA_KEY, PluginData, PluginDataExport, PluginDataPolicy};
+    use std::cell::Cell;
+
+    #[test]
+    fn secondary_chart_filtering_propagates_cancellation_during_json_reads() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("secondary.json");
+        let mut value = ChartDocument::empty("Cancellation", 120.)
+            .unwrap()
+            .as_json()
+            .clone();
+        value[PLUGIN_DATA_KEY] = serde_json::json!({"test.editor":PluginData::new(1, PluginDataPolicy::EditorOnly, serde_json::Value::Null)});
+        value["largeUnknown"] = serde_json::json!("x".repeat(512 * 1024));
+        let bytes = serde_json::to_vec(&value).unwrap();
+        fs::write(&path, &bytes).unwrap();
+        let reads = Cell::new(0);
+        let result = filtered_chart_resource(&path, PluginDataExport::Runtime, &|| {
+            reads.set(reads.get() + 1);
+            reads.get() < 3
+        });
+        assert!(result.unwrap_err().to_string().contains("cancelled"));
+        assert!(reads.get() >= 2);
+        assert_eq!(fs::read(&path).unwrap(), bytes);
+        assert_eq!(fs::read_dir(root.path()).unwrap().count(), 1);
+    }
 }

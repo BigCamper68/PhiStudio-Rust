@@ -175,12 +175,25 @@ impl ChartDocument {
         Self::from_value(serde_json::from_str(json)?)
     }
 
-    pub fn from_value(mut root: Value) -> Result<Self, ChartError> {
-        let invalid = |message: &str| ChartError::Invalid(message.into());
+    fn validate_root(root: &Value) -> Result<(), ChartError> {
         if !root.is_object() || !root.get("META").is_some_and(Value::is_object) {
-            return Err(invalid("Expected an RPE chart object with META"));
+            return Err(ChartError::Invalid(
+                "Expected an RPE chart object with META".into(),
+            ));
         }
+        Ok(())
+    }
+
+    pub fn from_value(mut root: Value) -> Result<Self, ChartError> {
+        Self::validate_root(&root)?;
         crate::noise_fields::export::restore(&mut root)?;
+        Self::from_edit_value(root)
+    }
+
+    /// Validate an already editable tree without running import conversions.
+    pub(crate) fn from_edit_value(root: Value) -> Result<Self, ChartError> {
+        let invalid = |message: &str| ChartError::Invalid(message.into());
+        Self::validate_root(&root)?;
         let changes: Vec<BpmChange> = serde_json::from_value(
             root.get("BPMList")
                 .cloned()
@@ -284,6 +297,19 @@ impl ChartDocument {
     }
     pub fn as_json(&self) -> &Value {
         &self.root
+    }
+    pub fn with_plugin_data_export(
+        &self,
+        mode: phistudio_sdk::PluginDataExport,
+    ) -> Result<std::borrow::Cow<'_, Self>, ChartError> {
+        use std::borrow::Cow;
+        match crate::plugin_data::export_value(&self.root, mode)? {
+            Cow::Borrowed(_) => Ok(Cow::Borrowed(self)),
+            Cow::Owned(root) => Ok(Cow::Owned(Self {
+                root,
+                tempo: self.tempo.clone(),
+            })),
+        }
     }
     pub fn tempo(&self) -> &TempoMap {
         &self.tempo

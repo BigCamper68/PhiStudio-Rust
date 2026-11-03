@@ -86,6 +86,21 @@ impl FileManager {
                     self.worker = None;
                     app.files.busy = false;
                     match result {
+                        Ok(WorkerResult::ProviderSource { operation, result }) => {
+                            app.receive_plugin_provider_source(operation, result)
+                        }
+                        Ok(WorkerResult::ProviderImported { operation, result }) => {
+                            app.receive_plugin_provider_import(operation, result)
+                        }
+                        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+                        Ok(WorkerResult::ProviderWritten { operation, result }) => {
+                            app.receive_plugin_provider_write(operation, result)
+                        }
+                        Ok(WorkerResult::ProviderResource {
+                            operation,
+                            kind,
+                            result,
+                        }) => app.receive_plugin_provider_resource(operation, kind, result),
                         Ok(WorkerResult::Workspace { session, result }) => {
                             app.workspace_result(session, result);
                             self.recorded = None;
@@ -148,7 +163,17 @@ impl FileManager {
                             app.status = "Project restored".into();
                             self.recorded = None;
                         }
-                        Ok(WorkerResult::Exported(package)) => {
+                        Ok(WorkerResult::Exported {
+                            package,
+                            version,
+                            content,
+                        }) => {
+                            if version != app.plugin_version() {
+                                return;
+                            }
+                            let Some(package) = app.plugin_before_export(package, content) else {
+                                return;
+                            };
                             #[cfg(not(any(target_os = "android", target_os = "ios")))]
                             {
                                 app.files.export_path = package.name.clone();
@@ -230,6 +255,33 @@ impl FileManager {
                 continue;
             }
             app.files.busy = false;
+            if let Some(operation) = pending.provider {
+                if result.canceled {
+                    app.cancel_plugin_provider_ui();
+                } else if pending.artifact.is_some() {
+                    let outcome = if let Some(error) = result.error {
+                        Err(error)
+                    } else if result.canceled {
+                        Err("Plugin export canceled".into())
+                    } else {
+                        Ok(())
+                    };
+                    app.receive_plugin_provider_write(operation, outcome);
+                } else if let Some(path) = result.path {
+                    app.start_plugin_provider_source(
+                        operation,
+                        MediaFile::new(path, result.name, true),
+                    );
+                } else {
+                    app.receive_plugin_provider_source(
+                        operation,
+                        Err(result
+                            .error
+                            .unwrap_or_else(|| "File selection canceled".into())),
+                    );
+                }
+                continue;
+            }
             if let Some(error) = result.error {
                 app.error = Some(error);
             } else if pending.export.is_some() {
@@ -240,7 +292,9 @@ impl FileManager {
                 }
                 .into();
             } else if let Some(path) = result.path {
-                if let Some(workspace) = pending.repository {
+                if pending.plugin {
+                    app.install_plugin(MediaFile::new(path, result.name, true));
+                } else if let Some(workspace) = pending.repository {
                     app.repository_request(
                         workspace,
                         crate::workspace_ui::repository::Action::Import(path, true),

@@ -41,6 +41,7 @@ pub struct NoteDraft {
 }
 
 pub struct Workbench {
+    pub(crate) plugins: crate::plugins::State,
     pub(crate) timeline: TimelineState,
     pub(crate) transport: TransportState,
     pub(crate) windows: Windows,
@@ -114,6 +115,7 @@ impl Workbench {
             ),
         };
         Self {
+            plugins: Default::default(),
             timeline: TimelineState::default(),
             transport: TransportState::default(),
             windows: Windows::default(),
@@ -174,6 +176,30 @@ impl Workbench {
     }
 
     pub fn ui(&mut self, ctx: &egui::Context, canceled: bool) {
+        if canceled
+            || ctx.input(|i| {
+                !i.raw.has_focus
+                    || i.events.iter().any(|event| {
+                        matches!(
+                            event,
+                            egui::Event::Touch {
+                                phase: egui::TouchPhase::Cancel,
+                                ..
+                            }
+                        )
+                    })
+            })
+        {
+            self.cancel_plugin_editor_action();
+        }
+        self.plugin_editor_action_preflight();
+        self.plugin_file_hook_preflight();
+        self.plugin_input_preflight(ctx, canceled);
+        self.poll_plugins();
+        self.plugin_provider_preflight();
+        if self.plugins.working() {
+            ctx.request_repaint_after(std::time::Duration::from_millis(16));
+        }
         if canceled {
             self.cancel_noise_bounds_drag();
         }

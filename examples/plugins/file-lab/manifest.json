@@ -1,0 +1,9 @@
+{
+  "api": 1,
+  "id": "example.file-lab",
+  "name": "File workflow lab",
+  "version": "0.1.0",
+  "description": "Validate, cancel and rename native file workflows through an ordered hook.",
+  "backend": { "kind": "wasm", "entry": "plugin.wasm" },
+  "capabilities": ["hooks", "ui"]
+}

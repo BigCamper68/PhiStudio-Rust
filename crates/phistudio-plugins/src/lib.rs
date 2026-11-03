@@ -1,0 +1,22 @@
+//! Extension lifecycle, registration ownership and portable module execution.
+mod document;
+mod editing;
+mod editor_actions;
+mod host;
+mod install;
+mod interaction;
+mod limits;
+mod native;
+mod package;
+mod preferences;
+mod runtime;
+mod validation;
+mod wasm;
+pub use document::{MAX_QUERY_BYTES, MAX_QUERY_ITEMS};
+pub use host::*;
+pub use install::*;
+pub use interaction::Interaction;
+pub use native::*;
+pub use package::*;
+pub use runtime::*;
+pub use wasm::*;

@@ -1,0 +1,10 @@
+{
+  "api": 1,
+  "id": "phistudio.chart-linter",
+  "name": "Chart Linter",
+  "version": "0.1.1",
+  "description": "Inspect chart structure, timing, resources and playback readability without changing chart data.",
+  "authors": ["PhiStudio contributors"],
+  "backend": { "kind": "wasm", "entry": "plugin.wasm" },
+  "capabilities": ["document_read", "project_read", "document_edit", "editor_control", "long_running", "preview", "services", "ui"]
+}

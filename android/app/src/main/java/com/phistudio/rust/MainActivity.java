@@ -232,6 +232,7 @@ public class MainActivity extends Activity {
     //% MAIN_ACTIVITY_BODY
 
     private QuadSurface view;
+    private KeyboardController keyboard;
     private volatile boolean resumed = false;
     private DocumentBridge documents;
     private static java.lang.ref.WeakReference<MainActivity> current = new java.lang.ref.WeakReference<>(null);
@@ -261,6 +262,11 @@ public class MainActivity extends Activity {
         if (activity == null) { documentResult(token,-1,"","","The app window is closed"); return; }
         activity.runOnUiThread(() -> activity.documents.requestExport(path, name, token));
     }
+    public static void requestExportFile(String path, String name, long token) {
+        MainActivity activity = current.get();
+        if (activity == null) { documentResult(token,-1,"","","The app window is closed"); return; }
+        activity.runOnUiThread(() -> activity.documents.requestExportFile(path, name, token));
+    }
     public static void requestMedia(String kind, long token) {
         MainActivity activity = current.get();
         if (activity == null) { documentResult(token,-1,"","","The app window is closed"); return; }
@@ -289,6 +295,18 @@ public class MainActivity extends Activity {
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
 
         view = new QuadSurface(this);
+        final InputMethodManager input = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+        keyboard = new KeyboardController(new KeyboardController.Target() {
+            public boolean isResumed() { return resumed; }
+            public boolean hasWindowFocus() { return view.hasWindowFocus(); }
+            public boolean hasViewFocus() { return view.hasFocus(); }
+            public boolean requestFocus() { return view.requestFocus(); }
+            public void setTextInputRequested(boolean requested) { view.setTextInputRequested(requested); }
+            public void post(Runnable action) { view.post(action); }
+            public void restartInput() { input.restartInput(view); }
+            public boolean show() { return input.showSoftInput(view, InputMethodManager.SHOW_IMPLICIT); }
+            public void hide() { input.hideSoftInputFromWindow(view.getWindowToken(), 0); }
+        });
         android.widget.FrameLayout container = new android.widget.FrameLayout(this);
         container.setBackgroundColor(android.graphics.Color.rgb(12,17,29));
         container.addView(view,new android.widget.FrameLayout.LayoutParams(-1,-1));
@@ -326,6 +344,12 @@ public class MainActivity extends Activity {
         QuadNative.activityOnResume();
 
         //% MAIN_ACTIVITY_ON_RESUME
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean focused) {
+        super.onWindowFocusChanged(focused);
+        if (keyboard != null) keyboard.windowFocusChanged(focused);
     }
 
     @Override
@@ -421,29 +445,8 @@ public class MainActivity extends Activity {
     }
 
     public void showKeyboard(final boolean show) {
-        runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    if (view == null) return;
-                    if (show && resumed && view.hasWindowFocus()) {
-                        boolean restart = !view.onCheckIsTextEditor();
-                        view.setTextInputRequested(true);
-                        InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
-                        if (restart) imm.restartInput(view);
-                        if (!imm.showSoftInput(view, InputMethodManager.SHOW_IMPLICIT)) {
-                            // InputConnection startup can finish after restartInput returns.
-                            view.post(() -> {
-                                if (resumed && view.hasWindowFocus() && view.onCheckIsTextEditor()) {
-                                    imm.showSoftInput(view, InputMethodManager.SHOW_IMPLICIT);
-                                }
-                            });
-                        }
-                    } else {
-                        view.setTextInputRequested(false);
-                        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                        imm.hideSoftInputFromWindow(view.getWindowToken(),0);
-                    }
-                }
-            });
+        runOnUiThread(() -> {
+            if (keyboard != null) keyboard.request(show);
+        });
     }
 }

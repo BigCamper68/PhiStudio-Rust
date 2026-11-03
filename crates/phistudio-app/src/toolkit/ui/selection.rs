@@ -16,7 +16,7 @@ impl Workbench {
                 self.select_scope(self.tools.scope, true);
             }
             if ui.button(crate::i18n::tr("Clear")).clicked() {
-                self.select(None);
+                self.request_editor_action(phistudio_sdk::EditorAction::ClearSelection);
             }
         });
         ui.horizontal_wrapped(|ui| {

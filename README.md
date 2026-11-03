@@ -20,6 +20,14 @@ PhiStudio Rust is a successor to the original Java-based [PhiStudio](https://git
 - **Built-in project version control.** A custom system for tracking changes to chart projects.
 - **Format conversion.** Conversion rules ported from the Java version of PhiStudio.
 
+## Mods and plugins
+
+Install plugin ZIP packages from **Projects → Plugins**, then enable them. Plugins can add editing tools, chart checks, panels, preview overlays and effects, and format converters. Each plugin exposes its controls in the editor; the loader manages installation and activation. Existing built-in tools remain available.
+
+Portable Wasm plugins use a restricted SDK; native plugins run without a sandbox and should only come from trusted authors. The SDK is currently an API 1 draft.
+
+See the [SDK documentation](crates/phistudio-sdk/README.md), [plugin architecture and limitations](docs/PLUGINS.md), [examples](examples/plugins/), and [Chart Linter](plugins/chart-linter/README.md).
+
 ## Platforms
 
 | Platform | Directory |

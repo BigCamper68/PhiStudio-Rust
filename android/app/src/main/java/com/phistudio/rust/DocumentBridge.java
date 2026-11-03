@@ -60,15 +60,16 @@ final class DocumentBridge {
         if (pending) { MainActivity.documentResult(requestedToken,-1,"","","Another file picker is still open"); return; }
         boolean shader = "shader".equals(kind);
         boolean resource = "resource".equals(kind);
+        boolean plugin = "plugin".equals(kind);
         boolean skin = "skin".equals(kind);
         boolean hitsound = "hitsound".equals(kind);
         boolean audio = "audio".equals(kind) || hitsound;
-        if (!shader && !resource && !audio && !skin && !"illustration".equals(kind) && !"line-texture".equals(kind)) { MainActivity.documentResult(requestedToken,-1,"","","Unknown media type"); return; }
+        if (!shader && !resource && !plugin && !audio && !skin && !"illustration".equals(kind) && !"line-texture".equals(kind)) { MainActivity.documentResult(requestedToken,-1,"","","Unknown media type"); return; }
         token = requestedToken; pending = true; exportPath = null; mediaKind = kind;
-        snapshotLimit = (shader ? 1L : skin ? 256L : hitsound ? 8L : audio || resource ? 128L : 32L)*1024*1024;
+        snapshotLimit = (shader ? 1L : skin || plugin ? 256L : hitsound ? 8L : audio || resource ? 128L : 32L)*1024*1024;
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType(shader || audio || skin || resource ? "*/*" : "image/*");
+        intent.setType(shader || audio || skin || resource || plugin ? "*/*" : "image/*");
         if (audio) intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"audio/*","application/ogg","video/mp4","application/octet-stream"});
         try { activity.startActivityForResult(intent, REQUEST); }
         catch (RuntimeException error) { pending=false; mediaKind=null; MainActivity.documentResult(requestedToken,-1,"","",describe(error)); }
@@ -78,6 +79,9 @@ final class DocumentBridge {
     }
     void requestExport(String path, String name, long requestedToken) {
         requestExport(path, name, requestedToken, "application/zip");
+    }
+    void requestExportFile(String path, String name, long requestedToken) {
+        requestExport(path, name, requestedToken, "application/octet-stream");
     }
     private void requestExport(String path, String name, long requestedToken, String mime) {
         if (pending) { MainActivity.documentResult(requestedToken,-1,"","","Another file picker is still open"); return; }

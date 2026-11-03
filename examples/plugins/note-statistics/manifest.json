@@ -1,0 +1,10 @@
+{
+  "api": 1,
+  "id": "example.note-statistics",
+  "name": "Note statistics",
+  "version": "0.1.0",
+  "description": "Reads the active line in bounded pages and exposes a reusable note histogram service.",
+  "authors": ["PhiStudio contributors"],
+  "backend": { "kind": "wasm", "entry": "plugin.wasm" },
+  "capabilities": ["document_read", "services", "ui"]
+}

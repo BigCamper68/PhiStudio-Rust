@@ -70,7 +70,7 @@ impl Workbench {
         if self.options.auto_copy_selection
             && self.selection().len() + self.story_selection().len() > 1
         {
-            self.copy_selection(false);
+            self.copy_selection_now(false);
         }
     }
     pub(crate) fn apply_object_tool(

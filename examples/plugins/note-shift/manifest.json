@@ -1,0 +1,13 @@
+{
+  "api": 1,
+  "id": "example.note-shift",
+  "name": "Note shift example",
+  "version": "0.1.0",
+  "description": "Move notes on the active line using a portable plugin and one Undo transaction.",
+  "authors": ["PhiStudio contributors"],
+  "backend": {"kind": "wasm", "entry": "plugin.wasm"},
+  "capabilities": ["document_read", "document_edit", "ui"],
+  "settings": {
+    "offset": {"kind": "number", "title": "Horizontal offset", "default": 25, "min": -1350, "max": 1350}
+  }
+}

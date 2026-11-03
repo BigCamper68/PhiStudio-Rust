@@ -43,14 +43,14 @@ impl Workbench {
                 self.windows.sidebar = true;
                 self.windows.edit = false;
                 self.windows.floating_properties = false;
-                self.set_tool(crate::workbench::Tool::Select);
+                self.set_tool_now(crate::workbench::Tool::Select);
                 self.refresh_noise();
             }
             if next == RightMode::Shaders {
                 self.windows.sidebar = true;
                 self.windows.edit = false;
                 self.windows.floating_properties = false;
-                self.set_tool(crate::workbench::Tool::Select);
+                self.set_tool_now(crate::workbench::Tool::Select);
                 self.refresh_shaders();
             }
         }

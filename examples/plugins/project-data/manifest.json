@@ -1,0 +1,9 @@
+{
+  "api": 1,
+  "id": "example.project-data",
+  "name": "Project data",
+  "version": "0.1.0",
+  "description": "Versioned project tags with Undo, reload persistence and explicit export policies.",
+  "backend": { "kind": "wasm", "entry": "plugin.wasm" },
+  "capabilities": ["document_read", "document_edit", "services", "ui"]
+}

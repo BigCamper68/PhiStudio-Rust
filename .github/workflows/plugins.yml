@@ -1,0 +1,137 @@
+name: Plugin SDK and portable runtime
+
+on:
+  pull_request:
+    paths:
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'crates/phistudio-core/**'
+      - 'crates/phistudio-app/**'
+      - 'crates/phistudio-prpr/**'
+      - 'crates/phistudio-sdk/**'
+      - 'crates/phistudio-plugins/**'
+      - 'examples/plugins/**'
+      - 'plugins/chart-linter/**'
+      - '.github/workflows/plugins.yml'
+      - 'assets/locales/**'
+      - 'android/app/src/**'
+      - 'android/tests/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host-targets:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        target: [aarch64-linux-android, aarch64-apple-darwin, x86_64-pc-windows-gnu, aarch64-apple-ios]
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Check the portable host and platform loader
+        run: |
+          rustup update stable --no-self-update
+          rustup target add ${{ matrix.target }}
+          cargo check -p phistudio-plugins --target ${{ matrix.target }} --locked
+  portable:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Prepare Rust and Wasm target
+        run: |
+          rustup update stable --no-self-update
+          rustup target add wasm32-unknown-unknown
+      - name: Check format and plugin boundaries
+        run: |
+          cargo fmt -p phistudio-core -p phistudio-app -p phistudio-prpr -p phistudio-audio -p phistudio-sdk -p phistudio-plugins -- --check
+          cargo fmt --manifest-path examples/plugins/note-shift/Cargo.toml -- --check
+          cargo fmt --manifest-path examples/plugins/note-statistics/Cargo.toml -- --check
+          cargo fmt --manifest-path examples/plugins/editor-guides/Cargo.toml -- --check
+          cargo fmt --manifest-path examples/plugins/note-stamp/Cargo.toml -- --check
+          cargo fmt --manifest-path examples/plugins/service-lab/Cargo.toml -- --check
+          cargo fmt --manifest-path examples/plugins/chart-envelope/Cargo.toml -- --check
+          cargo fmt --manifest-path examples/plugins/pixel-grid/Cargo.toml -- --check
+          cargo fmt --manifest-path examples/plugins/file-lab/Cargo.toml -- --check
+          cargo fmt --manifest-path examples/plugins/project-pack/Cargo.toml -- --check
+          cargo fmt --manifest-path examples/plugins/asset-view/Cargo.toml -- --check
+          cargo fmt --manifest-path examples/plugins/project-data/Cargo.toml -- --check
+          cargo fmt --manifest-path examples/plugins/preview-fx/Cargo.toml -- --check
+          cargo fmt --manifest-path examples/plugins/action-lab/Cargo.toml -- --check
+          cargo fmt --manifest-path plugins/chart-linter/Cargo.toml -- --check
+          cargo clippy --manifest-path plugins/chart-linter/Cargo.toml --all-targets --locked -- -D warnings
+          cargo test --manifest-path plugins/chart-linter/Cargo.toml --locked
+          cargo clippy --manifest-path examples/plugins/asset-view/Cargo.toml --target wasm32-unknown-unknown --lib --locked -- -D warnings
+          cargo clippy --manifest-path examples/plugins/project-data/Cargo.toml --target wasm32-unknown-unknown --lib --locked -- -D warnings
+          cargo clippy --manifest-path examples/plugins/preview-fx/Cargo.toml --target wasm32-unknown-unknown --lib --locked -- -D warnings
+          cargo clippy --manifest-path examples/plugins/action-lab/Cargo.toml --target wasm32-unknown-unknown --lib --locked -- -D warnings
+          cargo clippy -p phistudio-core -p phistudio-sdk -p phistudio-plugins --all-targets --no-deps --locked -- -D warnings
+          cargo test -p phistudio-core -p phistudio-sdk -p phistudio-plugins --locked
+      - name: Build a standalone external Rust plugin
+        run: |
+          python3 plugins/chart-linter/package.py
+          cargo build --manifest-path examples/plugins/note-shift/Cargo.toml --target wasm32-unknown-unknown --release --locked
+          cp examples/plugins/note-shift/target/wasm32-unknown-unknown/release/phistudio_example_note_shift.wasm examples/plugins/note-shift/plugin.wasm
+          cargo build --manifest-path examples/plugins/note-statistics/Cargo.toml --target wasm32-unknown-unknown --release --locked
+          cp examples/plugins/note-statistics/target/wasm32-unknown-unknown/release/phistudio_example_note_statistics.wasm examples/plugins/note-statistics/plugin.wasm
+          cargo build --manifest-path examples/plugins/editor-guides/Cargo.toml --target wasm32-unknown-unknown --release --locked
+          cp examples/plugins/editor-guides/target/wasm32-unknown-unknown/release/phistudio_example_editor_guides.wasm examples/plugins/editor-guides/plugin.wasm
+          cargo build --manifest-path examples/plugins/note-stamp/Cargo.toml --target wasm32-unknown-unknown --release --locked
+          cp examples/plugins/note-stamp/target/wasm32-unknown-unknown/release/phistudio_example_note_stamp.wasm examples/plugins/note-stamp/plugin.wasm
+          cargo build --manifest-path examples/plugins/service-lab/Cargo.toml --target wasm32-unknown-unknown --release --locked
+          cp examples/plugins/service-lab/target/wasm32-unknown-unknown/release/phistudio_example_service_lab.wasm examples/plugins/service-lab/plugin.wasm
+          cargo build --manifest-path examples/plugins/chart-envelope/Cargo.toml --target wasm32-unknown-unknown --release --locked
+          cp examples/plugins/chart-envelope/target/wasm32-unknown-unknown/release/phistudio_example_chart_envelope.wasm examples/plugins/chart-envelope/plugin.wasm
+          cargo build --manifest-path examples/plugins/pixel-grid/Cargo.toml --target wasm32-unknown-unknown --release --locked
+          cp examples/plugins/pixel-grid/target/wasm32-unknown-unknown/release/phistudio_example_pixel_grid.wasm examples/plugins/pixel-grid/plugin.wasm
+          cargo build --manifest-path examples/plugins/file-lab/Cargo.toml --target wasm32-unknown-unknown --release --locked
+          cp examples/plugins/file-lab/target/wasm32-unknown-unknown/release/phistudio_example_file_lab.wasm examples/plugins/file-lab/plugin.wasm
+          cargo build --manifest-path examples/plugins/project-pack/Cargo.toml --target wasm32-unknown-unknown --release --locked
+          cp examples/plugins/project-pack/target/wasm32-unknown-unknown/release/phistudio_example_project_pack.wasm examples/plugins/project-pack/plugin.wasm
+          cargo build --manifest-path examples/plugins/asset-view/Cargo.toml --target wasm32-unknown-unknown --release --locked
+          cp examples/plugins/asset-view/target/wasm32-unknown-unknown/release/phistudio_example_asset_view.wasm examples/plugins/asset-view/plugin.wasm
+          cargo build --manifest-path examples/plugins/project-data/Cargo.toml --target wasm32-unknown-unknown --release --locked
+          cp examples/plugins/project-data/target/wasm32-unknown-unknown/release/phistudio_example_project_data.wasm examples/plugins/project-data/plugin.wasm
+          cargo build --manifest-path examples/plugins/preview-fx/Cargo.toml --target wasm32-unknown-unknown --release --locked
+          cp examples/plugins/preview-fx/target/wasm32-unknown-unknown/release/phistudio_example_preview_fx.wasm examples/plugins/preview-fx/plugin.wasm
+          cargo build --manifest-path examples/plugins/action-lab/Cargo.toml --target wasm32-unknown-unknown --release --locked
+          cp examples/plugins/action-lab/target/wasm32-unknown-unknown/release/phistudio_example_action_lab.wasm examples/plugins/action-lab/plugin.wasm
+      - name: Exercise the compiled guest and independent Undo
+        run: |
+          cargo test --release -p phistudio-plugins --test compiled_guest --locked -- --ignored --nocapture
+          cargo run -p phistudio-plugins --locked --example plugin-probe -- examples/plugins/note-shift assets/charts/phistudio-demo.rpe.json shift '{"offset":25}' /tmp/phistudio-plugin-result.json
+      - name: Build and exercise the native Rust ABI
+        run: |
+          cargo build --manifest-path examples/plugins/note-shift/Cargo.toml --release --locked
+          python3 examples/plugins/note-shift/package-native.py
+          cargo run -p phistudio-plugins --locked --example plugin-probe -- examples/plugins/note-shift/dist/native assets/charts/phistudio-demo.rpe.json shift '{"offset":25}' /tmp/phistudio-native-result.json
+      - name: Prepare desktop build libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libasound2-dev libudev-dev libx11-dev libxi-dev libxcursor-dev libxrandr-dev libgl1-mesa-dev libgl1-mesa-dri libwayland-dev libxkbcommon-dev xvfb xauth openjdk-17-jdk-headless
+      - name: Verify Android keyboard focus and cancellation
+        run: |
+          mkdir -p "$RUNNER_TEMP/phistudio-keyboard-tests"
+          javac --release 17 -d "$RUNNER_TEMP/phistudio-keyboard-tests" android/app/src/main/java/com/phistudio/rust/KeyboardController.java android/tests/KeyboardControllerTest.java
+          java -cp "$RUNNER_TEMP/phistudio-keyboard-tests" com.phistudio.rust.KeyboardControllerTest
+      - name: Verify transient effects on the original prpr graphics pipeline
+        run: |
+          cargo build -p phistudio-prpr --example preview-effect-probe --locked
+          xvfb-run -a -s '-screen 0 1280x720x24' env LIBGL_ALWAYS_SOFTWARE=1 timeout 45s target/debug/examples/preview-effect-probe "$RUNNER_TEMP/phistudio-preview-effects"
+          cargo build -p phistudio-app --example chart-linter-probe --locked
+          xvfb-run -a -s '-screen 0 1280x720x24' env LIBGL_ALWAYS_SOFTWARE=1 timeout 90s target/debug/examples/chart-linter-probe "$RUNNER_TEMP/phistudio-chart-linter"
+      - name: Verify the editor adapter and its contributed UI
+        run: |
+          cargo test --workspace --locked
+          cargo test -p phistudio-app --lib compiled_wasm_ --locked -- --ignored
+          cargo test -p phistudio-app --lib compiled_chart_linter --locked -- --ignored
+          cargo test -p phistudio-app --lib compiled_native_ --locked -- --ignored
+          cargo clippy --workspace --all-targets --no-deps --locked -- -D warnings

@@ -62,7 +62,7 @@ impl Workbench {
         true
     }
 
-    pub(super) fn select_shader(&mut self, index: usize) {
+    pub(crate) fn select_shader(&mut self, index: usize) {
         if self.shaders.selected == Some(index) {
             return;
         }

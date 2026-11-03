@@ -24,6 +24,8 @@ serde_json.workspace = true
 serde.workspace = true
 phistudio-prpr.workspace = true
 phistudio-audio.workspace = true
+phistudio-sdk.workspace = true
+phistudio-plugins.workspace = true
 egui = "=0.21.0"
 egui-miniquad = "=0.14.0"
 tokio = { version = "1", features = ["rt-multi-thread"] }

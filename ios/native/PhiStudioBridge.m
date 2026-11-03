@@ -252,6 +252,9 @@ void ps_pick_document(const char *kindValue, uint64_t token) {
     } else if ([kind isEqualToString:@"resource"]) {
         types = @[UTTypeData];
         document.limit = 128ULL * 1024 * 1024;
+    } else if ([kind isEqualToString:@"plugin"]) {
+        types = @[UTTypeData];
+        document.limit = 256ULL * 1024 * 1024;
     } else if (([kind isEqualToString:@"illustration"] || [kind isEqualToString:@"line-texture"])) {
         types = @[UTTypePNG, UTTypeJPEG, UTTypeWebP, UTTypeBMP, UTTypeGIF];
         document.limit = 32ULL * 1024 * 1024;
