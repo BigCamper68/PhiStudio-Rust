@@ -5,7 +5,8 @@ impl Workbench {
         self.project_covers
             .get_or_insert_with(crate::covers::Covers::new)
             .update(ctx);
-        let blocked = self.plugin_provider_modal()
+        let blocked = self.plugins.permissions_open()
+            || self.plugin_provider_modal()
             || self.plugin_file_hook_modal()
             || self.workspace.view.is_some()
             || self.files.busy

@@ -1,6 +1,7 @@
 use crate::scroll::TouchCombo as _;
 use phistudio_sdk::{UiEvent, Widget};
 use serde_json::{Value, json};
+mod rich;
 
 /// Events are collected while drawing and dispatched after all UI borrows end.
 pub(super) fn show(
@@ -15,6 +16,59 @@ pub(super) fn show(
             Widget::Label { text } => {
                 ui.label(crate::i18n::tr(text.as_str()));
                 None
+            }
+            Widget::Password { id, text, value } => {
+                ui.label(crate::i18n::tr(text.as_str()));
+                ui.add(
+                    egui::TextEdit::singleline(&mut rich::SecretBuffer(&mut value.0))
+                        .password(true)
+                        .id_source(id.as_str())
+                        .desired_width(220.),
+                )
+                .changed()
+                .then(|| (id.clone(), json!(value.0), false))
+            }
+            Widget::Table {
+                id,
+                columns,
+                rows,
+                selected,
+                height,
+            } => rich::table(ui, id, columns, rows, selected, *height)
+                .map(|value| (id.clone(), value, false)),
+            Widget::Tree {
+                id,
+                nodes,
+                selected,
+            } => {
+                let mut clicked = None;
+                ui.push_id(id.as_str(), |ui| {
+                    rich::tree(ui, nodes, selected, &mut clicked)
+                });
+                clicked.map(|value| (id.clone(), json!(value), false))
+            }
+            Widget::Tabs { id, selected, tabs } => {
+                let mut changed = false;
+                ui.push_id(id.as_str(), |ui| {
+                    ui.horizontal_wrapped(|ui| {
+                        for tab in tabs.iter() {
+                            if ui
+                                .selectable_label(selected == &tab.id, crate::i18n::tr(&tab.title))
+                                .clicked()
+                                && selected != &tab.id
+                            {
+                                *selected = tab.id.clone();
+                                changed = true;
+                            }
+                        }
+                    });
+                    if let Some(tab) = tabs.iter_mut().find(|t| &t.id == selected) {
+                        ui.push_id(&tab.id, |ui| {
+                            show(ui, panel, &mut tab.children, events, images)
+                        });
+                    }
+                });
+                changed.then(|| (id.clone(), json!(selected), false))
             }
             Widget::Button { id, text, enabled } => ui
                 .add_enabled(*enabled, egui::Button::new(crate::i18n::tr(text.as_str())))

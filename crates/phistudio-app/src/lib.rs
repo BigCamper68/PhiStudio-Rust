@@ -34,6 +34,7 @@ mod plot;
 mod plugins;
 mod preview_ui;
 mod scroll;
+mod secure_store;
 mod settings;
 mod settings_ui;
 mod shader_ui;

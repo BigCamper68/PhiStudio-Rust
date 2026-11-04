@@ -162,7 +162,7 @@ fn archived_chart_linter_010_exposes_its_file_actions_and_windows_panel() {
         .join("../../artifacts/plugins/chart-linter-0.1.0.zip");
     app.install_plugin(MediaFile::new(package, "Chart Linter".into(), false));
     settle(&mut app);
-    app.plugin_action(Action::Enable("phistudio.chart-linter".into()));
+    app.enable_test_plugin("phistudio.chart-linter".into());
     settle(&mut app);
     let info = &app.plugins.registry.plugins[0];
     assert_eq!(info.manifest.version.to_string(), "0.1.0");
@@ -379,7 +379,7 @@ fn windows_stay_closed_after_enable_reload_and_background_panel_updates() {
     );
     app.plugin_action(Action::Disable("test.menu".into()));
     settle(&mut app);
-    app.plugin_action(Action::Enable("test.menu".into()));
+    app.enable_test_plugin("test.menu".into());
     settle(&mut app);
     assert!(!app.plugins.panels[&key].open);
     let ctx = egui::Context::default();

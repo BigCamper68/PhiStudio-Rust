@@ -127,7 +127,7 @@ fn compiled_wasm_envelope_exports_and_imports_from_the_editor_menu_and_keeps_unk
         .join("../../examples/plugins/chart-envelope");
     app.install_plugin(MediaFile::new(package, "Chart envelope".into(), false));
     settle(&mut app, &mut files, &ctx);
-    app.plugin_action(Action::Enable("example.chart-envelope".into()));
+    app.enable_test_plugin("example.chart-envelope".into());
     settle(&mut app, &mut files, &ctx);
     app.plugins.open = true;
     let target = root.path().join("chart.pschart");
@@ -192,7 +192,7 @@ fn compiled_wasm_pixel_grid_imports_a_valid_image_exports_it_and_keeps_resource_
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/plugins/pixel-grid");
     app.install_plugin(MediaFile::new(package, "Pixel grid".into(), false));
     settle(&mut app, &mut files, &ctx);
-    app.plugin_action(Action::Enable("example.pixel-grid".into()));
+    app.enable_test_plugin("example.pixel-grid".into());
     settle(&mut app, &mut files, &ctx);
     app.plugins.open = true;
     let source = root.path().join("texture.pgrid");

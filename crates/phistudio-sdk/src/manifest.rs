@@ -22,6 +22,33 @@ pub enum Capability {
     Hooks,
     Services,
     Storage,
+    Network,
+    Secrets,
+    Audio,
+}
+
+impl Capability {
+    pub fn title(&self) -> &'static str {
+        match self {
+            Self::DocumentRead => "Read chart",
+            Self::ProjectRead => "Read project resources",
+            Self::DocumentEdit => "Edit chart",
+            Self::EditorControl => "Control editor",
+            Self::LongRunning => "Run long tasks",
+            Self::Ui => "Show plugin UI",
+            Self::Input => "Handle input",
+            Self::Timeline => "Add timeline tracks",
+            Self::Preview => "Access preview",
+            Self::Formats => "Convert chart formats",
+            Self::Resources => "Convert resources",
+            Self::Hooks => "Intercept editor operations",
+            Self::Services => "Use plugin services",
+            Self::Storage => "Store plugin settings",
+            Self::Network => "Access network",
+            Self::Secrets => "Store credentials",
+            Self::Audio => "Read audio",
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -52,6 +79,14 @@ pub struct Manifest {
     pub capabilities: BTreeSet<Capability>,
     #[serde(default)]
     pub settings: BTreeMap<String, Setting>,
+    #[serde(default, skip_serializing_if = "crate::NetworkPermissions::is_empty")]
+    pub network: crate::NetworkPermissions,
+    #[serde(default, skip_serializing_if = "any_editor")]
+    pub minimum_editor: VersionReq,
+}
+
+fn any_editor(version: &VersionReq) -> bool {
+    *version == VersionReq::STAR
 }
 
 /// Human-facing text comes from the extension and need not be an editor key.
@@ -148,6 +183,17 @@ impl Manifest {
         }
         if let Backend::Wasm { entry } | Backend::Native { entry } = &self.backend {
             validate_package_path(entry)?;
+        }
+        self.network.validate()?;
+        if !self.network.is_empty() && !self.capabilities.contains(&Capability::Network) {
+            return Err("Network origins require the network capability".into());
+        }
+        let editor = Version::parse(env!("CARGO_PKG_VERSION")).map_err(|e| e.to_string())?;
+        if !self.minimum_editor.matches(&editor) {
+            return Err(format!(
+                "Plugin requires editor {}; this host is {editor}",
+                self.minimum_editor
+            ));
         }
         Ok(())
     }

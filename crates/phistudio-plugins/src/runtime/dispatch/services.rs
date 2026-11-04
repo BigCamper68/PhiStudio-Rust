@@ -1,5 +1,13 @@
 use super::*;
 
+fn private_service(call: &ServiceCall) -> bool {
+    call.service.provider == "host"
+        && matches!(
+            call.service.id.as_str(),
+            "network" | "websocket" | "secrets" | "features" | "diagnostics"
+        )
+}
+
 pub(super) struct InterceptedService {
     pub call: ServiceCall,
     pub principal: Option<Origin>,
@@ -25,7 +33,7 @@ impl Worker {
             effects: vec![],
             calls: vec![],
         };
-        if !budget.intercept_services || !self.host.contributions().any(|(_, c)| {
+        if private_service(call) || !budget.intercept_services || !self.host.contributions().any(|(_, c)| {
             matches!(c, Contribution::Hook { point, .. } if point == SERVICE_BEFORE_HOOK)
         }) {
             return Ok(routed);
@@ -84,6 +92,13 @@ impl Worker {
         } else {
             let replacement: ServiceIntercept = serde_json::from_value(result.payload)
                 .map_err(|e| format!("Invalid intercepted service: {e}"))?;
+            if private_service(&replacement.call) {
+                routed.cancelled = Some(ServiceOutcome::error(
+                    "private_service",
+                    "Interceptors cannot redirect calls into private host services",
+                ));
+                return Ok(routed);
+            }
             if replacement.call.service.provider != call.service.provider {
                 routed.principal = result.replacement;
             }

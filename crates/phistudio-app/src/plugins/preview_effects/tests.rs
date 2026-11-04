@@ -245,7 +245,7 @@ fn compiled_wasm_preview_fx_accepts_real_controls_and_preserves_chart_history_on
         false,
     ));
     wait(&mut app, |a| !a.plugins.working());
-    app.plugin_action(Action::Enable("example.preview-fx".into()));
+    app.enable_test_plugin("example.preview-fx".into());
     wait(&mut app, |a| a.plugin_preview_effects().len() == 1);
     let original = app.editor.document().as_json().clone();
     let ctx = egui::Context::default();

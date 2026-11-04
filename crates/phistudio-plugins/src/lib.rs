@@ -1,4 +1,6 @@
 //! Extension lifecycle, registration ownership and portable module execution.
+mod credentials;
+mod development;
 mod document;
 mod editing;
 mod editor_actions;
@@ -12,6 +14,8 @@ mod preferences;
 mod runtime;
 mod validation;
 mod wasm;
+pub use credentials::{CredentialStore, SystemCredentialStore, validate_secret};
+pub use development::*;
 pub use document::{MAX_QUERY_BYTES, MAX_QUERY_ITEMS};
 pub use host::*;
 pub use install::*;

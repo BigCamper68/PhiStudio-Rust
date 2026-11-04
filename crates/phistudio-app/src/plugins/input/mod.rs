@@ -65,6 +65,13 @@ impl Input {
     }
 }
 impl Workbench {
+    pub(in crate::plugins) fn plugin_track_tool_active(&self) -> bool {
+        self.plugins
+            .input
+            .tool
+            .as_ref()
+            .is_some_and(|tool| tool.surfaces.contains(&InputSurfaceKind::Track))
+    }
     pub(crate) fn plugin_tool_active(&self) -> bool {
         self.plugins.input.tool.is_some()
     }

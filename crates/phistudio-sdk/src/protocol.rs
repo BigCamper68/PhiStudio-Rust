@@ -1,7 +1,7 @@
 use crate::{
-    Capability, DocumentVersion, DrawLayer, FormatBridge, FormatOperation, InputBatch, InputButton,
-    InputSurfaceKind, Manifest, ProviderFiles, RenderFrame, ResourceKind, ServiceCall,
-    ServiceReply, ToolGesture, Transaction, UiEvent, Widget,
+    Capability, ContextTarget, DocumentVersion, DrawLayer, FormatBridge, FormatOperation,
+    InputBatch, InputButton, InputSurfaceKind, Manifest, ProviderFiles, RenderFrame, ResourceKind,
+    ServiceCall, ServiceReply, ToolGesture, Transaction, UiEvent, Widget,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -89,6 +89,21 @@ pub enum Request {
 }
 
 impl Request {
+    pub fn context(&self) -> Option<&EditorContext> {
+        match self {
+            Self::Command { context, .. }
+            | Self::Event { context, .. }
+            | Self::Hook { context, .. }
+            | Self::Ui { context, .. }
+            | Self::Service { context, .. }
+            | Self::ServiceResult { context, .. }
+            | Self::Render { context, .. }
+            | Self::Input { context, .. }
+            | Self::Format { context, .. }
+            | Self::Resource { context, .. } => Some(context),
+            _ => None,
+        }
+    }
     pub fn context_mut(&mut self) -> Option<&mut EditorContext> {
         match self {
             Self::Command { context, .. }
@@ -145,6 +160,19 @@ pub enum Contribution {
     Track {
         id: String,
         title: String,
+    },
+    /// A column inside the editor timeline, opened from Windows.
+    TimelineTrack {
+        id: String,
+        title: String,
+        width: f32,
+    },
+    /// A contextual entry invoking an owned command with ContextArguments.
+    ContextMenu {
+        id: String,
+        title: String,
+        target: ContextTarget,
+        command: String,
     },
     Preview {
         id: String,
@@ -210,6 +238,8 @@ impl Contribution {
             | Self::Panel { id, .. }
             | Self::Tool { id, .. }
             | Self::Track { id, .. }
+            | Self::TimelineTrack { id, .. }
+            | Self::ContextMenu { id, .. }
             | Self::Preview { id }
             | Self::PreviewEffect { id, .. }
             | Self::Format { id, .. }
@@ -222,9 +252,9 @@ impl Contribution {
     pub fn capability(&self) -> Option<Capability> {
         Some(match self {
             Self::Command { .. } | Self::Event { .. } => return None,
-            Self::Panel { .. } | Self::Menu { .. } => Capability::Ui,
+            Self::Panel { .. } | Self::Menu { .. } | Self::ContextMenu { .. } => Capability::Ui,
             Self::Tool { .. } => Capability::Input,
-            Self::Track { .. } => Capability::Timeline,
+            Self::Track { .. } | Self::TimelineTrack { .. } => Capability::Timeline,
             Self::Preview { .. } | Self::PreviewEffect { .. } => Capability::Preview,
             Self::Format { .. } => Capability::Formats,
             Self::Resource { .. } => Capability::Resources,
@@ -255,6 +285,12 @@ pub enum Effect {
     Panel {
         id: String,
         widgets: Vec<Widget>,
+    },
+    /// Display an owned window panel as a modal dialog after an explicit action.
+    Dialog {
+        panel: String,
+        open: bool,
+        version: DocumentVersion,
     },
     Draw {
         frame: u64,

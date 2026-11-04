@@ -80,6 +80,21 @@ fn command(arguments: Value) -> Action {
     }
 }
 
+fn approve(runtime: &mut Runtime) {
+    let manifest = runtime.registry().unwrap().plugins[0].manifest.clone();
+    let requested = PermissionRequest::from_manifest(&manifest);
+    let id = runtime
+        .submit(Action::Permissions {
+            plugin: manifest.id,
+            decision: Some(PermissionDecision {
+                requested: requested.clone(),
+                granted: requested,
+            }),
+        })
+        .unwrap();
+    wait(runtime, id).unwrap();
+}
+
 #[test]
 fn native_c_abi_is_lazy_frees_outputs_unloads_and_leaves_callback_free_history() {
     let fixture = fixture(1);
@@ -100,6 +115,20 @@ fn native_c_abi_is_lazy_frees_outputs_unloads_and_leaves_callback_free_history()
         !fixture.log.exists(),
         "Discovery must not execute disabled native code"
     );
+    let denied = runtime
+        .submit(Action::Enable("test.native".into()))
+        .unwrap();
+    assert!(
+        wait(&runtime, denied)
+            .err()
+            .unwrap()
+            .contains("Review permissions")
+    );
+    assert!(
+        !fixture.log.exists(),
+        "Unapproved Enable must not execute native constructors"
+    );
+    approve(&mut runtime);
     let id = runtime
         .submit(Action::Enable("test.native".into()))
         .unwrap();
@@ -159,6 +188,7 @@ fn incompatible_native_abi_is_rejected_before_creating_state() {
         .unwrap();
     wait(&runtime, id).unwrap();
     assert!(!fixture.log.exists());
+    approve(&mut runtime);
     let id = runtime
         .submit(Action::Enable("test.native".into()))
         .unwrap();
@@ -185,6 +215,7 @@ fn native_errors_return_buffers_and_destroy_state_before_reporting_failure() {
         .submit(Action::Install(Box::new(fixture.package)))
         .unwrap();
     wait(&runtime, id).unwrap();
+    approve(&mut runtime);
     let id = runtime
         .submit(Action::Enable("test.native".into()))
         .unwrap();
@@ -242,6 +273,7 @@ fn invalid_native_buffers_do_not_free_host_input_or_read_oversized_memory() {
             .submit(Action::Install(Box::new(fixture.package)))
             .unwrap();
         wait(&runtime, id).unwrap();
+        approve(&mut runtime);
         let id = runtime
             .submit(Action::Enable("test.native".into()))
             .unwrap();

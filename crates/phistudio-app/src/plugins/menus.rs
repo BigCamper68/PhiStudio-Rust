@@ -6,6 +6,24 @@ use phistudio_sdk::{EditorMenu, Setting};
 mod tests;
 
 impl Workbench {
+    pub(crate) fn open_plugin_track(&mut self, origin: &Origin, id: &str) {
+        if self
+            .plugins
+            .runtime
+            .as_ref()
+            .is_none_or(|r| !r.is_current(origin))
+        {
+            return;
+        }
+        if !self.plugins.registry.plugins.iter().any(|p|p.origin.as_ref()==Some(origin) && p.contributions.iter().any(|c|matches!(c,Contribution::Track {id:owned,..}|Contribution::TimelineTrack {id:owned,..} if owned==id))) {return}
+        self.plugins.rendering.tracks.insert(
+            (origin.plugin.clone(), id.into()),
+            rendering::TrackWindow {
+                origin: origin.clone(),
+                open: true,
+            },
+        );
+    }
     pub(crate) fn open_plugin_panel(&mut self, origin: &Origin, panel: &str) {
         if self
             .plugins
@@ -79,7 +97,8 @@ impl Workbench {
                         ui.close_menu();
                     }
                 }
-                if let Contribution::Track { id, title } = contribution
+                if let Contribution::Track { id, title }
+                | Contribution::TimelineTrack { id, title, .. } = contribution
                     && menu == EditorMenu::Windows
                 {
                     if !separated {
@@ -90,16 +109,7 @@ impl Workbench {
                         .add_enabled(!modal, egui::Button::new(crate::i18n::tr(title)))
                         .clicked()
                     {
-                        self.plugins
-                            .rendering
-                            .tracks
-                            .entry((origin.plugin.clone(), id.clone()))
-                            .and_modify(|v| v.origin = origin.clone())
-                            .or_insert_with(|| rendering::TrackWindow {
-                                origin: origin.clone(),
-                                open: false,
-                            })
-                            .open = true;
+                        self.open_plugin_track(origin, id);
                         ui.close_menu();
                     }
                 }

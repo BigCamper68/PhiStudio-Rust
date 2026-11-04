@@ -86,8 +86,21 @@ pub extern "system" fn Java_com_phistudio_rust_MainActivity_setStorageRoot(
         Ok(path) => String::from(path),
         Err(_) => return,
     };
-    if let Err(error) = std::env::set_current_dir(path) {
+    if let Err(error) = std::env::set_current_dir(&path) {
         let _ = env.throw_new("java/io/IOException", error.to_string());
+        return;
+    }
+    // Android's default /data/local/tmp is not writable by ordinary apps.
+    // Configure tempfile before the editor and its plugin workers are started.
+    let temporary = std::path::Path::new(&path).join(".tmp");
+    if let Err(error) = std::fs::create_dir_all(&temporary) {
+        let _ = env.throw_new("java/io/IOException", error.to_string());
+        return;
+    }
+    if let Err(existing) = tempfile::env::override_temp_dir(&temporary)
+        && existing != temporary
+    {
+        let _ = env.throw_new("java/io/IOException", "Temporary storage root changed");
     }
 }
 

@@ -96,6 +96,25 @@ fn compiled_statistics_guest_scans_large_charts_through_the_worker_and_services(
     wait(&runtime, 0);
     let id = runtime.submit(Action::Install(Box::new(package))).unwrap();
     wait(&runtime, id);
+    let manifest = runtime
+        .registry()
+        .unwrap()
+        .plugins
+        .into_iter()
+        .find(|p| p.manifest.id == "example.note-statistics")
+        .unwrap()
+        .manifest;
+    let requested = PermissionRequest::from_manifest(&manifest);
+    let id = runtime
+        .submit(Action::Permissions {
+            plugin: manifest.id,
+            decision: Some(PermissionDecision {
+                requested: requested.clone(),
+                granted: requested,
+            }),
+        })
+        .unwrap();
+    wait(&runtime, id);
     let id = runtime
         .submit(Action::Enable("example.note-statistics".into()))
         .unwrap();

@@ -13,7 +13,9 @@ mod summaries;
 mod toolbar;
 mod transport;
 use crate::scroll::{TouchCombo as _, TouchScroll as _};
-use crate::{theme::*, timeline};
+use crate::theme::*;
+#[cfg(test)]
+use crate::timeline;
 use egui::{self, Align, Frame, RichText, Sense, Vec2};
 use phistudio_core::{
     Beat, ChartDocument, Command, Editor, Note, NoteId, NoteKind, load_chart, save_chart,
@@ -264,7 +266,7 @@ impl Workbench {
         egui::CentralPanel::default()
             .frame(Frame::none())
             .show(ctx, |ui| {
-                timeline::show(self, ui, canceled, resizing_sidebar);
+                self.plugin_timeline(ui, canceled, resizing_sidebar);
             });
     }
 }

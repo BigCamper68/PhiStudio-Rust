@@ -55,7 +55,7 @@ fn compiled_wasm_stamp_uses_the_toolbar_mouse_touch_query_and_independent_histor
             .join("../../examples/plugins/note-stamp");
         app.install_plugin(MediaFile::new(package, "Note stamp".into(), false));
         settle(&mut app);
-        app.plugin_action(Action::Enable("example.note-stamp".into()));
+        app.enable_test_plugin("example.note-stamp".into());
         settle(&mut app);
         let ctx = egui::Context::default();
         choose_tool(&mut app, &ctx);

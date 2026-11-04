@@ -60,6 +60,11 @@ impl Images {
                     Widget::Row { children } | Widget::Column { children } => {
                         collect(children, files)
                     }
+                    Widget::Tabs { tabs, selected, .. } => {
+                        if let Some(tab) = tabs.iter().find(|t| &t.id == selected) {
+                            collect(&tab.children, files);
+                        }
+                    }
                     Widget::Canvas { layers, .. } => {
                         files.extend(layers.iter().flat_map(|l| &l.primitives).filter_map(|p| {
                             if let DrawPrimitive::Image { file, .. } = p {

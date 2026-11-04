@@ -255,9 +255,7 @@ fn compiled_wasm_file_lab_guards_real_save_open_and_export_workflows_through_its
         .app
         .install_plugin(MediaFile::new(package, "File lab".into(), false));
     scene.settle();
-    scene
-        .app
-        .plugin_action(Action::Enable("example.file-lab".into()));
+    scene.app.enable_test_plugin("example.file-lab".into());
     scene.settle();
     assert!(scene.app.error.is_none(), "{:?}", scene.app.error);
     scene.dirty();

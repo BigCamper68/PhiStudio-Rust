@@ -6,6 +6,11 @@ the application or platform libraries.
 The plugin-first rollout and incomplete application features are tracked in
 [`docs/PLUGINS.md`](../../docs/PLUGINS.md).
 
+The development expansion adds reviewed permissions, HTTP/WebSocket, protected
+credentials, audio inspection, richer UI, context commands, embedded tracks and
+developer tools. See the [expansion reference](../../docs/SDK-SERVICES.md) for
+service payloads, limits, compatibility and platform verification boundaries.
+
 ## Lifecycle and ownership
 
 Implement `Plugin::call`. Activation returns a `Response` containing contributions
@@ -166,7 +171,9 @@ cancel or replace operations.
 ### Service interception and replacement
 
 Register a Hook at `SERVICE_BEFORE_HOOK` (`host.service.before`) with Hooks
-granted. It runs for plugin-to-plugin and application-service calls. Its payload
+granted. It runs for plugin-to-plugin and public application-service calls.
+Network, WebSocket, secrets, features and diagnostics bypass general hooks;
+interceptors cannot redirect into those private services. Its payload
 is `ServiceIntercept { consumer, call }`: the original caller ID and complete
 `ServiceCall`. Hook contexts contain metadata, without chart/selection snapshots.
 `Continue` preserves the call, `Replace` forwards the changed call through later

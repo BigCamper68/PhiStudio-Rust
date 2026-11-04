@@ -1,8 +1,12 @@
 use super::*;
 #[path = "chart_linter_tests.rs"]
 mod chart_linter;
+#[path = "expansion_tests.rs"]
+mod expansion;
 #[path = "project_data_tests.rs"]
 mod project_data;
+#[path = "rich_ui_tests.rs"]
+mod rich_ui;
 use phistudio_core::ChartDocument;
 use phistudio_plugins::{Action, Builtin, Runtime};
 use phistudio_sdk::*;
@@ -394,7 +398,7 @@ fn installed_note_shift_panel(package: &str, plugin: &str) {
         app.plugins.registry.plugins[0].status,
         phistudio_plugins::Status::Disabled
     );
-    app.plugin_action(Action::Enable(plugin.into()));
+    app.enable_test_plugin(plugin.into());
     settle(&mut app);
     click_panel(&mut app, "Move notes on active line");
     let after = app.editor.document().as_json().clone();
@@ -431,7 +435,7 @@ fn compiled_wasm_service_lab_replaces_cancels_and_restores_calls_through_its_rea
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/plugins/service-lab");
     app.install_plugin(MediaFile::new(source, "Service lab".into(), false));
     settle(&mut app);
-    app.plugin_action(Action::Enable("example.service-lab".into()));
+    app.enable_test_plugin("example.service-lab".into());
     settle(&mut app);
     let plugin = &app.plugins.registry.plugins[0];
     assert!(!plugin.granted.contains(&Capability::DocumentRead));
@@ -493,7 +497,7 @@ fn compiled_wasm_statistics_reads_pages_from_a_chart_larger_than_the_snapshot_li
         false,
     ));
     settle(&mut app);
-    app.plugin_action(Action::Enable("example.note-statistics".into()));
+    app.enable_test_plugin("example.note-statistics".into());
     settle(&mut app);
     let started = Instant::now();
     click_panel_timeout(
@@ -511,4 +515,28 @@ fn compiled_wasm_statistics_reads_pages_from_a_chart_larger_than_the_snapshot_li
     assert!(!app.editor.is_dirty());
     assert!(!app.editor.can_undo());
     app.plugins.shutdown().unwrap();
+}
+
+// Integration fixtures explicitly accept their test package's requested access.
+impl Workbench {
+    pub(crate) fn enable_test_plugin(&mut self, id: String) {
+        if let Some(info) = self
+            .plugins
+            .registry
+            .plugins
+            .iter()
+            .find(|p| p.manifest.id == id)
+            && !matches!(info.manifest.backend, Backend::Builtin)
+        {
+            let requested = PermissionRequest::from_manifest(&info.manifest);
+            self.plugin_action(Action::Permissions {
+                plugin: id.clone(),
+                decision: Some(PermissionDecision {
+                    requested: requested.clone(),
+                    granted: requested,
+                }),
+            });
+        }
+        self.plugin_action(Action::Enable(id));
+    }
 }

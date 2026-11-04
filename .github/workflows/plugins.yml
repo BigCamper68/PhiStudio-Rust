@@ -23,17 +23,31 @@ permissions:
 
 jobs:
   host-targets:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
     strategy:
+      fail-fast: false
       matrix:
-        target: [aarch64-linux-android, aarch64-apple-darwin, x86_64-pc-windows-gnu, aarch64-apple-ios]
+        include:
+          - {runner: ubuntu-24.04, target: aarch64-linux-android}
+          - {runner: macos-15, target: aarch64-apple-darwin}
+          - {runner: windows-2025, target: x86_64-pc-windows-msvc}
+          - {runner: macos-15, target: aarch64-apple-ios}
     steps:
       - name: Check out source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - name: Prepare Android TLS compiler
+        if: matrix.target == 'aarch64-linux-android'
+        shell: bash
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;30.0.16248370"
+          toolchain="$ANDROID_HOME/ndk/30.0.16248370/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          echo "CC_aarch64_linux_android=$toolchain/aarch64-linux-android26-clang" >> "$GITHUB_ENV"
+          echo "AR_aarch64_linux_android=$toolchain/llvm-ar" >> "$GITHUB_ENV"
       - name: Check the portable host and platform loader
+        shell: bash
         run: |
           rustup update stable --no-self-update
           rustup target add ${{ matrix.target }}
@@ -66,6 +80,9 @@ jobs:
           cargo fmt --manifest-path examples/plugins/project-data/Cargo.toml -- --check
           cargo fmt --manifest-path examples/plugins/preview-fx/Cargo.toml -- --check
           cargo fmt --manifest-path examples/plugins/action-lab/Cargo.toml -- --check
+          cargo fmt --manifest-path examples/plugins/sdk-lab/Cargo.toml -- --check
+          cargo clippy --manifest-path examples/plugins/sdk-lab/Cargo.toml --target wasm32-unknown-unknown --lib --locked -- -D warnings
+          cargo build --manifest-path examples/plugins/sdk-lab/Cargo.toml --target wasm32-unknown-unknown --release --locked
           cargo fmt --manifest-path plugins/chart-linter/Cargo.toml -- --check
           cargo clippy --manifest-path plugins/chart-linter/Cargo.toml --all-targets --locked -- -D warnings
           cargo test --manifest-path plugins/chart-linter/Cargo.toml --locked

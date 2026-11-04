@@ -2,7 +2,9 @@
 //! metadata and versioned effects; revocation takes effect before a queued stop.
 mod assets;
 mod dispatch;
+mod features;
 mod invocation;
+mod io;
 mod providers;
 use crate::{
     Host, Origin, OwnedEffect, PluginInfo, Status, WasmLimits, discover, install_package,
@@ -21,7 +23,8 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     path::PathBuf,
     sync::{
-        Arc, Mutex,
+        Arc, Mutex, Weak,
+        atomic::{AtomicUsize, Ordering},
         mpsc::{self, Receiver, SyncSender, TryRecvError},
     },
 };
@@ -30,6 +33,21 @@ pub struct Builtin {
     pub manifest: Manifest,
     pub create: Arc<dyn Fn() -> Box<dyn Plugin> + Send + Sync>,
     pub enabled: bool,
+}
+
+#[derive(Clone)]
+pub struct RuntimeConfig {
+    pub credentials: Arc<dyn crate::CredentialStore>,
+    /// Services supplied by the application adapter, not the portable runtime.
+    pub application_services: BTreeSet<String>,
+}
+impl Default for RuntimeConfig {
+    fn default() -> Self {
+        Self {
+            credentials: Arc::new(crate::SystemCredentialStore),
+            application_services: BTreeSet::new(),
+        }
+    }
 }
 
 /// Owns the source snapshot until installation finishes, including on shutdown.
@@ -58,6 +76,10 @@ pub enum Action {
     Reload,
     Install(Box<dyn PackageSource>),
     Enable(String),
+    Permissions {
+        plugin: String,
+        decision: Option<PermissionDecision>,
+    },
     Disable(String),
     Remove(String),
     Setting {
@@ -130,6 +152,7 @@ pub struct Completion {
 pub struct Registry {
     pub plugins: Vec<PluginInfo>,
     pub diagnostics: Vec<String>,
+    pub permissions: BTreeMap<String, PermissionDecision>,
     revoked: BTreeMap<String, u64>,
 }
 impl Registry {
@@ -147,7 +170,7 @@ impl Registry {
 }
 
 pub struct Runtime {
-    sender: Option<SyncSender<(u64, Action)>>,
+    sender: Option<Arc<SyncSender<(u64, Action)>>>,
     receiver: Receiver<Completion>,
     pub(crate) registry: Arc<Mutex<Registry>>,
     assets: Arc<Mutex<assets::Assets>>,
@@ -155,10 +178,22 @@ pub struct Runtime {
     pub(crate) next_interaction: u64,
     next_operation: u64,
     worker: Option<std::thread::JoinHandle<()>>,
+    io_active: Arc<AtomicUsize>,
 }
 impl Runtime {
     pub fn spawn(root: Option<PathBuf>, builtins: Vec<Builtin>) -> Result<Self, String> {
+        Self::spawn_with_config(root, builtins, RuntimeConfig::default())
+    }
+    pub fn spawn_with_config(
+        root: Option<PathBuf>,
+        builtins: Vec<Builtin>,
+        config: RuntimeConfig,
+    ) -> Result<Self, String> {
         let (sender, input) = mpsc::sync_channel(32);
+        let sender = Arc::new(sender);
+        let reply_sender = Arc::downgrade(&sender);
+        let io_active = Arc::new(AtomicUsize::new(0));
+        let shared_io_active = io_active.clone();
         let (output, receiver) = mpsc::channel();
         let registry = Arc::new(Mutex::new(Registry::default()));
         let shared = registry.clone();
@@ -169,6 +204,11 @@ impl Runtime {
             .spawn(move || {
                 let _shutdown = ShutdownRegistry(shared.clone());
                 let mut state = Worker {
+                    config,
+                    reply_sender,
+                    shared_registry: shared.clone(),
+                    io_active: shared_io_active,
+                    io: None,
                     host: Host::default(),
                     root,
                     preferences: Preferences::default(),
@@ -194,6 +234,9 @@ impl Runtime {
                     Ok(result)
                 });
                 publish(&state, &shared, 0);
+                if let Some(io) = &mut state.io {
+                    io.flush(initial.is_ok());
+                }
                 if output
                     .send(Completion {
                         id: 0,
@@ -222,8 +265,14 @@ impl Runtime {
                         operation.cancel();
                     }
                     publish(&state, &shared, id);
+                    if let Some(io) = &mut state.io {
+                        io.flush(result.is_ok());
+                    }
                     state.prune_providers();
                     state.prune_assets(&shared, id);
+                    if let Some(io) = &mut state.io {
+                        io.prune();
+                    }
                     if output.send(Completion { id, result }).is_err() {
                         break;
                     }
@@ -246,7 +295,12 @@ impl Runtime {
             next_interaction: 1,
             next_operation: 1,
             worker: Some(worker),
+            io_active,
         })
+    }
+
+    pub fn has_background_work(&self) -> bool {
+        self.io_active.load(Ordering::Acquire) > 0
     }
 
     pub fn submit(&mut self, action: Action) -> Result<u64, String> {
@@ -503,7 +557,9 @@ fn revocations(registry: &Registry, action: &Action) -> BTreeSet<String> {
             .iter()
             .map(|p| p.manifest.id.clone())
             .collect(),
-        Action::Disable(id) | Action::Remove(id) => BTreeSet::from([id.clone()]),
+        Action::Disable(id) | Action::Remove(id) | Action::Permissions { plugin: id, .. } => {
+            BTreeSet::from([id.clone()])
+        }
         _ => BTreeSet::new(),
     };
     loop {
@@ -528,11 +584,22 @@ fn publish(worker: &Worker, registry: &Mutex<Registry>, completed: u64) {
     if let Ok(mut registry) = registry.lock() {
         registry.plugins = worker.host.snapshot();
         registry.diagnostics = worker.diagnostics.clone();
+        registry.permissions = worker
+            .preferences
+            .plugins
+            .iter()
+            .filter_map(|(id, p)| p.permissions.clone().map(|decision| (id.clone(), decision)))
+            .collect();
         registry.revoked.retain(|_, request| *request > completed);
     }
 }
 
 struct Worker {
+    config: RuntimeConfig,
+    reply_sender: Weak<SyncSender<(u64, Action)>>,
+    shared_registry: Arc<Mutex<Registry>>,
+    io_active: Arc<AtomicUsize>,
+    io: Option<io::Io>,
     host: Host,
     root: Option<PathBuf>,
     preferences: Preferences,
@@ -544,6 +611,91 @@ struct Worker {
     package_roots: BTreeMap<String, PathBuf>,
 }
 impl Worker {
+    fn io_service(&mut self, call: HostCall) -> Option<ServiceOutcome> {
+        let Some(info) = self
+            .host
+            .snapshot()
+            .into_iter()
+            .find(|p| p.origin.as_ref() == Some(&call.origin))
+        else {
+            return Some(ServiceOutcome::error(
+                "revoked",
+                "Plugin activation is no longer current",
+            ));
+        };
+        if !info.granted.contains(&Capability::Services) {
+            return Some(ServiceOutcome::error(
+                "permission_denied",
+                "Service access was not granted",
+            ));
+        }
+        let network = if matches!(info.manifest.backend, Backend::Builtin) {
+            info.manifest.network.clone()
+        } else {
+            self.preferences
+                .plugins
+                .get(&info.manifest.id)
+                .and_then(|p| p.permissions.as_ref())
+                .filter(|p| p.validate(&info.manifest).is_ok())
+                .map_or_else(NetworkPermissions::default, |p| {
+                    p.effective_network(&info.manifest)
+                })
+        };
+        if self.io.is_none() {
+            match io::Io::new(
+                self.reply_sender.clone(),
+                self.shared_registry.clone(),
+                self.io_active.clone(),
+                self.config.credentials.clone(),
+            ) {
+                Ok(io) => self.io = Some(io),
+                Err(_) => {
+                    return Some(ServiceOutcome::error(
+                        "io_unavailable",
+                        "Host I/O could not start",
+                    ));
+                }
+            }
+        }
+        self.io
+            .as_mut()
+            .and_then(|io| io.service(call, network, &info.granted))
+    }
+    fn approved_capabilities(&self, manifest: &Manifest) -> BTreeSet<Capability> {
+        self.preferences
+            .plugins
+            .get(&manifest.id)
+            .and_then(|p| p.permissions.as_ref())
+            .filter(|p| p.validate(manifest).is_ok())
+            .map_or_else(BTreeSet::new, |p| p.effective(manifest))
+    }
+
+    fn enable_approved(&mut self, id: &str) -> Result<Vec<OwnedEffect>, String> {
+        let plan = self.host.activation_plan(id).map_err(|e| e.to_string())?;
+        for dependency in &plan {
+            if self.builtins.iter().any(|b| b.manifest.id == *dependency) {
+                continue;
+            }
+            let manifest = self
+                .host
+                .manifests()
+                .find(|m| &m.id == dependency)
+                .ok_or("Plugin is not installed")?;
+            let decision = self
+                .preferences
+                .plugins
+                .get(dependency)
+                .and_then(|p| p.permissions.as_ref())
+                .ok_or_else(|| format!("Review permissions for {dependency} before enabling it"))?;
+            decision.validate(manifest)?;
+            if matches!(manifest.backend, Backend::Native { .. }) && !decision.granted.native {
+                return Err(format!(
+                    "Native code trust was not granted for {dependency}"
+                ));
+            }
+        }
+        self.host.enable(id).map_err(|e| e.to_string())
+    }
     fn library(&self) -> Result<PathBuf, String> {
         self.root
             .as_ref()
@@ -601,8 +753,9 @@ impl Worker {
                     let root = package.root().to_path_buf();
                     let manifest = package.manifest;
                     let id = manifest.id.clone();
+                    let granted = self.approved_capabilities(&manifest);
                     self.host
-                        .install(manifest.clone(), instance, manifest.capabilities)
+                        .install(manifest.clone(), instance, granted)
                         .map_err(|e| e.to_string())?;
                     self.package_roots.insert(id, root);
                     Ok(())
@@ -659,7 +812,7 @@ impl Worker {
         }
         let mut effects = vec![];
         for id in enabled {
-            match self.host.enable(&id) {
+            match self.enable_approved(&id) {
                 Ok(next) => effects.extend(next),
                 Err(error) => self.diagnostics.push(error.to_string()),
             }
@@ -693,7 +846,11 @@ impl Worker {
     ) -> Result<(Output, EditorContext, Budget), String> {
         if matches!(
             action,
-            Action::Install(_) | Action::Enable(_) | Action::Remove(_) | Action::Setting { .. }
+            Action::Install(_)
+                | Action::Enable(_)
+                | Action::Remove(_)
+                | Action::Setting { .. }
+                | Action::Permissions { .. }
         ) && let Some(error) = &self.persistence_error
         {
             return Err(error.clone());
@@ -726,11 +883,13 @@ impl Worker {
         }
         let mut context = EditorContext::default();
         let budget = match &action {
+            Action::Ui { event, .. } if event.widget == "dialog.close" => Budget::background(),
             Action::Command { plugin, .. } | Action::Ui { plugin, .. }
                 if self.host.granted(plugin, Capability::LongRunning) =>
             {
                 Budget::long_running()
             }
+            Action::Command { .. } | Action::Ui { .. } => Budget::interactive(),
             Action::Provider { operation, .. } => Budget::provider(operation.clone()),
             Action::Input {
                 interaction, input, ..
@@ -804,8 +963,15 @@ impl Worker {
                 let package_root = package.root().to_path_buf();
                 let manifest = package.manifest;
                 let id = manifest.id.clone();
+                // Reinstallation is a new trust decision, even for the same ID.
+                self.preferences
+                    .plugins
+                    .entry(id.clone())
+                    .or_default()
+                    .permissions = None;
+                let granted = self.approved_capabilities(&manifest);
                 self.host
-                    .install(manifest.clone(), instance, manifest.capabilities)
+                    .install(manifest.clone(), instance, granted)
                     .map_err(|e| e.to_string())?;
                 self.package_roots.insert(id.clone(), package_root);
                 if let Some(root) = &self.root {
@@ -829,7 +995,35 @@ impl Worker {
                 output.result = Value::from(id);
             }
             Action::Enable(id) => {
-                output.effects = self.host.enable(&id).map_err(|e| e.to_string())?;
+                output.effects = self.enable_approved(&id)?;
+                self.remember(true)?;
+            }
+            Action::Permissions { plugin, decision } => {
+                let manifest = self
+                    .host
+                    .manifests()
+                    .find(|m| m.id == plugin)
+                    .cloned()
+                    .ok_or("Plugin is not installed")?;
+                if matches!(manifest.backend, Backend::Builtin) {
+                    return Err("Bundled plugin access is owned by the application".into());
+                }
+                if let Some(decision) = &decision {
+                    if decision.requested != PermissionRequest::from_manifest(&manifest) {
+                        return Err("Permission review must match the current manifest".into());
+                    }
+                    decision.validate(&manifest)?;
+                }
+                self.host.disable(&plugin);
+                self.preferences
+                    .plugins
+                    .entry(plugin.clone())
+                    .or_default()
+                    .permissions = decision;
+                let granted = self.approved_capabilities(&manifest);
+                self.host
+                    .set_granted(&plugin, granted)
+                    .map_err(|e| e.to_string())?;
                 self.remember(true)?;
             }
             Action::Disable(id) => {
@@ -849,7 +1043,9 @@ impl Worker {
                 retire_package(&self.library()?, &id)?;
                 self.host.uninstall(&id);
                 self.package_roots.remove(&id);
-                self.preferences.plugins.entry(id).or_default().enabled = false;
+                let preference = self.preferences.plugins.entry(id).or_default();
+                preference.enabled = false;
+                preference.permissions = None;
                 self.remember(true)?;
             }
             Action::Setting { plugin, key, value } => {
@@ -941,6 +1137,15 @@ impl Worker {
                 context = c;
             }
             Action::ServiceReply { call, outcome } => {
+                if !registry
+                    .lock()
+                    .is_ok_and(|r| r.valid_scope(&call.origin, &call.required))
+                    || call.invocation().is_some_and(|i| !i.is_active())
+                    || call.interaction().is_some_and(|i| !i.is_active())
+                    || call.operation().is_some_and(|o| !o.is_running())
+                {
+                    return Ok((output, call.context, budget));
+                }
                 budget.take()?;
                 let result = self
                     .host

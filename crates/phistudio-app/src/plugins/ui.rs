@@ -5,6 +5,14 @@ use phistudio_sdk::{Backend, Contribution};
 
 impl Workbench {
     pub(crate) fn plugin_windows(&mut self, ctx: &egui::Context) {
+        if self
+            .plugins
+            .runtime
+            .as_ref()
+            .is_some_and(|r| r.has_background_work())
+        {
+            ctx.request_repaint_after(std::time::Duration::from_millis(50));
+        }
         if !self.show_projects {
             self.plugins.open = false;
         }
@@ -26,10 +34,14 @@ impl Workbench {
                     egui::ScrollArea::vertical()
                         .id_source("plugins-manager-scroll")
                         .max_height((ctx.screen_rect().height() - 130.).max(100.))
-                        .touch_show(ui, |ui| self.plugins_manager(ui));
+                        .touch_show(ui, |ui| {
+                            let enabled = self.plugins.permission_review.is_none();
+                            ui.add_enabled_ui(enabled, |ui| self.plugins_manager(ui));
+                        });
                 });
             self.plugins.open = open;
         }
+        self.plugin_permission_window(ctx);
         let panels: Vec<_> = self
             .plugins
             .registry
@@ -51,6 +63,14 @@ impl Workbench {
         let busy = self.plugins.busy() || self.modal_open();
         let mut events = vec![];
         for (plugin, id, title) in panels {
+            if self
+                .plugins
+                .dialog
+                .as_ref()
+                .is_some_and(|d| d.origin.plugin == plugin && d.panel == id)
+            {
+                continue;
+            }
             let Some(panel) = self.plugins.panels.get_mut(&(plugin.clone(), id.clone())) else {
                 continue;
             };
@@ -96,6 +116,7 @@ impl Workbench {
         if !self.show_projects {
             self.plugin_track_windows(ctx);
         }
+        self.plugin_dialog_window(ctx);
         self.plugin_provider_windows(ctx);
         self.plugin_file_hook_window(ctx);
         self.plugin_editor_action_window(ctx);
@@ -233,7 +254,27 @@ impl Workbench {
                         .add_enabled(!busy, egui::Button::new(crate::i18n::tr("Enable plugin")))
                         .clicked()
                     {
-                        self.plugin_action(Action::Enable(id.clone()));
+                        let approved = matches!(info.manifest.backend, Backend::Builtin)
+                            || self.plugins.registry.permissions.get(id).is_some_and(|p| {
+                                p.validate(&info.manifest).is_ok()
+                                    && (!matches!(info.manifest.backend, Backend::Native { .. })
+                                        || p.granted.native)
+                            });
+                        if approved {
+                            self.plugin_action(Action::Enable(id.clone()));
+                        } else {
+                            self.review_plugin_permissions(&info);
+                        }
+                    }
+                    if !matches!(info.manifest.backend, Backend::Builtin)
+                        && ui
+                            .add_enabled(
+                                !busy,
+                                egui::Button::new(crate::i18n::tr("Plugin permissions")),
+                            )
+                            .clicked()
+                    {
+                        self.review_plugin_permissions(&info);
                     }
                     if !matches!(info.manifest.backend, Backend::Builtin)
                         && ui

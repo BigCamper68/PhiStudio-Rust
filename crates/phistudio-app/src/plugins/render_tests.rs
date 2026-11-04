@@ -512,7 +512,7 @@ fn compiled_wasm_guides_paint_preview_track_and_canvas_and_accept_their_real_che
         .join("../../examples/plugins/editor-guides");
     app.install_plugin(MediaFile::new(source, "Editor guides".into(), false));
     settle(&mut app);
-    app.plugin_action(Action::Enable("example.editor-guides".into()));
+    app.enable_test_plugin("example.editor-guides".into());
     settle(&mut app);
     let origin = app.plugins.registry.plugins[0].origin.clone().unwrap();
     app.open_plugin_panel(&origin, "settings");

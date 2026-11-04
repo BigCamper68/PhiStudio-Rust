@@ -1,0 +1,10 @@
+{
+  "api": 1,
+  "minimum_editor": ">=1.32.0",
+  "id": "example.sdk-lab",
+  "name": "SDK Lab",
+  "version": "0.1.0",
+  "backend": {"kind": "wasm", "entry": "plugin.wasm"},
+  "capabilities": ["ui", "services", "audio", "timeline", "network"],
+  "network": {"origins": ["https://example.com"]}
+}

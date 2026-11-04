@@ -2,6 +2,35 @@ use crate::{HostCall, Runtime};
 use phistudio_sdk::{Capability, DocumentVersion, EditorAction, Version};
 
 impl Runtime {
+    /// Audio permission grants decoded project music, without granting the chart.
+    pub fn authorize_audio_service(
+        &self,
+        call: &HostCall,
+        version: DocumentVersion,
+    ) -> Result<(), String> {
+        if !self.is_call_current(call) || call.context.version != version {
+            return Err("Audio caller or document changed".into());
+        }
+        let registry = self
+            .registry
+            .lock()
+            .map_err(|_| "Plugin registry interrupted")?;
+        let owner = registry
+            .current(&call.origin)
+            .ok_or("Audio caller is inactive")?;
+        if call.request.service.provider != "host"
+            || call.request.service.id != "audio"
+            || !call.request.service.version.matches(&Version::new(1, 0, 0))
+        {
+            return Err("Requested audio service is unavailable".into());
+        }
+        if !owner.granted.contains(&Capability::Audio)
+            || !owner.granted.contains(&Capability::Services)
+        {
+            return Err("Audio capabilities were not granted".into());
+        }
+        Ok(())
+    }
     /// Common authorization for read-only, document-bound host inspection.
     pub fn authorize_inspection(
         &self,

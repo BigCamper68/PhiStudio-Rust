@@ -30,7 +30,7 @@ fn compiled_wasm_project_pack_rejects_escaping_truncated_duplicate_and_trailing_
         .join("../../examples/plugins/project-pack");
     app.install_plugin(MediaFile::new(package, "Project pack".into(), false));
     settle(&mut app, &mut files, &ctx);
-    app.plugin_action(Action::Enable("example.project-pack".into()));
+    app.enable_test_plugin("example.project-pack".into());
     settle(&mut app, &mut files, &ctx);
     app.editor
         .execute(Command::AddNote {
@@ -123,7 +123,7 @@ fn compiled_wasm_project_pack_streams_large_resources_and_paged_entries_without_
         .join("../../examples/plugins/project-pack");
     app.install_plugin(MediaFile::new(package, "Project pack".into(), false));
     settle(&mut app, &mut files, &ctx);
-    app.plugin_action(Action::Enable("example.project-pack".into()));
+    app.enable_test_plugin("example.project-pack".into());
     settle(&mut app, &mut files, &ctx);
     assert!(app.error.is_none(), "{:?}", app.error);
     app.editor

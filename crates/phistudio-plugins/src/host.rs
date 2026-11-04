@@ -18,6 +18,7 @@ pub enum Status {
 }
 
 struct Slot {
+    diagnostics: PluginDiagnostics,
     manifest: Manifest,
     instance: Box<dyn Plugin>,
     granted: BTreeSet<Capability>,
@@ -30,6 +31,7 @@ struct Slot {
 
 #[derive(Clone, Debug)]
 pub struct PluginInfo {
+    pub diagnostics: PluginDiagnostics,
     pub manifest: Manifest,
     pub status: Status,
     pub settings: BTreeMap<String, Value>,
@@ -113,6 +115,7 @@ impl Host {
         self.slots.insert(
             manifest.id.clone(),
             Slot {
+                diagnostics: PluginDiagnostics::default(),
                 manifest,
                 instance,
                 granted,
@@ -129,10 +132,29 @@ impl Host {
     pub fn manifests(&self) -> impl Iterator<Item = &Manifest> {
         self.slots.values().map(|s| &s.manifest)
     }
+    pub fn set_granted(
+        &mut self,
+        id: &str,
+        granted: BTreeSet<Capability>,
+    ) -> Result<(), HostError> {
+        let slot = self
+            .slots
+            .get_mut(id)
+            .ok_or_else(|| error(id, "Plugin is not installed"))?;
+        if slot.status == Status::Enabled || !granted.is_subset(&slot.manifest.capabilities) {
+            return Err(error(
+                id,
+                "Disable the plugin before changing its declared permissions",
+            ));
+        }
+        slot.granted = granted;
+        Ok(())
+    }
     pub fn snapshot(&self) -> Vec<PluginInfo> {
         self.slots
             .values()
             .map(|slot| PluginInfo {
+                diagnostics: slot.diagnostics.clone(),
                 manifest: slot.manifest.clone(),
                 status: slot.status.clone(),
                 settings: slot.settings.clone(),
@@ -237,9 +259,14 @@ impl Host {
         Ok(())
     }
 
-    pub fn enable(&mut self, id: &str) -> Result<Vec<OwnedEffect>, HostError> {
+    pub fn activation_plan(&self, id: &str) -> Result<Vec<String>, HostError> {
         let mut order = vec![];
         self.plan(id, &mut BTreeSet::new(), &mut BTreeSet::new(), &mut order)?;
+        Ok(order)
+    }
+
+    pub fn enable(&mut self, id: &str) -> Result<Vec<OwnedEffect>, HostError> {
+        let order = self.activation_plan(id)?;
         let wanted: BTreeSet<_> = order
             .iter()
             .map(String::as_str)
@@ -409,7 +436,8 @@ impl Host {
         frame.validate().map_err(|e| error(plugin, e))?;
         self.require(plugin, |c| match (frame.target.kind, c) {
             (RenderKind::Preview, Contribution::Preview { id })
-            | (RenderKind::Track, Contribution::Track { id, .. }) => id == &frame.target.id,
+            | (RenderKind::Track, Contribution::Track { id, .. })
+            | (RenderKind::Track, Contribution::TimelineTrack { id, .. }) => id == &frame.target.id,
             (RenderKind::PreviewEffect, Contribution::PreviewEffect { id, .. }) => {
                 id == &frame.target.id
             }
@@ -436,7 +464,7 @@ impl Host {
         if input.surface.kind == InputSurfaceKind::Track {
             self.require(
                 plugin,
-                |c| matches!(c,Contribution::Track {id,..} if Some(id)==input.surface.id.as_ref()),
+                |c| matches!(c,Contribution::Track {id,..} | Contribution::TimelineTrack {id,..} if Some(id)==input.surface.id.as_ref()),
             )?;
         }
         context.chart = None;
@@ -590,7 +618,9 @@ impl Host {
                 "Service caller is no longer active",
             ));
         }
-        if !self.granted(&recipient.plugin, Capability::Services) {
+        if !self.granted(&recipient.plugin, Capability::Services)
+            && !(reply.service.provider == "host" && reply.service.id == "features")
+        {
             return Err(error(&recipient.plugin, "Services were not granted"));
         }
         // Replies use bounded query results rather than repeating snapshots.
@@ -657,11 +687,48 @@ fn invoke(slot: &mut Slot, request: &Request) -> Result<Response, HostError> {
     if crate::limits::serialized_size(request, MAX_MESSAGE_BYTES).is_none() {
         return Err(error(&id, "Request exceeds message limit"));
     }
-    let response = catch_unwind(AssertUnwindSafe(|| slot.instance.call(request)))
-        .map_err(|_| error(&id, "Plugin panicked"))?
-        .map_err(|e| error(&id, e))?;
-    validate_response(slot, request, &response).map_err(|e| error(&id, e))?;
-    Ok(response)
+    let started = std::time::Instant::now();
+    let result = catch_unwind(AssertUnwindSafe(|| slot.instance.call(request)))
+        .map_err(|_| error(&id, "Plugin panicked"))
+        .and_then(|response| response.map_err(|e| error(&id, e)))
+        .and_then(|response| {
+            validate_response(slot, request, &response).map_err(|e| error(&id, e))?;
+            Ok(response)
+        });
+    let elapsed = started.elapsed().as_micros().min(u128::from(u64::MAX)) as u64;
+    let callback = match request {
+        Request::Activate { .. } => "activate",
+        Request::Deactivate => "deactivate",
+        Request::Command { .. } => "command",
+        Request::Ui { .. } => "ui",
+        Request::Render { .. } => "render",
+        Request::Input { .. } => "input",
+        Request::Hook { .. } => "hook",
+        Request::Event { .. } => "event",
+        Request::Service { .. } => "service",
+        Request::ServiceResult { .. } => "service_result",
+        Request::Format { .. } => "format",
+        Request::Resource { .. } => "resource",
+        _ => "update",
+    };
+    let execution = slot.instance.execution_cost();
+    let diagnostics = &mut slot.diagnostics;
+    diagnostics.calls = diagnostics.calls.saturating_add(1);
+    diagnostics.failures = diagnostics
+        .failures
+        .saturating_add(u64::from(result.is_err()));
+    diagnostics.total_microseconds = diagnostics.total_microseconds.saturating_add(elapsed);
+    diagnostics.maximum_microseconds = diagnostics.maximum_microseconds.max(elapsed);
+    if diagnostics.recent.len() >= 64 {
+        diagnostics.recent.remove(0);
+    }
+    diagnostics.recent.push(CallbackCost {
+        callback: callback.into(),
+        microseconds: elapsed,
+        failed: result.is_err(),
+        execution,
+    });
+    result
 }
 
 fn validate_response(slot: &Slot, request: &Request, response: &Response) -> Result<(), String> {
@@ -722,6 +789,28 @@ fn validate_response(slot: &Slot, request: &Request, response: &Response) -> Res
         }
         if let Some(capability) = contribution.capability() {
             grant(slot, capability)?;
+        }
+        if let Contribution::TimelineTrack { id, title, width } = contribution
+            && (title.trim().is_empty()
+                || title.len() > 256
+                || !width.is_finite()
+                || !(80. ..=400.).contains(width)
+                || contributions
+                    .iter()
+                    .any(|c| matches!(c,Contribution::Track {id:other,..} if id==other)))
+        {
+            return Err(
+                "Timeline tracks need a title, unique track ID and width of 80–400 points".into(),
+            );
+        }
+        if let Contribution::ContextMenu { title, command, .. } = contribution
+            && (title.trim().is_empty()
+                || title.len() > 256
+                || !contributions
+                    .iter()
+                    .any(|c| matches!(c,Contribution::Command {id,..} if id==command)))
+        {
+            return Err("Context entries need a title and an owned command".into());
         }
         if let Contribution::Menu { title, panel, .. } = contribution
             && (title.trim().is_empty()
@@ -800,13 +889,12 @@ fn validate_response(slot: &Slot, request: &Request, response: &Response) -> Res
                 ) {
                     return Err("Document edits need a versioned action or event context".into());
                 }
-                let mut request = request.clone();
-                if matches!(&request,Request::Input {input,..} if input.phase()!=Some(InputPhase::End))
+                if matches!(request,Request::Input {input,..} if input.phase()!=Some(InputPhase::End))
                 {
                     return Err("Only a completed input gesture can edit the document".into());
                 }
                 if request
-                    .context_mut()
+                    .context()
                     .is_none_or(|c| c.version != transaction.version)
                 {
                     return Err("Transaction does not match its request's document version".into());
@@ -816,6 +904,9 @@ fn validate_response(slot: &Slot, request: &Request, response: &Response) -> Res
                 }
             }
             Effect::Panel { id, widgets } => {
+                if crate::validation::has_password(widgets) {
+                    grant(slot, Capability::Secrets)?;
+                }
                 if !contributions
                     .iter()
                     .any(|c| matches!(c, Contribution::Panel { id: panel, .. } if panel == id))
@@ -823,6 +914,19 @@ fn validate_response(slot: &Slot, request: &Request, response: &Response) -> Res
                     return Err("Panel is not owned by this plugin".into());
                 }
                 crate::validation::widgets(widgets)?;
+            }
+            Effect::Dialog {
+                panel,
+                open,
+                version,
+            } => {
+                grant(slot, Capability::Ui)?;
+                if *open && request.context().is_some_and(|c| c.version != *version) {
+                    return Err("Dialog must match the current request's document version".into());
+                }
+                if !contributions.iter().any(|c|matches!(c,Contribution::Panel {id,location:PanelLocation::Window,..} if id==panel)) {
+                    return Err("Dialogs require an owned window panel".into());
+                }
             }
             Effect::Draw { frame, layers } => {
                 let Request::Render { frame: request, .. } = request else {
@@ -851,7 +955,9 @@ fn validate_response(slot: &Slot, request: &Request, response: &Response) -> Res
             }
             Effect::Store { .. } => grant(slot, Capability::Storage)?,
             Effect::Call { call } => {
-                grant(slot, Capability::Services)?;
+                if !(call.service.provider == "host" && call.service.id == "features") {
+                    grant(slot, Capability::Services)?;
+                }
                 call.validate()?;
             }
             Effect::Emit { topic, .. } => {

@@ -17,7 +17,7 @@ fn compiled_wasm_project_data_persists_through_save_reload_projects_and_independ
         .join("../../examples/plugins/project-data");
     app.install_plugin(MediaFile::new(source, "Project data".into(), false));
     settle(&mut app);
-    app.plugin_action(Action::Enable("example.project-data".into()));
+    app.enable_test_plugin("example.project-data".into());
     settle(&mut app);
     click_panel(&mut app, "Store tag in project");
     let changed = app.editor.document().as_json().clone();
@@ -47,7 +47,7 @@ fn compiled_wasm_project_data_persists_through_save_reload_projects_and_independ
         phistudio_core::load_chart(&saved).unwrap().as_json(),
         &changed
     );
-    app.plugin_action(Action::Enable("example.project-data".into()));
+    app.enable_test_plugin("example.project-data".into());
     settle(&mut app);
     let panel = &app.plugins.panels[&("example.project-data".into(), "tag".into())];
     assert!(

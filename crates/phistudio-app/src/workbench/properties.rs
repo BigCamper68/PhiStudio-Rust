@@ -6,6 +6,9 @@ impl Workbench {
     }
 
     pub(super) fn properties(&mut self, ui: &mut egui::Ui) {
+        if self.selected.is_some() {
+            self.plugin_context_menu(ui, phistudio_sdk::ContextTarget::Note);
+        }
         let Some(id) = self.selected else {
             ui.label(RichText::new(crate::i18n::tr("Note properties")).strong());
             ui.label(

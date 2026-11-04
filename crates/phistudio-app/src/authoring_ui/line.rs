@@ -3,6 +3,7 @@ use super::*;
 impl Workbench {
     pub(super) fn line_properties_ui(&mut self, ui: &mut egui::Ui) {
         self.judge_line_selector(ui);
+        self.plugin_context_menu(ui, phistudio_sdk::ContextTarget::Line);
         ui.collapsing(crate::i18n::tr("Manage lines"), |ui| {
             self.line_management_controls(ui)
         });

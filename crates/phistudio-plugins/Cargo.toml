@@ -15,9 +15,19 @@ wasmi = { version = "=2.0.0", default-features = false, features = ["stable", "s
 tempfile.workspace = true
 image.workspace = true
 zip = { version = "8.3.0", default-features = false, features = ["deflate"] }
+url = "2.5"
+base64 = "0.22"
+reqwest = { version = "=0.12.28", default-features = false, features = ["rustls-tls"] }
+tokio = { version = "1", features = ["rt-multi-thread", "time", "net", "fs", "io-util", "sync", "macros"] }
+tokio-tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake", "rustls-tls-webpki-roots"] }
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+
+[target.'cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))'.dependencies]
+keyring = { version = "=4.2.0", default-features = false, features = ["v1"] }
 
 [target.'cfg(any(target_os = "linux", target_os = "android", target_os = "macos", target_os = "windows"))'.dependencies]
 libloading = "=0.8.9"
 
 [dev-dependencies]
 wat = "1"
+rustls = {version="0.23",default-features=false,features=["ring","std","tls12"]}

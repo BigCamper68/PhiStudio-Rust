@@ -120,6 +120,9 @@ def verify_java_bridges(archive, sdk, temp):
             "Package export SAF entry method is missing from DEX")
     media = methods.get(("Lcom/phistudio/rust/MainActivity;", "requestMedia"))
     require(media and media[0] == "(Ljava/lang/String;J)V" and "STATIC" in media[1], "Media SAF entry method is missing from DEX")
+    credentials = methods.get(("Lcom/phistudio/rust/MainActivity;", "credentialStore"))
+    require(credentials and credentials[0] == "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;"
+            and "STATIC" in credentials[1], "Protected credential bridge is missing from DEX")
     require(("Lcom/phistudio/rust/MainActivity;", "requestDocument") not in methods,
             "Legacy standalone document picker is still present in DEX")
     return {"touch_descriptor": quad["surfaceOnTouch"], "native_methods": len(quad) + len(activity),

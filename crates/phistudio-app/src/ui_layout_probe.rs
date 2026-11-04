@@ -13,6 +13,7 @@ mod multiline;
 mod noise;
 mod note_properties;
 mod properties;
+mod sdk;
 mod shaders;
 mod versions;
 
@@ -98,6 +99,9 @@ pub async fn run() -> Result<()> {
     app.note_highlights = preview.highlighted_notes();
     app.select(Some(NoteId { line: 0, index: 0 }));
     let mut gui = Gui::new();
+    if std::env::args().nth(2).as_deref() == Some("sdk") {
+        return sdk::run(&mut gui, &mut app, &mut preview, &out).await;
+    }
     if std::env::args().nth(2).as_deref() == Some("shaders") {
         return shaders::run(&mut gui, &mut app, &mut preview, &out).await;
     }

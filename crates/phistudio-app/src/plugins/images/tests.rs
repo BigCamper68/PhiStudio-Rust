@@ -200,7 +200,7 @@ fn compiled_wasm_asset_view_reads_packages_and_projects_and_paints_revocable_ima
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/plugins/asset-view");
     app.install_plugin(MediaFile::new(source, "Asset view".into(), false));
     settle(&mut app, &ctx);
-    app.plugin_action(Action::Enable("example.asset-view".into()));
+    app.enable_test_plugin("example.asset-view".into());
     settle(&mut app, &ctx);
     let bundled = displayed(&app);
     let origin = app.plugins.registry.plugins[0].origin.clone().unwrap();

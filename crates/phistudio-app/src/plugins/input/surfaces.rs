@@ -46,7 +46,7 @@ impl Workbench {
             },
         };
         self.plugin_region_input(&events, region, &|pos| {
-            ui.ctx().layer_id_at(pos) == Some(ui.layer_id())
+            ui.clip_rect().contains(pos) && ui.ctx().layer_id_at(pos) == Some(ui.layer_id())
         });
     }
     pub(in crate::plugins) fn cancel_plugin_track_input(&mut self, origin: &Origin, id: &str) {
@@ -94,7 +94,9 @@ impl Workbench {
             },
         };
         Some(self.plugin_region_input(&events, region, &|pos| {
-            !exit.contains(pos) && ui.ctx().layer_id_at(pos) == Some(ui.layer_id())
+            !exit.contains(pos)
+                && ui.clip_rect().contains(pos)
+                && ui.ctx().layer_id_at(pos) == Some(ui.layer_id())
         }))
     }
 }

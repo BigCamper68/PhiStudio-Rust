@@ -13,6 +13,7 @@ use buffering::{Deliveries, DispatchQueue};
 pub(super) struct Budget {
     remaining: Arc<AtomicUsize>,
     editable: bool,
+    interactive: bool,
     background: bool,
     interaction: Option<crate::Interaction>,
     intercept_services: bool,
@@ -24,6 +25,7 @@ impl Budget {
         Self {
             remaining: Arc::new(AtomicUsize::new(2048)),
             editable,
+            interactive: false,
             background: false,
             interaction: None,
             intercept_services: true,
@@ -37,10 +39,17 @@ impl Budget {
             ..Self::new(false)
         }
     }
+    pub(super) fn interactive() -> Self {
+        Self {
+            interactive: true,
+            ..Self::new(true)
+        }
+    }
     pub(super) fn long_running() -> Self {
         Self {
             remaining: Arc::new(AtomicUsize::new(262_144)),
             background: true,
+            interactive: true,
             ..Self::new(true)
         }
     }
@@ -60,6 +69,7 @@ impl Budget {
     pub(super) fn input(interaction: crate::Interaction, editable: bool) -> Self {
         Self {
             interaction: Some(interaction),
+            interactive: editable,
             background: !editable,
             ..Self::new(editable)
         }
@@ -67,6 +77,7 @@ impl Budget {
     pub(super) fn interceptor(&self) -> Self {
         Self {
             editable: false,
+            interactive: false,
             intercept_services: false,
             ..self.clone()
         }
@@ -92,6 +103,7 @@ impl Budget {
 
 /// An application-service request with an unforgeable runtime continuation.
 /// The application resolves it and submits Action::ServiceReply with this value.
+#[derive(Clone)]
 pub struct HostCall {
     pub origin: Origin,
     pub required: Vec<Origin>,
@@ -195,6 +207,7 @@ impl Worker {
                 continue;
             }
             match &owned.effect {
+                Effect::Dialog { open: true, .. } if !budget.interactive => continue,
                 Effect::Complete {
                     operation,
                     file,
@@ -282,6 +295,50 @@ impl Worker {
                         continue;
                     }
                     let call = routed.call;
+                    if call.service.provider == "host"
+                        && matches!(
+                            call.service.id.as_str(),
+                            "network" | "websocket" | "secrets"
+                        )
+                    {
+                        let mut metadata = context.clone();
+                        metadata.chart = None;
+                        let io_call = HostCall {
+                            origin: owned.origin.clone(),
+                            required: owned.required.clone(),
+                            request: call,
+                            reply_service: original.service.clone(),
+                            context: metadata,
+                            budget: budget.clone(),
+                        };
+                        if let Some(outcome) = self.io_service(io_call) {
+                            queue.push_front(Dispatch::Reply {
+                                recipient: owned.origin,
+                                required: owned.required,
+                                reply: ServiceReply {
+                                    request_id: original.request_id,
+                                    service: original.service,
+                                    outcome,
+                                },
+                            })?;
+                        }
+                        continue;
+                    }
+                    if call.service.provider == "host"
+                        && matches!(call.service.id.as_str(), "features" | "diagnostics")
+                    {
+                        let outcome = self.feature_service(&owned.origin, &call);
+                        queue.push_front(Dispatch::Reply {
+                            recipient: owned.origin,
+                            required: owned.required,
+                            reply: ServiceReply {
+                                request_id: original.request_id,
+                                service: original.service,
+                                outcome,
+                            },
+                        })?;
+                        continue;
+                    }
                     if call.service.provider == "host" && call.service.id == "assets" {
                         let asset_call = HostCall {
                             origin: owned.origin.clone(),

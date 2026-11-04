@@ -1,4 +1,4 @@
-use phistudio_sdk::{DrawLayer, DrawPrimitive, DrawSpace, Widget, valid_id};
+use phistudio_sdk::{DrawLayer, DrawPrimitive, DrawSpace, TreeNode, Widget, valid_id};
 use std::collections::BTreeSet;
 
 pub fn widgets(widgets: &[Widget]) -> Result<(), String> {
@@ -35,6 +35,96 @@ pub fn widgets(widgets: &[Widget]) -> Result<(), String> {
                 Widget::Button { id, .. } | Widget::Bool { id, .. } | Widget::Text { id, .. } => {
                     Some(id)
                 }
+                Widget::Password { id, value, .. } => {
+                    if value.0.len() > 16 * 1024 {
+                        return Err("Secret input exceeds 16 KiB".into());
+                    }
+                    Some(id)
+                }
+                Widget::Tabs { id, selected, tabs } => {
+                    let mut tab_ids = BTreeSet::new();
+                    if tabs.is_empty() || tabs.len() > 32 || !tabs.iter().any(|t| &t.id == selected)
+                    {
+                        return Err("Tabs require 1–32 pages and a valid selected page".into());
+                    }
+                    for tab in tabs {
+                        if !valid_id(&tab.id) || !tab_ids.insert(&tab.id) || tab.title.len() > 2048
+                        {
+                            return Err("Tab IDs must be valid and unique".into());
+                        }
+                        walk(&tab.children, depth + 1, count, ids)?;
+                    }
+                    Some(id)
+                }
+                Widget::Table {
+                    id,
+                    columns,
+                    rows,
+                    selected,
+                    height,
+                } => {
+                    let mut row_ids = BTreeSet::new();
+                    if columns.is_empty()
+                        || columns.len() > 32
+                        || rows.len() > 1024
+                        || !height.is_finite()
+                        || !(32. ..=1024.).contains(height)
+                        || columns.iter().any(|s| s.len() > 2048)
+                    {
+                        return Err("Invalid table size or columns".into());
+                    }
+                    for row in rows {
+                        if !valid_id(&row.id)
+                            || !row_ids.insert(&row.id)
+                            || row.cells.len() != columns.len()
+                            || row.cells.iter().any(|s| s.len() > 4096)
+                        {
+                            return Err("Invalid table row or duplicate row ID".into());
+                        }
+                    }
+                    if selected.as_ref().is_some_and(|s| !row_ids.contains(s)) {
+                        return Err("Table selection is not a row".into());
+                    }
+                    *count += rows.len() * columns.len();
+                    if *count > 2048 {
+                        return Err("Panel exceeds 2048 widgets/cells".into());
+                    }
+                    Some(id)
+                }
+                Widget::Tree {
+                    id,
+                    nodes,
+                    selected,
+                } => {
+                    fn tree(
+                        nodes: &[TreeNode],
+                        depth: usize,
+                        count: &mut usize,
+                        ids: &mut BTreeSet<String>,
+                    ) -> Result<(), String> {
+                        if depth > 32 {
+                            return Err("Tree exceeds 32 levels".into());
+                        }
+                        for node in nodes {
+                            *count += 1;
+                            if *count > 2048
+                                || !valid_id(&node.id)
+                                || !ids.insert(node.id.clone())
+                                || node.text.len() > 4096
+                            {
+                                return Err("Tree exceeds its node limits or contains duplicate/invalid IDs".into());
+                            }
+                            tree(&node.children, depth + 1, count, ids)?;
+                        }
+                        Ok(())
+                    }
+                    let mut node_ids = BTreeSet::new();
+                    tree(nodes, depth + 1, count, &mut node_ids)?;
+                    if selected.as_ref().is_some_and(|s| !node_ids.contains(s)) {
+                        return Err("Tree selection is not a node".into());
+                    }
+                    Some(id)
+                }
                 Widget::Number {
                     id,
                     value,
@@ -69,6 +159,15 @@ pub fn widgets(widgets: &[Widget]) -> Result<(), String> {
         Ok(())
     }
     walk(widgets, 0, &mut 0, &mut BTreeSet::new())
+}
+
+pub fn has_password(widgets: &[Widget]) -> bool {
+    widgets.iter().any(|widget| match widget {
+        Widget::Password { .. } => true,
+        Widget::Row { children } | Widget::Column { children } => has_password(children),
+        Widget::Tabs { tabs, .. } => tabs.iter().any(|t| has_password(&t.children)),
+        _ => false,
+    })
 }
 
 pub fn layers(layers: &[DrawLayer], timeline: bool) -> Result<(), String> {

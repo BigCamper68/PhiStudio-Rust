@@ -65,16 +65,19 @@ fn main() {
 
     println!("cargo:rerun-if-changed=../../ios/native/PhiStudioBridge.m");
     println!("cargo:rerun-if-changed=../../ios/native/PhiStudioVideo.m");
+    println!("cargo:rerun-if-changed=../../ios/native/PhiStudioCredentials.m");
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("ios") {
         cc::Build::new()
             .file("../../ios/native/PhiStudioBridge.m")
             .file("../../ios/native/PhiStudioVideo.m")
+            .file("../../ios/native/PhiStudioCredentials.m")
             .flag("-fobjc-arc")
             .flag("-fmodules")
             .compile("phistudio_ios");
         for framework in [
             "UIKit",
             "Foundation",
+            "Security",
             "UniformTypeIdentifiers",
             "AVFAudio",
             "AVFoundation",

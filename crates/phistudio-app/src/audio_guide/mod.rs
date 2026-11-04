@@ -1,6 +1,7 @@
 //! Background analysis and passive grid guides; no document/history commands.
 mod controls;
 mod paint;
+mod plugin;
 mod worker;
 use phistudio_audio::{Analysis, Control, Onset, Selection, Waveform};
 use phistudio_prpr::ResourceAudioClip;
@@ -28,6 +29,8 @@ enum Status {
 pub(crate) struct Guide {
     pub(crate) show: bool,
     pub(crate) generation_requested: bool,
+    pub(crate) plugin_requested: bool,
+    source_serial: u64,
     worker: Option<Worker>,
     key: Option<Key>,
     music: Option<String>,
@@ -59,6 +62,8 @@ impl Guide {
     pub fn clear_project(&mut self) {
         self.show = false;
         self.generation_requested = false;
+        self.plugin_requested = false;
+        self.source_serial = self.source_serial.wrapping_add(1);
         self.control.cancel();
         self.epoch = self.epoch.wrapping_add(1);
         self.key = None;
@@ -145,6 +150,7 @@ impl Guide {
             sr: c.sample_rate(),
         });
         if key != self.key || self.music.as_deref() != music {
+            self.source_serial = self.source_serial.wrapping_add(1);
             self.control.cancel();
             self.epoch = self.epoch.wrapping_add(1);
             self.key = key;
@@ -166,7 +172,7 @@ impl Guide {
             band: options.band,
         };
         self.selection = Some(selection);
-        self.want_attacks = options.attacks || self.generation_requested;
+        self.want_attacks = options.attacks || self.generation_requested || self.plugin_requested;
         loop {
             let message = self.worker.as_ref().and_then(|w| w.receive());
             let Some(message) = message else {

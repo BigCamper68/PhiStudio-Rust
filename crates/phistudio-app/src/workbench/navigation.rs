@@ -14,7 +14,12 @@ impl Workbench {
     }
 
     fn workflow_modal_open(&self) -> bool {
-        self.plugin_provider_modal()
+        self.plugin_dialog_modal() || self.workflow_modal_open_without_plugin_dialogs()
+    }
+
+    pub(crate) fn workflow_modal_open_without_plugin_dialogs(&self) -> bool {
+        self.plugins.permissions_open()
+            || self.plugin_provider_modal()
             || self.plugin_file_hook_modal()
             || self.workspace.view.is_some()
             || self.line_tools.show

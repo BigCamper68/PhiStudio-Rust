@@ -164,6 +164,12 @@ impl WasmPlugin {
     }
 }
 impl Plugin for WasmPlugin {
+    fn execution_cost(&self) -> phistudio_sdk::ExecutionCost {
+        phistudio_sdk::ExecutionCost {
+            fuel: Some(self.fuel_consumed()),
+            memory_bytes: Some(self.memory.data_size(&self.store) as u64),
+        }
+    }
     fn call(&mut self, request: &Request) -> Result<Response, String> {
         if self.poisoned {
             return Err("Wasm instance failed; reload the plugin before using it again".into());

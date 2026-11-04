@@ -1,4 +1,7 @@
 //! Application adapter for the worker-owned extension host.
+mod audio;
+mod context;
+mod dialogs;
 mod drawing;
 mod editor_actions;
 mod file_hooks;
@@ -7,6 +10,7 @@ mod images;
 mod input;
 mod inspection;
 mod menus;
+mod permissions;
 mod preview_effects;
 mod providers;
 mod rendering;
@@ -35,6 +39,9 @@ pub(crate) struct Panel {
 #[derive(Default)]
 pub(crate) struct State {
     pub open: bool,
+    permission_review: Option<permissions::Review>,
+    dialog: Option<dialogs::Dialog>,
+    closed_dialogs: Vec<(Origin, String)>,
     pub runtime: Option<Runtime>,
     pub registry: Registry,
     pub panels: BTreeMap<(String, String), Panel>,
@@ -49,6 +56,7 @@ pub(crate) struct State {
     editor_actions: editor_actions::EditorActions,
     calls: VecDeque<HostCall>,
     inspections: VecDeque<HostCall>,
+    audio_requests: Vec<(Origin, phistudio_sdk::ProjectAssetsVersion)>,
     pub settings: BTreeMap<(String, String), Value>,
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     pub import_path: String,
@@ -58,9 +66,21 @@ pub(crate) struct State {
     inspection_context: Option<(Value, Value)>,
 }
 impl State {
+    pub fn permissions_open(&self) -> bool {
+        self.permission_review.is_some()
+    }
     pub fn start(&mut self, root: Option<PathBuf>) -> Result<(), String> {
         if self.runtime.is_none() {
-            self.runtime = Some(Runtime::spawn(root, vec![])?);
+            self.runtime = Some(Runtime::spawn_with_config(
+                root,
+                vec![],
+                phistudio_plugins::RuntimeConfig {
+                    credentials: crate::secure_store::provider(),
+                    application_services: ["document", "editor", "project", "preview", "audio"]
+                        .map(String::from)
+                        .into(),
+                },
+            )?);
             self.pending.insert(0, None);
         }
         Ok(())
@@ -86,6 +106,12 @@ impl State {
         Ok(id)
     }
     pub fn close_top(&mut self, editor: bool) -> bool {
+        if self.permission_review.take().is_some() {
+            return true;
+        }
+        if editor && self.dismiss_dialog() {
+            return true;
+        }
         if std::mem::take(&mut self.open) {
             return true;
         }
@@ -228,7 +254,7 @@ impl Workbench {
         self.sync_plugin_project();
         let mut completed = vec![];
         if let Some(runtime) = &self.plugins.runtime {
-            while !self.plugins.pending.is_empty() {
+            loop {
                 match runtime.poll() {
                     Ok(Some(completion)) => completed.push(completion),
                     Ok(None) => break,
@@ -358,6 +384,10 @@ impl Workbench {
             if !runtime.is_call_current(&call) {
                 continue;
             }
+            if call.request.service.provider == "host" && call.request.service.id == "audio" {
+                self.plugin_audio_service(call);
+                continue;
+            }
             if call.request.service.provider == "host" && call.request.service.id == "editor" {
                 self.plugin_editor_service(call);
                 continue;
@@ -389,6 +419,15 @@ impl Workbench {
             session: self.session,
             revision: self.asset_revision,
         };
+        self.plugins.audio_requests.retain(|(owner, assets)| {
+            *assets == asset_version
+                && self
+                    .plugins
+                    .runtime
+                    .as_ref()
+                    .is_some_and(|r| r.is_current(owner))
+        });
+        self.audio_guide.plugin_requested = !self.plugins.audio_requests.is_empty();
         let assets = (
             asset_version,
             self.asset_root().map(std::path::Path::to_path_buf),
@@ -521,6 +560,7 @@ impl Workbench {
         self.maintain_plugin_provider();
         self.maintain_plugin_effect_views();
         self.pump_plugin_renders();
+        self.maintain_plugin_dialog();
     }
     fn reply_plugin_service(&mut self, call: HostCall, outcome: phistudio_sdk::ServiceOutcome) {
         if self
@@ -563,6 +603,48 @@ impl Workbench {
             return;
         }
         match owned.effect {
+            Effect::Dialog {
+                panel,
+                open,
+                version,
+            } => {
+                if !open {
+                    if self
+                        .plugins
+                        .dialog
+                        .as_ref()
+                        .is_some_and(|d| d.origin == owned.origin && d.panel == panel)
+                    {
+                        self.plugins.dismiss_dialog();
+                    }
+                    return;
+                }
+                if self.show_projects
+                    || version != self.plugin_version()
+                    || self.workflow_modal_open_without_plugin_dialogs()
+                {
+                    return;
+                }
+                if self
+                    .plugins
+                    .dialog
+                    .as_ref()
+                    .is_some_and(|d| d.origin != owned.origin || d.panel != panel)
+                {
+                    return;
+                }
+                let key = (owned.origin.plugin.clone(), panel.clone());
+                if let Some(content) = self.plugins.panels.get_mut(&key)
+                    && content.origin == owned.origin
+                {
+                    content.open = true;
+                    self.plugins.dialog = Some(dialogs::Dialog {
+                        origin: owned.origin,
+                        panel,
+                        version,
+                    });
+                }
+            }
             Effect::Notify { message } => self.status = message,
             Effect::Complete { .. } | Effect::Fail { .. } => {
                 self.error = Some("Provider completion was not handled by the worker".into())

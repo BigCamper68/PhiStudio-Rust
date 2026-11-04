@@ -12,6 +12,8 @@ pub(crate) struct PluginPreference {
     pub enabled: bool,
     #[serde(default)]
     pub settings: BTreeMap<String, Value>,
+    #[serde(default)]
+    pub permissions: Option<phistudio_sdk::PermissionDecision>,
 }
 #[derive(Serialize, Deserialize)]
 pub(crate) struct Preferences {

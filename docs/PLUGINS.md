@@ -1,5 +1,9 @@
 # Plugin-first implementation
 
+The post-1.31.0 expansion is documented in [SDK-SERVICES.md](SDK-SERVICES.md),
+with its separate [implementation checklist](SDK-EXPANSION.md). Existing delivery
+evidence below describes the original rollout unless explicitly updated.
+
 ## Objective and acceptance criteria
 
 The existing editor features and Tools remain built in and are not migrated or

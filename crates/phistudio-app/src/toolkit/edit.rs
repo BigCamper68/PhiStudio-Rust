@@ -89,6 +89,7 @@ impl Workbench {
     }
 
     pub(crate) fn selection_properties(&mut self, ui: &mut egui::Ui) {
+        self.plugin_context_menu(ui, phistudio_sdk::ContextTarget::Selection);
         if !self.selection().notes.is_empty() && ui.button(crate::i18n::tr("Hitsounds…")).clicked()
         {
             self.open_sounds();

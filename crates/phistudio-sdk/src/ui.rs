@@ -32,6 +32,31 @@ pub enum Widget {
         text: String,
         value: String,
     },
+    Password {
+        id: String,
+        text: String,
+        value: SecretText,
+    },
+    Table {
+        id: String,
+        columns: Vec<String>,
+        rows: Vec<TableRow>,
+        #[serde(default)]
+        selected: Option<String>,
+        #[serde(default = "default_table_height")]
+        height: f32,
+    },
+    Tree {
+        id: String,
+        nodes: Vec<TreeNode>,
+        #[serde(default)]
+        selected: Option<String>,
+    },
+    Tabs {
+        id: String,
+        selected: String,
+        tabs: Vec<UiTab>,
+    },
     Choice {
         id: String,
         text: String,
@@ -48,6 +73,54 @@ pub enum Widget {
         height: f32,
         layers: Vec<DrawLayer>,
     },
+}
+fn default_table_height() -> f32 {
+    240.
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TableRow {
+    pub id: String,
+    pub cells: Vec<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TreeNode {
+    pub id: String,
+    pub text: String,
+    #[serde(default)]
+    pub children: Vec<TreeNode>,
+    #[serde(default)]
+    pub expanded: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiTab {
+    pub id: String,
+    pub title: String,
+    pub children: Vec<Widget>,
+}
+
+#[derive(Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct SecretText(pub String);
+impl std::fmt::Debug for SecretText {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("[redacted]")
+    }
+}
+impl From<String> for SecretText {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+impl From<&str> for SecretText {
+    fn from(value: &str) -> Self {
+        Self(value.into())
+    }
 }
 fn enabled() -> bool {
     true

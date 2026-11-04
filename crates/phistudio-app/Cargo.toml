@@ -25,6 +25,7 @@ serde.workspace = true
 phistudio-prpr.workspace = true
 phistudio-audio.workspace = true
 phistudio-sdk.workspace = true
+base64 = "0.22"
 phistudio-plugins.workspace = true
 egui = "=0.21.0"
 egui-miniquad = "=0.14.0"
@@ -38,3 +39,4 @@ cc = "1"
 
 [dev-dependencies]
 tempfile.workspace = true
+wat = "1"

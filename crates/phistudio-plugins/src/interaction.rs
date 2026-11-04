@@ -127,7 +127,7 @@ impl Runtime {
         }
         if surface.kind == InputSurfaceKind::Track
             && !info.contributions.iter().any(
-                |c| matches!(c, Contribution::Track { id, .. } if Some(id) == surface.id.as_ref()),
+                |c| matches!(c, Contribution::Track { id, .. } | Contribution::TimelineTrack { id, .. } if Some(id) == surface.id.as_ref()),
             )
         {
             return Err("Input track is not owned by the tool's plugin".into());

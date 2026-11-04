@@ -89,7 +89,7 @@ fn installed(app: &mut Workbench, root: &std::path::Path) {
         app.plugins.registry.plugins[0].status,
         phistudio_plugins::Status::Disabled
     );
-    app.plugin_action(Action::Enable(ID.into()));
+    app.enable_test_plugin(ID.into());
     settle(app);
     assert_eq!(
         app.plugins.registry.plugins[0].status,

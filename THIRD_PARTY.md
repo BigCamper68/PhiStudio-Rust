@@ -45,12 +45,18 @@ licenses remain applicable. This document does not relicense third-party work.
 | chrono | [chronotope/chrono](https://github.com/chronotope/chrono), 0.4.45 | MIT OR Apache-2.0; consult the pinned crate source |
 | Wasmi | [wasmi-labs/wasmi](https://github.com/wasmi-labs/wasmi), 2.0.0 | MIT OR Apache-2.0; MIT notice in `licenses/Wasmi-LICENSE-MIT.txt`; portable plugin interpreter, including Wasmi companion crates |
 | libloading | [nagisa/rust_libloading](https://github.com/nagisa/rust_libloading), 0.8.9 | ISC; notice in `licenses/libloading-LICENSE.txt`; native plugin library loading |
+| reqwest | [seanmonstar/reqwest](https://github.com/seanmonstar/reqwest), 0.12.28 | MIT OR Apache-2.0; asynchronous host HTTP with rustls TLS |
+| tokio-tungstenite / tungstenite | [snapview/tokio-tungstenite](https://github.com/snapview/tokio-tungstenite), 0.30.0 | MIT / MIT OR Apache-2.0; bounded host WebSocket transport |
+| keyring | [open-source-cooperative/keyring-rs](https://github.com/open-source-cooperative/keyring-rs), 4.2.0 | MIT OR Apache-2.0; desktop protected credential backends |
 | Oboe bindings | [katyo/oboe-rs](https://github.com/katyo/oboe-rs), 0.6.1 | Apache-2.0; consult the dependency source and its bundled Oboe notices |
 | sasa | [Mivik/sasa](https://github.com/Mivik/sasa), revision `e76229b` | The pinned manifest does not declare an SPDX license; consult its upstream source and notices |
 
 `Cargo.lock` records the complete resolved dependency graph, registry checksums
 and Git revisions, including transitive dependencies. This table highlights
 major integrations and is not a substitute for individual dependency licenses.
+Notices from newly resolved networking, TLS and credential-store dependencies
+are retained in [`licenses/sdk-network/`](licenses/sdk-network/), with package
+names and versions in filenames. This includes their platform backend notices.
 
 Android `MainActivity` and `QuadNative` adapt the pinned Miniquad templates.
 Application-specific changes cover package and library names, storage, input,

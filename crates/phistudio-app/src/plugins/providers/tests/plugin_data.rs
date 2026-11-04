@@ -60,7 +60,7 @@ fn compiled_wasm_provider_export_policies_filter_copies_through_real_controls_an
             .join(example);
         app.install_plugin(MediaFile::new(source, example.into(), false));
         settle(&mut app, &mut files, &ctx);
-        app.plugin_action(Action::Enable(format!("example.{example}")));
+        app.enable_test_plugin(format!("example.{example}"));
         settle(&mut app, &mut files, &ctx);
         app.plugins.open = true;
         for (policy, label) in [

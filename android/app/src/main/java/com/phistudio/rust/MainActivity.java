@@ -278,6 +278,12 @@ public class MainActivity extends Activity {
         activity.runOnUiThread(() -> activity.documents.request(token));
     }
 
+    public static String credentialStore(String operation, String owner, String key, String payload) {
+        MainActivity activity = current.get();
+        if (activity == null) throw new IllegalStateException("Android credential bridge is unavailable");
+        return PluginCredentials.call(activity.getApplicationContext(), operation, owner, key, payload);
+    }
+
     static {
         System.loadLibrary("phistudio_app");
     }
