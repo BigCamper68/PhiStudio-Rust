@@ -22,6 +22,7 @@ unsafe extern "C" {
     fn ps_viewport_insets(insets: *mut f32);
     fn ps_show_keyboard(show: i32);
     fn ps_set_clipboard(text: *const c_char);
+    fn ps_open_url(url: *const c_char);
     fn ps_pick_document(kind: *const c_char, token: u64);
     fn ps_export_document(path: *const c_char, name: *const c_char, token: u64);
 }
@@ -192,3 +193,10 @@ extern "C" fn phistudio_ios_suspend() {
 }
 
 pub use request_export_package as request_export_video;
+
+/// Open a deliberate UI link through UIKit rather than the desktop URL adapter.
+pub fn open_url(url: &str) {
+    if let Ok(url) = CString::new(url) {
+        unsafe { ps_open_url(url.as_ptr()) };
+    }
+}

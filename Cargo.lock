@@ -3564,6 +3564,8 @@ dependencies = [
  "phistudio-prpr",
  "phistudio-sdk",
  "pollster",
+ "reqwest",
+ "semver",
  "serde",
  "serde_json",
  "tempfile",

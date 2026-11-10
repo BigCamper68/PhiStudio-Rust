@@ -51,6 +51,7 @@ mod trajectory_ui;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 #[doc(hidden)]
 pub mod ui_layout_probe;
+mod updates;
 mod video_encoder;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 #[doc(hidden)]

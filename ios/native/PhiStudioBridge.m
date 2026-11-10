@@ -294,3 +294,14 @@ void ps_export_document(const char *pathValue, const char *nameValue, uint64_t t
         });
     });
 }
+
+void ps_open_url(const char *value) {
+    if (!value) return;
+    NSString *text = [NSString stringWithUTF8String:value];
+    NSURL *url = text ? [NSURL URLWithString:text] : nil;
+    if (!url || !([url.scheme.lowercaseString isEqualToString:@"https"] ||
+                  [url.scheme.lowercaseString isEqualToString:@"http"])) return;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [UIApplication.sharedApplication openURL:url options:@{} completionHandler:nil];
+    });
+}

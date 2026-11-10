@@ -1,4 +1,5 @@
 fn main() {
+    println!("cargo:rerun-if-env-changed=PHISTUDIO_ANDROID_BUILD");
     println!("cargo:rerun-if-changed=../../assets/icons");
     println!("cargo:rerun-if-changed=../../desktop/native/AppIcon.m");
     let target = std::env::var("TARGET").unwrap();

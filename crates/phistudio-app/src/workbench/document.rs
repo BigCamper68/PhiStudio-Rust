@@ -104,6 +104,7 @@ impl Workbench {
         let skin = self.skin.clone();
         let skins = std::mem::take(&mut self.skins);
         let sounds = std::mem::take(&mut self.sounds);
+        let updates = std::mem::take(&mut self.updates);
         let presets = std::mem::take(&mut self.presets);
         let clipboard_history = std::mem::take(&mut self.clipboard_history);
         let preferences = self.preferences();
@@ -132,6 +133,7 @@ impl Workbench {
         self.skin = skin;
         self.skins = skins;
         self.sounds = sounds;
+        self.updates = updates;
         self.presets = presets;
         self.clipboard_history = clipboard_history;
         self.preview.floating = floating;

@@ -202,6 +202,9 @@ pub(crate) async fn run(options: Options) -> Result<()> {
         .transpose()?;
     loop {
         files.update(&mut app);
+        if options.smoke.is_none() && options.playback_smoke.is_none() {
+            app.updates.tick(app.options.check_updates_on_start);
+        }
         if let Err(error) = preview.pump_playtest_input() {
             app.error = Some(format!("Playtest input failed: {error:#}"));
             app.pause_playtest();

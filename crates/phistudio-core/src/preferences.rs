@@ -61,6 +61,7 @@ impl PreviewAspect {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct EditorOptions {
+    pub check_updates_on_start: bool,
     pub editor_sounds: crate::EditorSoundOptions,
     pub audio_guide: AudioGuideOptions,
     pub audio_notes: crate::tools::AudioNoteOptions,
@@ -104,6 +105,7 @@ pub struct EditorOptions {
 impl Default for EditorOptions {
     fn default() -> Self {
         Self {
+            check_updates_on_start: true,
             editor_sounds: crate::EditorSoundOptions::default(),
             audio_guide: AudioGuideOptions::default(),
             audio_notes: crate::tools::AudioNoteOptions::default(),

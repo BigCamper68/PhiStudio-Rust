@@ -20,7 +20,7 @@ The generated IPA is unsigned. Installation requires signing the complete app
 with an appropriate certificate and provisioning profile. Signing credentials
 are not included in the repository or build workflow.
 
-The UIKit bridge provides document import/export, text input, clipboard access,
+The UIKit bridge provides document import/export, text input, clipboard access, web links through UIKit,
 safe-area handling and audio suspension. Projects are stored under
 `Documents/PhiStudio` and exposed through iOS File Sharing. The renderer and
 application icon artwork are shared with the other platform builds.

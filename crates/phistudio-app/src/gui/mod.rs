@@ -70,7 +70,10 @@ impl Gui {
                 // PlatformOutput is consumed by EguiMq at end_frame.
                 text = ctx.output(|o| o.text_cursor_pos.is_some());
                 #[cfg(target_os = "ios")]
-                ctx.output(|o| {
+                ctx.output_mut(|o| {
+                    if let Some(url) = o.open_url.take() {
+                        crate::ios::open_url(&url.url);
+                    }
                     if !o.copied_text.is_empty() {
                         crate::ios::set_clipboard(&o.copied_text);
                     }

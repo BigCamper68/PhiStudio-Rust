@@ -43,6 +43,7 @@ pub struct NoteDraft {
 }
 
 pub struct Workbench {
+    pub(crate) updates: crate::updates::State,
     pub(crate) sounds: crate::editor_sounds::State,
     pub(crate) plugins: crate::plugins::State,
     pub(crate) timeline: TimelineState,
@@ -125,6 +126,7 @@ impl Workbench {
             files: FileWorkflow::default(),
             multi_line: Default::default(),
             sounds: Default::default(),
+            updates: Default::default(),
             audio_guide: Default::default(),
             audio_notes: Default::default(),
             preview: Default::default(),
@@ -216,6 +218,9 @@ impl Workbench {
         if self.playtest.active() {
             self.playtest_ui(ctx);
             return;
+        }
+        if !self.preview.fullscreen {
+            self.update_banner(ctx);
         }
         self.capture_shortcut(ctx);
         self.color_window(ctx);
