@@ -17,7 +17,7 @@ impl Workbench {
             self.speed_curve = state;
             return;
         }
-        if ctx.input(|i| {
+        state.input_canceled |= ctx.input(|i| {
             !i.raw.has_focus
                 || i.events.iter().any(|e| {
                     matches!(
@@ -28,10 +28,8 @@ impl Workbench {
                         }
                     )
                 })
-        }) {
-            state.cancel();
-        }
-        if blocked {
+        });
+        if state.input_canceled || blocked {
             state.cancel();
         }
         if let Some(id) = id {
@@ -244,6 +242,9 @@ impl Workbench {
                     .id_source("speed-curve-controls")
                     .max_height(ui.available_height().max(64.))
                     .touch_show_y(ui, |ui| {
+                        if let Some(error) = &state.error {
+                            ui.colored_label(crate::theme::flick(), tr(error));
+                        }
                         curve_controls(ui, &mut state);
                         ui.horizontal_wrapped(|ui| {
                             if ui
@@ -271,9 +272,6 @@ impl Workbench {
                                 ui.small(tr("Updating speed curve…"));
                             }
                         });
-                        if let Some(error) = &state.error {
-                            ui.colored_label(crate::theme::flick(), tr(error));
-                        }
                     });
             });
         if !ctx.wants_keyboard_input() && !blocked && !state.commit_pending {

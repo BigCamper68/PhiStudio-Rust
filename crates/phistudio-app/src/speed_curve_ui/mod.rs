@@ -57,6 +57,8 @@ struct Completed {
 }
 pub(crate) struct State {
     pub open: bool,
+    pub(crate) input_canceled: bool,
+    pointer: Option<graph::PointerGesture>,
     target: Option<Target>,
     native_clock: Option<(u64, u64, f64)>,
     clock_required: bool,
@@ -87,6 +89,8 @@ impl Default for State {
     fn default() -> Self {
         Self {
             open: false,
+            input_canceled: false,
+            pointer: None,
             target: None,
             native_clock: None,
             clock_required: false,
@@ -275,12 +279,17 @@ impl State {
         });
     }
     pub(crate) fn cancel(&mut self) {
-        if self.drag.is_none() && !self.commit_pending && self.preview.is_none() {
+        if self.pointer.is_none()
+            && self.drag.is_none()
+            && !self.commit_pending
+            && self.preview.is_none()
+        {
             return;
         }
         self.serial = self.serial.wrapping_add(1);
         self.queued = None;
         self.drag = None;
+        self.pointer = None;
         self.preview = None;
         self.commit_pending = false;
         if let Some(profile) = &self.profile {
@@ -288,7 +297,7 @@ impl State {
         }
     }
     pub(crate) fn captures_input(&self) -> bool {
-        self.open && (self.drag.is_some() || self.commit_pending)
+        self.open && (self.pointer.is_some() || self.drag.is_some() || self.commit_pending)
     }
     pub(crate) fn close(&mut self) {
         self.cancel();

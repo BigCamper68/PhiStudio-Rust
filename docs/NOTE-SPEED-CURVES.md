@@ -15,8 +15,10 @@ note arrays are unchanged by a curve operation.
 
 - **Edit point** selects and drags existing nodes. Horizontal movement follows
   the editor's beat division. Optional distance snapping has its own step.
-- **Add point** clicks a new node into the curve. Clicking near the existing
-  curve preserves its shape; clicking away requests the chosen distance.
+- **Add point** places a new node when the mouse button or finger is released.
+  Tap, or drag to the desired position. Placing near the existing curve preserves
+  its shape; placing away requests the chosen distance. Point times are unique;
+  a duplicate beat selects the existing node and reports the conflict.
 - **Delete point**, the selected-point button or Delete/Backspace removes an
   editable node and joins its neighbors with a linear distance segment.
 - Selected-point fields set beat, distance and the outgoing segment's easing.
@@ -31,8 +33,11 @@ note arrays are unchanged by a curve operation.
   Ctrl/Cmd+Z, Shift+Ctrl/Cmd+Z, Space and Ctrl/Cmd+S keep their familiar meanings.
 
 A drag or numeric edit stages its curve on a worker and commits once when editing
-ends. Add, delete and easing changes each create one Undo action. Touch cancel,
-lost focus, Escape during an edit, Back or closing the window discard pending
+ends. Graph gestures consume ordered primary-pointer events from the same touch
+router as Android controls, including whole gestures delivered in one frame and
+final movement carried by the release event. A tap selecting a point does not
+snap its distance or create history. Add, delete and easing changes each create
+one Undo action. Touch cancel, lost focus, Escape during an edit, Back or closing the window discard pending
 work. Back/Escape then closes the window. A late worker result cannot overwrite
 a different note, project, chart revision, layer or request.
 
@@ -94,7 +99,9 @@ xvfb-run -a -s '-screen 0 873x393x24' target/debug/examples/ui-layout-probe \
 Tests cover native playback parity, all 29 easings, BPM boundaries, multiple
 layers, negative speed, Y Control, Hold pinning, range-edge preservation,
 stale results, private metadata, region
-persistence, actual canvas input and exact Undo/Redo. The GPU probe checks the
-English and Russian window, a real add-point click, the native clock and chart
-round-trips on the requested viewport. Touch/device latency and system keyboard
+persistence, actual canvas input and exact Undo/Redo. Mobile regressions cover
+routed taps, add-mode placement drags, batched movement, release coordinates,
+selection without edits, duplicate beats and second-finger cancellation. The GPU
+probe checks the English and Russian window, a routed touch add-point gesture,
+the native clock and chart round-trips on the requested viewport. Touch/device latency and system keyboard
 behavior still require physical-device checks.

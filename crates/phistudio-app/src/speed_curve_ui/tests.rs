@@ -2,6 +2,7 @@ use super::*;
 use egui::{Pos2, pos2, vec2};
 use phistudio_core::{ChartDocument, Command, Note};
 use std::time::{Duration, Instant};
+mod mobile;
 fn app() -> Workbench {
     let mut raw = ChartDocument::empty("Speed UI", 120.)
         .unwrap()

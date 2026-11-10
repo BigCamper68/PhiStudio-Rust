@@ -184,6 +184,7 @@ impl Workbench {
     }
 
     pub fn ui(&mut self, ctx: &egui::Context, canceled: bool) {
+        self.speed_curve.input_canceled = canceled;
         if canceled {
             self.speed_curve.cancel();
         }

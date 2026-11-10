@@ -27,6 +27,8 @@ pub(crate) async fn run(
     let original = app.editor.document().as_json().clone();
     let mut added = false;
     let mut down = None;
+    let mut touch = crate::touch::TouchRouter::default();
+    let mut input_context: Option<egui::Context> = None;
     let mut plot: Option<egui::Rect> = None;
     let mut window_rect: Option<egui::Rect> = None;
     for frame in 0..100 {
@@ -54,18 +56,30 @@ pub(crate) async fn run(
                         - (distance / app.speed_curve.limit) as f32 * rect.height() * 0.5,
                 );
                 down = Some(pos);
-                gui.probe_input(
-                    vec![egui::Event::PointerMoved(pos), button(pos, true)],
-                    false,
+                let (events, canceled) = touch.event_with_context(
+                    input_context.as_ref().unwrap(),
+                    egui::TouchPhase::Start,
+                    1,
+                    pos,
+                    get_time(),
                 );
+                gui.probe_input(events, canceled);
                 added = true;
             }
         } else if let Some(pos) = down.take() {
-            gui.probe_input(vec![button(pos, false)], false);
+            let (events, canceled) = touch.event_with_context(
+                input_context.as_ref().unwrap(),
+                egui::TouchPhase::End,
+                1,
+                pos,
+                get_time(),
+            );
+            gui.probe_input(events, canceled);
         }
         set_default_camera();
         clear_background(BLACK);
         gui.run(|ctx, canceled| {
+            input_context = Some(ctx.clone());
             app.ui(ctx, canceled);
             plot = ctx.data_mut(|d| d.get_temp::<egui::Rect>(egui::Id::new("speed-curve-plot")));
             window_rect = crate::window::visible_rect(ctx, egui::Id::new("Note speed curve"));
@@ -163,16 +177,8 @@ pub(crate) async fn run(
     std::fs::write(
         out.join("result.json"),
         serde_json::to_vec_pretty(
-            &serde_json::json!({"native_clock":true,"canvas_add":true,"exact_undo_redo":true,"viewport":[screen_width(),screen_height()],"pass":true}),
+            &serde_json::json!({"native_clock":true,"canvas_add":true,"routed_touch_add":true,"exact_undo_redo":true,"viewport":[screen_width(),screen_height()],"pass":true}),
         )?,
     )?;
     Ok(())
-}
-fn button(pos: egui::Pos2, pressed: bool) -> egui::Event {
-    egui::Event::PointerButton {
-        pos,
-        button: egui::PointerButton::Primary,
-        pressed,
-        modifiers: Default::default(),
-    }
 }

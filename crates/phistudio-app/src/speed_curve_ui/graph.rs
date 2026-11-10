@@ -1,6 +1,8 @@
+mod input;
 use super::*;
 use crate::{i18n::tr, theme};
 use egui::{Align2, FontId, Pos2, Rect, Shape, Stroke, pos2, vec2};
+pub(super) use input::PointerGesture;
 struct View {
     rect: Rect,
     start: f64,
@@ -219,7 +221,6 @@ pub(super) fn canvas(
     if state.busy() {
         return false;
     }
-    let mut changed = false;
     if response.hovered() {
         let (scroll, zoom) =
             ui.input(|i| (i.scroll_delta, i.modifiers.ctrl || i.modifiers.command));
@@ -238,104 +239,5 @@ pub(super) fn canvas(
             );
         }
     }
-    if response.drag_started() && state.mode == Mode::Edit {
-        let origin = ui
-            .input(|i| i.pointer.press_origin())
-            .or_else(|| response.interact_pointer_pos());
-        if let Some(index) = origin.and_then(|p| view.nearest(&state.points, p)) {
-            state.selected = Some(index);
-            if !state.points[index].fixed {
-                state.drag = Some(state.points.clone());
-            }
-        }
-    }
-    if response.dragged()
-        && state.mode == Mode::Edit
-        && state.drag.is_some()
-        && let (Some(index), Some(pos)) = (state.selected, response.interact_pointer_pos())
-    {
-        let [beat, distance] = view.world(pos);
-        if let Ok(beat) = Beat::from_grid(beat, division.max(1)) {
-            let beat = if beat > state.points[index - 1].beat && beat < state.points[index + 1].beat
-            {
-                beat
-            } else {
-                state.points[index].beat
-            };
-            if beat > state.points[index - 1].beat && beat < state.points[index + 1].beat {
-                let distance = if state.snap {
-                    (distance / state.snap_step).round() * state.snap_step
-                } else {
-                    distance
-                };
-                if state.points[index].beat != beat || state.points[index].distance != distance {
-                    state.points[index].beat = beat;
-                    state.points[index].distance = distance.clamp(-1e9, 1e9);
-                    state.request_fit(false);
-                    changed = true;
-                }
-            }
-        }
-    }
-    if response.drag_released()
-        && let Some(before) = state.drag.take()
-    {
-        if state.points != before {
-            state.request_fit(true);
-            changed = true;
-        } else {
-            state.cancel();
-        }
-    }
-    if response.clicked()
-        && let Some(pos) = response
-            .interact_pointer_pos()
-            .filter(|p| rect.contains(*p))
-    {
-        state.selected = view.nearest(&state.points, pos);
-        match state.mode {
-            Mode::Delete => {
-                let before = state.points.len();
-                state.delete_selected();
-                changed |= state.points.len() != before;
-            }
-            Mode::Add if state.points.len() < phistudio_core::speed_curve::MAX_CURVE_POINTS => {
-                let [beat, distance] = view.world(pos);
-                if let Ok(beat) = Beat::from_grid(beat, division.max(1))
-                    && beat > state.range[0]
-                    && beat < state.range[1]
-                    && state.source.as_ref().is_none_or(|source| {
-                        source.note.kind != phistudio_core::NoteKind::Hold
-                            || beat < source.note.start_time
-                    })
-                    && !state.points.iter().any(|p| p.beat == beat)
-                {
-                    let profile = state.preview.as_ref().or(state.profile.as_deref()).unwrap();
-                    let original = distance_at(profile, beat.as_f64());
-                    let on_curve = (view.point(beat.as_f64(), original).y - pos.y).abs() < 9.;
-                    let distance = if on_curve {
-                        original
-                    } else if state.snap {
-                        (distance / state.snap_step).round() * state.snap_step
-                    } else {
-                        distance
-                    };
-                    let point = SpeedCurvePoint {
-                        beat,
-                        source_beat: beat,
-                        distance,
-                        easing: None,
-                        fixed: false,
-                    };
-                    let index = state.points.partition_point(|p| p.beat < beat);
-                    state.points.insert(index, point);
-                    state.selected = Some(index);
-                    state.request_fit(true);
-                    changed = true;
-                }
-            }
-            _ => {}
-        }
-    }
-    changed
+    input::handle(ui, state, &view, division)
 }
