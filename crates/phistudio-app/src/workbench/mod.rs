@@ -43,6 +43,7 @@ pub struct NoteDraft {
 }
 
 pub struct Workbench {
+    pub(crate) sounds: crate::editor_sounds::State,
     pub(crate) plugins: crate::plugins::State,
     pub(crate) timeline: TimelineState,
     pub(crate) transport: TransportState,
@@ -123,6 +124,7 @@ impl Workbench {
             windows: Windows::default(),
             files: FileWorkflow::default(),
             multi_line: Default::default(),
+            sounds: Default::default(),
             audio_guide: Default::default(),
             audio_notes: Default::default(),
             preview: Default::default(),

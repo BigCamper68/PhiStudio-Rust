@@ -12,10 +12,12 @@ impl Workbench {
     pub fn execute(&mut self, command: Command) {
         let anchor = self.anchor();
         let line_remap = self.pending_line_remap(&command);
+        let sound = crate::editor_sounds::command_event(&command);
         match self.editor.execute(command) {
             Ok(changed) => {
                 self.error = None;
                 if changed {
+                    self.sounds.emit(sound);
                     if let Some(remap) = line_remap {
                         self.apply_line_remap(remap);
                     }
@@ -67,6 +69,11 @@ impl Workbench {
             self.editor.undo()
         };
         if changed {
+            self.sounds.emit(if redo {
+                phistudio_core::EditorSoundEvent::Redo
+            } else {
+                phistudio_core::EditorSoundEvent::Undo
+            });
             if let Some(change) = multi_action.and_then(|id| self.multi_line.line_history.get(&id))
             {
                 self.multi_line.lines = if redo {
@@ -126,6 +133,14 @@ impl Workbench {
     }
 
     pub(crate) fn delete_selected_now(&mut self) {
+        let revision = self.editor.revision();
+        self.delete_selected_objects();
+        if revision != self.editor.revision() {
+            self.sounds.emit(phistudio_core::EditorSoundEvent::Delete);
+        }
+    }
+
+    fn delete_selected_objects(&mut self) {
         if !self.story_selection().is_empty() {
             let edit = phistudio_core::objects::delete(
                 self.editor.document(),

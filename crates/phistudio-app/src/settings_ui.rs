@@ -159,6 +159,7 @@ impl Workbench {
         );
         ui.separator();
         ui.strong(crate::i18n::tr("Audio"));
+        self.editor_sounds_ui(ui);
         ui.collapsing(crate::i18n::tr("Audio guide"), |ui| {
             if self.audio_guide.controls(ui, &mut self.options.audio_guide) {
                 self.open_audio_notes();

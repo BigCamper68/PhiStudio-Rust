@@ -36,6 +36,11 @@ impl Workbench {
                 } else {
                     format!("Copied {} objects", clipboard.len())
                 };
+                self.sounds.emit(if cut {
+                    phistudio_core::EditorSoundEvent::Delete
+                } else {
+                    phistudio_core::EditorSoundEvent::Copy
+                });
                 self.tools.clipboard = Some(Arc::new(clipboard));
                 self.error = None;
             }
@@ -72,7 +77,9 @@ impl Workbench {
                 mirrored,
             )
         });
-        self.apply_object_tool(edit);
+        if self.apply_object_tool(edit) {
+            self.sounds.emit(phistudio_core::EditorSoundEvent::Paste);
+        }
     }
 
     pub(crate) fn duplicate_selection(&mut self) {

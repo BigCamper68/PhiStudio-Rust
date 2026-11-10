@@ -15,6 +15,7 @@ mod note_properties;
 mod properties;
 mod sdk;
 mod shaders;
+mod sounds;
 mod versions;
 
 fn paint(gui: &mut Gui, app: &mut Workbench, preview: &mut Preview, width: f32) -> Result<Rect> {
@@ -99,6 +100,9 @@ pub async fn run() -> Result<()> {
     app.note_highlights = preview.highlighted_notes();
     app.select(Some(NoteId { line: 0, index: 0 }));
     let mut gui = Gui::new();
+    if std::env::args().nth(2).as_deref() == Some("sounds") {
+        return sounds::run(&mut gui, &mut app, &mut preview, &out).await;
+    }
     if std::env::args().nth(2).as_deref() == Some("sdk") {
         return sdk::run(&mut gui, &mut app, &mut preview, &out).await;
     }

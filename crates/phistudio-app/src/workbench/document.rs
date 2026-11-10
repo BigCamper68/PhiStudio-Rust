@@ -30,6 +30,7 @@ impl Workbench {
         if unchanged {
             self.editor.mark_saved();
         }
+        self.sounds.emit(phistudio_core::EditorSoundEvent::Save);
         self.error = None;
         self.status = if unchanged {
             "Project saved in the library"
@@ -102,6 +103,7 @@ impl Workbench {
         let texture = self.preview.texture;
         let skin = self.skin.clone();
         let skins = std::mem::take(&mut self.skins);
+        let sounds = std::mem::take(&mut self.sounds);
         let presets = std::mem::take(&mut self.presets);
         let clipboard_history = std::mem::take(&mut self.clipboard_history);
         let preferences = self.preferences();
@@ -129,6 +131,7 @@ impl Workbench {
         self.preview.texture = texture;
         self.skin = skin;
         self.skins = skins;
+        self.sounds = sounds;
         self.presets = presets;
         self.clipboard_history = clipboard_history;
         self.preview.floating = floating;
@@ -195,6 +198,7 @@ impl Workbench {
         match result {
             Ok(()) => {
                 self.editor.mark_saved();
+                self.sounds.emit(phistudio_core::EditorSoundEvent::Save);
                 self.file = Some(path);
                 self.status = "Chart saved".into();
                 self.error = None;

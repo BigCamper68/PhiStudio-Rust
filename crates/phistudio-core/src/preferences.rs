@@ -61,6 +61,7 @@ impl PreviewAspect {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct EditorOptions {
+    pub editor_sounds: crate::EditorSoundOptions,
     pub audio_guide: AudioGuideOptions,
     pub audio_notes: crate::tools::AudioNoteOptions,
     pub language: Language,
@@ -103,6 +104,7 @@ pub struct EditorOptions {
 impl Default for EditorOptions {
     fn default() -> Self {
         Self {
+            editor_sounds: crate::EditorSoundOptions::default(),
             audio_guide: AudioGuideOptions::default(),
             audio_notes: crate::tools::AudioNoteOptions::default(),
             language: Language::English,
@@ -211,6 +213,7 @@ impl Language {
 }
 impl EditorOptions {
     pub fn normalized(mut self) -> Self {
+        self.editor_sounds = self.editor_sounds.normalized();
         self.audio_guide = self.audio_guide.normalized();
         self.audio_notes = self.audio_notes.normalized();
         self.playtest_countdown = self.playtest_countdown.clamp(1, 3);
@@ -425,7 +428,7 @@ impl EditorPreferences {
         self
     }
 }
-fn bounded(value: f32, min: f32, max: f32, default: f32) -> f32 {
+pub(crate) fn bounded(value: f32, min: f32, max: f32, default: f32) -> f32 {
     if value.is_finite() {
         value.clamp(min, max)
     } else {

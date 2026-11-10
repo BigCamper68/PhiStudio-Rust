@@ -79,6 +79,7 @@ impl Workbench {
 
     pub fn commit_authoring(&mut self, command: Command) -> bool {
         let anchor = self.anchor();
+        let sound = crate::editor_sounds::command_event(&command);
         if self.options.xy_link || self.options.auto_connect_events {
             let doc = self.editor.document();
             let plan = match &command {
@@ -120,6 +121,9 @@ impl Workbench {
                     _ => None,
                 };
                 let changed = self.apply_tool(plan);
+                if changed {
+                    self.sounds.emit(sound);
+                }
                 if changed
                     && let Some(kind) = kind
                     && let Some(id) = self
@@ -138,6 +142,7 @@ impl Workbench {
             Ok(changed) => {
                 self.error = None;
                 if changed {
+                    self.sounds.emit(sound);
                     if let Some(remap) = line_remap {
                         self.apply_line_remap(remap);
                     }

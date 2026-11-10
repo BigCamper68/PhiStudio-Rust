@@ -5,6 +5,7 @@ use std::{
 };
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum MediaKind {
+    EditorSound(phistudio_core::EditorSoundEvent),
     Shader,
     Resource,
     LineTexture,
@@ -21,6 +22,7 @@ impl MediaKind {
             Self::Skin => "Checking skin…",
             Self::Audio => "Checking audio…",
             Self::HitSound => "Checking hitsound…",
+            Self::EditorSound(_) => "Checking editor sound…",
             Self::Illustration => "Checking illustration…",
         }
     }
@@ -32,6 +34,7 @@ impl MediaKind {
             Self::Skin => "Skin",
             Self::Audio => "Audio",
             Self::HitSound => "Hitsound",
+            Self::EditorSound(_) => "Editor sound",
             Self::Illustration => "Illustration",
         }
     }
@@ -43,7 +46,7 @@ impl MediaKind {
             Self::LineTexture => "line-texture",
             Self::Skin => "skin",
             Self::Audio => "audio",
-            Self::HitSound => "hitsound",
+            Self::HitSound | Self::EditorSound(_) => "hitsound",
             Self::Illustration => "illustration",
         }
     }
@@ -101,6 +104,10 @@ impl MediaFile {
     }
     pub fn validate(self, kind: MediaKind) -> Result<Self, String> {
         match kind {
+            MediaKind::EditorSound(_) => {
+                phistudio_prpr::load_interface_sound(self.path())
+                    .map_err(|e| format!("Could not load editor sound: {e:#}"))?;
+            }
             MediaKind::Shader => {
                 use std::io::Read;
                 let mut source = String::new();

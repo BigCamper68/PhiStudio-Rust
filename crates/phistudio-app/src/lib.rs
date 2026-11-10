@@ -6,6 +6,7 @@ mod audio_notes_ui;
 mod authoring_ui;
 mod color_ui;
 mod covers;
+mod editor_sounds;
 mod event_grid;
 mod files;
 mod fonts;

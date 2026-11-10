@@ -15,10 +15,14 @@ impl FileManager {
         app.files.busy = true;
         app.error = None;
         app.status = kind.checking_message().into();
+        let sound_root = self.root.clone();
         std::thread::spawn(move || {
-            let result = file
-                .validate(kind)
-                .map(|file| WorkerResult::Media { kind, file });
+            let result = if matches!(kind, MediaKind::EditorSound(_)) {
+                import_editor_sound(sound_root, file)
+            } else {
+                file.validate(kind)
+            }
+            .map(|file| WorkerResult::Media { kind, file });
             let _ = sender.send(result);
         });
     }
@@ -129,5 +133,88 @@ impl FileManager {
         app.transport.playing = false;
         app.timeline.drag = None;
         Ok(())
+    }
+}
+
+// Keep imported feedback independent of project lifetime and mobile picker snapshots.
+fn import_editor_sound(root: Option<PathBuf>, file: MediaFile) -> Result<MediaFile, String> {
+    let root = root
+        .map(Ok)
+        .unwrap_or_else(|| {
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
+            {
+                crate::runtime::desktop_workspace().map_err(|e| e.to_string())
+            }
+            #[cfg(any(target_os = "android", target_os = "ios"))]
+            {
+                std::env::current_dir().map_err(|e| e.to_string())
+            }
+        })?
+        .join("editor-sounds");
+    std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
+    let name = file
+        .name()
+        .chars()
+        .take(48)
+        .map(|c| {
+            if c.is_alphanumeric() || matches!(c, '.' | '_' | '-') {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect::<String>();
+    let prefix = format!("{name}-");
+    let mut copy = tempfile::Builder::new()
+        .prefix(&prefix)
+        .tempfile_in(&root)
+        .map_err(|e| e.to_string())?;
+    let mut source = std::fs::File::open(file.path()).map_err(|e| e.to_string())?;
+    use std::io::Read;
+    let size = std::io::copy(&mut source.by_ref().take(2 * 1024 * 1024 + 1), &mut copy)
+        .map_err(|e| e.to_string())?;
+    if size > 2 * 1024 * 1024 {
+        return Err("Editor sound exceeds 2 MiB".into());
+    }
+    phistudio_prpr::load_interface_sound(copy.path())
+        .map_err(|e| format!("Could not load editor sound: {e:#}"))?;
+    copy.as_file().sync_all().map_err(|e| e.to_string())?;
+    let (_, path) = copy.keep().map_err(|e| e.to_string())?;
+    Ok(MediaFile::new(path, file.name().into(), false))
+}
+
+#[cfg(test)]
+mod sound_tests {
+    use super::*;
+    #[test]
+    fn imported_sound_outlives_the_owned_picker_snapshot_and_failed_imports_leave_no_copy() {
+        let root = tempfile::tempdir().unwrap();
+        let source = root.path().join("picker");
+        let bytes = crate::media::tests::wav_bytes();
+        std::fs::write(&source, &bytes).unwrap();
+        let imported = import_editor_sound(
+            Some(root.path().to_owned()),
+            MediaFile::new(source.clone(), "click.wav".into(), true),
+        )
+        .unwrap();
+        assert!(!source.exists());
+        let path = imported.path().to_owned();
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+        drop(imported);
+        assert!(path.exists());
+        std::fs::write(&source, b"invalid audio").unwrap();
+        assert!(
+            import_editor_sound(
+                Some(root.path().to_owned()),
+                MediaFile::new(source, "bad.wav".into(), true)
+            )
+            .is_err()
+        );
+        assert_eq!(
+            std::fs::read_dir(root.path().join("editor-sounds"))
+                .unwrap()
+                .count(),
+            1
+        );
     }
 }

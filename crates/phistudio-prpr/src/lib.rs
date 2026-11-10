@@ -22,6 +22,8 @@ mod background;
 mod compatibility;
 mod curve;
 mod editor_audio;
+mod interface_audio;
+pub use interface_audio::{InterfaceAudio, interface_tone, load_interface_sound};
 mod editor_options;
 mod effects;
 mod extension_effects;
@@ -64,6 +66,7 @@ static EMOJI_FONT_BYTES: &[u8] = include_bytes!("../../../assets/fonts/NotoEmoji
 pub fn suspend_audio() {
     transport::suspend_audio();
     media::suspend();
+    interface_audio::suspend();
 }
 
 pub struct Preview {

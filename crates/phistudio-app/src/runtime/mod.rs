@@ -174,6 +174,7 @@ pub(crate) async fn run(options: Options) -> Result<()> {
     };
     app.resource_warning = preview.resource_warning().map(str::to_owned);
     let mut gui = gui::Gui::new();
+    let mut interface_sounds = crate::editor_sounds::Engine::new(preview.create_interface_audio()?);
     app.start_plugins(storage_root.clone());
     app.audio_guide.set_cache_root(storage_root.clone());
     let mut files = files::FileManager::new(storage_root);
@@ -303,7 +304,8 @@ pub(crate) async fn run(options: Options) -> Result<()> {
         gui.set_ui_scale(app.options.ui_scale);
         #[cfg(target_os = "ios")]
         ios::set_language(app.options.language);
-        gui.run(|ctx, canceled| app.ui(ctx, canceled));
+        gui.run(|ctx, canceled| app.sound_ui(ctx, canceled));
+        interface_sounds.update(&mut app);
         if app.workspace.view != Some(workspace_ui::View::Resources) || app.transport.playing {
             let _ = preview.audition_resource(None);
         }

@@ -48,6 +48,16 @@ impl NewChart {
 }
 impl Workbench {
     pub(crate) fn accept_media(&mut self, kind: MediaKind, file: MediaFile) {
+        if let MediaKind::EditorSound(event) = kind {
+            self.options
+                .editor_sounds
+                .events
+                .entry(event)
+                .or_default()
+                .file = Some(file.path().to_string_lossy().into_owned());
+            self.sounds.warning = None;
+            return;
+        }
         if kind == MediaKind::Shader {
             self.accept_shader_file(file);
             return;
@@ -67,7 +77,8 @@ impl Workbench {
         }
         if let Some(draft) = &mut self.files.new_chart {
             match kind {
-                MediaKind::Shader
+                MediaKind::EditorSound(_)
+                | MediaKind::Shader
                 | MediaKind::Resource
                 | MediaKind::LineTexture
                 | MediaKind::HitSound

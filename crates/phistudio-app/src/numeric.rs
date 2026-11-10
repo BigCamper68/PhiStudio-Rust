@@ -163,6 +163,9 @@ impl Widget for Value<'_> {
             if value.is_finite() && value != before {
                 (self.get_set)(Some(value));
                 response.mark_changed();
+                response.output_event(egui::output::OutputEvent::ValueChanged(
+                    egui::WidgetInfo::drag_value(value),
+                ));
                 ui.ctx().request_repaint();
             }
             ui.data_mut(|d| d.insert_temp(state_id, state));
