@@ -6,11 +6,6 @@ use crate::{
 
 impl Workbench {
     pub(crate) fn updates_ui(&mut self, ui: &mut egui::Ui) {
-        ui.strong(tr("Application updates"));
-        ui.label(format(
-            "Installed version: {0}",
-            &[service::installed_version().into()],
-        ));
         ui.checkbox(
             &mut self.options.check_updates_on_start,
             tr("Check for updates on startup"),
@@ -56,7 +51,11 @@ impl Workbench {
         ui.hyperlink_to(tr("All releases"), service::RELEASES);
     }
     pub(crate) fn update_banner(&mut self, ctx: &egui::Context) {
-        let Some(release) = self.updates.notification().cloned() else {
+        let Some((version, url)) = self
+            .updates
+            .notification()
+            .map(|r| (r.version.to_string(), r.url.clone()))
+        else {
             return;
         };
         let enabled = !self.modal_open_except_projects();
@@ -69,12 +68,9 @@ impl Workbench {
             .show(ctx, |ui| {
                 ui.set_enabled(enabled);
                 ui.style_mut().wrap = Some(true);
-                ui.label(format(
-                    "A new version is available: {0}",
-                    &[release.version.to_string()],
-                ));
+                ui.label(format("A new version is available: {0}", &[version]));
                 ui.horizontal_wrapped(|ui| {
-                    ui.hyperlink_to(tr("Open release"), &release.url);
+                    ui.hyperlink_to(tr("Open release"), &url);
                     if ui.button(tr("Later")).clicked() {
                         self.updates.dismissed = true;
                     }

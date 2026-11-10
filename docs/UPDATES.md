@@ -1,6 +1,6 @@
 # Application update checks
 
-Settings starts with **Application updates**, showing the installed version, a
+**Settings → About the project** shows the installed version, a
 **Check for updates now** button and a **Check for updates on startup** switch.
 The switch is on by default and is saved with editor preferences, separately
 from project data. A startup check runs once per application launch after
@@ -46,3 +46,6 @@ xvfb-run -a -s '-screen 0 320x720x24' target/debug/examples/ui-layout-probe \
 
 This probe uses fixture results and covers English/Russian settings and banners
 for available, current, offline and checking states without public API requests.
+
+Installed-release changelogs, first-launch acknowledgement and About are described
+in [Release notes and About](RELEASE-NOTES.md).

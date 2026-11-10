@@ -129,3 +129,75 @@ fn oversized_http_payloads_are_rejected_with_or_without_content_length() {
     let body = vec![b' '; MAX_BYTES + 1];
     assert_eq!(response(200, "", &body), Err(CheckError::InvalidResponse));
 }
+
+#[test]
+fn release_names_and_notes_are_preserved_and_preview_notes_can_be_read() {
+    let mut value = raw("v1.32.0");
+    value["name"] = "PhiStudio Rust release title".into();
+    value["body"] = "## Changes\n- Editor improvements\n\nOriginal release text.".into();
+    let parsed = parse(&serde_json::to_vec(&value).unwrap()).unwrap();
+    assert_eq!(parsed.name, value["name"].as_str().unwrap());
+    assert_eq!(parsed.body, value["body"].as_str().unwrap());
+    value["tag_name"] = "v1.33.0-rc.1".into();
+    value["prerelease"] = true.into();
+    let bytes = serde_json::to_vec(&value).unwrap();
+    assert_eq!(parse(&bytes), Err(CheckError::NoRelease));
+    assert!(parse_release(&bytes, true).is_ok());
+    value["body"] = serde_json::Value::Null;
+    assert!(
+        parse_release(&serde_json::to_vec(&value).unwrap(), true)
+            .unwrap()
+            .body
+            .is_empty()
+    );
+}
+#[test]
+fn installed_notes_use_the_exact_version_and_try_an_unprefixed_tag_after_404() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let base = format!("http://{}/releases/tags", listener.local_addr().unwrap());
+    let server = thread::spawn(move || {
+        for (path, status, body) in [
+            ("/releases/tags/v1.32.0", 404, Vec::new()),
+            (
+                "/releases/tags/1.32.0",
+                200,
+                serde_json::to_vec(&raw("1.32.0")).unwrap(),
+            ),
+        ] {
+            let (mut socket, _) = listener.accept().unwrap();
+            socket
+                .set_read_timeout(Some(Duration::from_secs(3)))
+                .unwrap();
+            let mut request = Vec::new();
+            while !request.ends_with(b"\r\n\r\n") {
+                let mut byte = [0];
+                assert_ne!(socket.read(&mut byte).unwrap(), 0);
+                request.push(byte[0]);
+            }
+            assert!(
+                String::from_utf8(request)
+                    .unwrap()
+                    .starts_with(&format!("GET {path} "))
+            );
+            write!(
+                socket,
+                "HTTP/1.1 {status} Test\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            )
+            .unwrap();
+            socket.write_all(&body).unwrap();
+        }
+    });
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    assert_eq!(
+        runtime
+            .block_on(fetch_installed(&base, "1.32.0"))
+            .unwrap()
+            .version,
+        Version::new(1, 32, 0)
+    );
+    server.join().unwrap();
+}

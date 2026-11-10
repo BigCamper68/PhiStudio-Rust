@@ -2070,5 +2070,15 @@
   "GitHub is temporarily unavailable. Try again later.": "GitHub를 일시적으로 사용할 수 없습니다. 나중에 다시 시도하세요.",
   "Update check interrupted. Try again.": "업데이트 확인이 중단되었습니다. 다시 시도하세요.",
   "Move and resize objects": "개체 이동 및 크기 변경",
-  "Slide": "슬라이드"
+  "Slide": "슬라이드",
+  "About the project": "프로젝트 정보",
+  "Version {0}": "버전 {0}",
+  "Project on GitHub": "GitHub 프로젝트",
+  "Release notes": "릴리스 노트",
+  "Author of PhiStudio Rust": "PhiStudio Rust 제작자",
+  "Loading release notes…": "릴리스 노트 불러오는 중…",
+  "This release has no release notes.": "이 릴리스에는 노트가 없습니다.",
+  "Release notes for this version have not been published yet.": "이 버전의 릴리스 노트가 아직 공개되지 않았습니다.",
+  "Refresh release notes": "릴리스 노트 새로고침",
+  "PhiStudio Rust {0}": "PhiStudio Rust {0}"
 }

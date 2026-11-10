@@ -2070,5 +2070,15 @@
   "GitHub is temporarily unavailable. Try again later.": "GitHub временно недоступен. Попробуйте позже.",
   "Update check interrupted. Try again.": "Проверка обновлений прервана. Попробуйте снова.",
   "Move and resize objects": "Перемещение и изменение длины",
-  "Slide": "Сдвиг"
+  "Slide": "Сдвиг",
+  "About the project": "О проекте",
+  "Version {0}": "Версия {0}",
+  "Project on GitHub": "Проект на GitHub",
+  "Release notes": "Ченджлог релиза",
+  "Author of PhiStudio Rust": "Автор PhiStudio Rust",
+  "Loading release notes…": "Загрузка ченджлога…",
+  "This release has no release notes.": "В этом релизе нет ченджлога.",
+  "Release notes for this version have not been published yet.": "Ченджлог этой версии ещё не опубликован.",
+  "Refresh release notes": "Обновить ченджлог",
+  "PhiStudio Rust {0}": "PhiStudio Rust {0}"
 }

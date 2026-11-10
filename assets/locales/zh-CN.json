@@ -2070,5 +2070,15 @@
   "GitHub is temporarily unavailable. Try again later.": "GitHub 暂时不可用，请稍后重试。",
   "Update check interrupted. Try again.": "更新检查已中断，请重试。",
   "Move and resize objects": "移动对象与调整长度",
-  "Slide": "滑动"
+  "Slide": "滑动",
+  "About the project": "关于项目",
+  "Version {0}": "版本 {0}",
+  "Project on GitHub": "GitHub 项目",
+  "Release notes": "更新日志",
+  "Author of PhiStudio Rust": "PhiStudio Rust 作者",
+  "Loading release notes…": "正在加载更新日志…",
+  "This release has no release notes.": "此版本没有更新日志。",
+  "Release notes for this version have not been published yet.": "此版本的更新日志尚未发布。",
+  "Refresh release notes": "刷新更新日志",
+  "PhiStudio Rust {0}": "PhiStudio Rust {0}"
 }

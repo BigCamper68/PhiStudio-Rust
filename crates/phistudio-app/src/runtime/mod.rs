@@ -177,6 +177,7 @@ pub(crate) async fn run(options: Options) -> Result<()> {
     let mut interface_sounds = crate::editor_sounds::Engine::new(preview.create_interface_audio()?);
     app.start_plugins(storage_root.clone());
     app.audio_guide.set_cache_root(storage_root.clone());
+    app.updates.set_cache_root(storage_root.clone());
     let mut files = files::FileManager::new(storage_root);
     app.preview.texture = Some(egui::TextureId::User(preview.texture_id()));
     app.skin = Some(preview.editor_skin());
@@ -204,6 +205,7 @@ pub(crate) async fn run(options: Options) -> Result<()> {
         files.update(&mut app);
         if options.smoke.is_none() && options.playback_smoke.is_none() {
             app.updates.tick(app.options.check_updates_on_start);
+            app.poll_release_notes();
         }
         if let Err(error) = preview.pump_playtest_input() {
             app.error = Some(format!("Playtest input failed: {error:#}"));

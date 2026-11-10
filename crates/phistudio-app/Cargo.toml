@@ -26,6 +26,7 @@ phistudio-prpr.workspace = true
 phistudio-audio.workspace = true
 phistudio-sdk.workspace = true
 base64 = "0.22"
+image.workspace = true
 semver = "1.0"
 reqwest = { version = "=0.12.28", default-features = false, features = ["rustls-tls"] }
 phistudio-plugins.workspace = true

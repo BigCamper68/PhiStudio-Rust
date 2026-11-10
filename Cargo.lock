@@ -3556,6 +3556,7 @@ dependencies = [
  "chrono",
  "egui",
  "egui-miniquad",
+ "image",
  "jni 0.21.1",
  "macroquad",
  "phistudio-audio",

@@ -1,4 +1,6 @@
 //! Session-wide update state; checks run on a worker and never block editing.
+mod about;
+mod notes;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub(crate) mod probe;
 mod service;
@@ -23,12 +25,17 @@ struct Pending {
 }
 #[derive(Default)]
 pub(crate) struct State {
+    notes: notes::Notes,
+    identity: about::Identity,
     status: Status,
     pending: Option<Pending>,
     startup_checked: bool,
     dismissed: bool,
 }
 impl State {
+    pub(crate) fn set_cache_root(&mut self, root: Option<std::path::PathBuf>) {
+        self.notes.root = root;
+    }
     pub(crate) fn tick(&mut self, automatic: bool) {
         if !self.startup_checked {
             self.startup_checked = true;

@@ -2,8 +2,6 @@ use crate::{scroll::TouchCombo as _, workbench::Workbench};
 use phistudio_core::PreviewAspect;
 impl Workbench {
     pub(crate) fn settings_ui(&mut self, ui: &mut egui::Ui) {
-        self.updates_ui(ui);
-        ui.separator();
         ui.horizontal(|ui| {
             ui.label(crate::i18n::tr("Language"));
             egui::ComboBox::from_id_source("interface-language")
@@ -237,5 +235,7 @@ impl Workbench {
         {
             self.apply_preferences(&Default::default());
         }
+        ui.separator();
+        self.about_ui(ui);
     }
 }

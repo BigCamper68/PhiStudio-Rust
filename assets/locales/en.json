@@ -2070,5 +2070,15 @@
   "GitHub is temporarily unavailable. Try again later.": "GitHub is temporarily unavailable. Try again later.",
   "Update check interrupted. Try again.": "Update check interrupted. Try again.",
   "Move and resize objects": "Move and resize objects",
-  "Slide": "Slide"
+  "Slide": "Slide",
+  "About the project": "About the project",
+  "Version {0}": "Version {0}",
+  "Project on GitHub": "Project on GitHub",
+  "Release notes": "Release notes",
+  "Author of PhiStudio Rust": "Author of PhiStudio Rust",
+  "Loading release notes…": "Loading release notes…",
+  "This release has no release notes.": "This release has no release notes.",
+  "Release notes for this version have not been published yet.": "Release notes for this version have not been published yet.",
+  "Refresh release notes": "Refresh release notes",
+  "PhiStudio Rust {0}": "PhiStudio Rust {0}"
 }

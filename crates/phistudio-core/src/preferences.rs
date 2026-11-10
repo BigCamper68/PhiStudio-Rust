@@ -62,6 +62,7 @@ impl PreviewAspect {
 #[serde(default)]
 pub struct EditorOptions {
     pub check_updates_on_start: bool,
+    pub release_notes_seen: Option<String>,
     pub editor_sounds: crate::EditorSoundOptions,
     pub audio_guide: AudioGuideOptions,
     pub audio_notes: crate::tools::AudioNoteOptions,
@@ -106,6 +107,7 @@ impl Default for EditorOptions {
     fn default() -> Self {
         Self {
             check_updates_on_start: true,
+            release_notes_seen: None,
             editor_sounds: crate::EditorSoundOptions::default(),
             audio_guide: AudioGuideOptions::default(),
             audio_notes: crate::tools::AudioNoteOptions::default(),
@@ -215,6 +217,9 @@ impl Language {
 }
 impl EditorOptions {
     pub fn normalized(mut self) -> Self {
+        self.release_notes_seen = self
+            .release_notes_seen
+            .filter(|v| !v.is_empty() && v.len() <= 128);
         self.editor_sounds = self.editor_sounds.normalized();
         self.audio_guide = self.audio_guide.normalized();
         self.audio_notes = self.audio_notes.normalized();

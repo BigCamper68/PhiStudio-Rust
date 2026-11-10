@@ -215,6 +215,7 @@ impl Workbench {
         self.pixels_per_point = ctx.pixels_per_point();
         crate::theme::apply(ctx, &self.options.theme);
         crate::scroll::begin_frame(ctx);
+        self.release_notes_window(ctx);
         if self.playtest.active() {
             self.playtest_ui(ctx);
             return;
