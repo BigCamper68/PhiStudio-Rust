@@ -309,6 +309,15 @@ pub(crate) async fn run(options: Options) -> Result<()> {
         gui.set_ui_scale(app.options.ui_scale);
         #[cfg(target_os = "ios")]
         ios::set_language(app.options.language);
+        if app.render_error.is_none() {
+            app.speed_curve.record_native_clock(
+                rendered.0,
+                rendered.1,
+                preview.speed_curve_horizon(),
+            );
+        } else {
+            app.speed_curve.clear_native_clock();
+        }
         gui.run(|ctx, canceled| app.sound_ui(ctx, canceled));
         interface_sounds.update(&mut app);
         if app.workspace.view != Some(workspace_ui::View::Resources) || app.transport.playing {

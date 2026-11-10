@@ -206,6 +206,15 @@ impl Workbench {
         if volume_commit {
             self.set_note_volume(id, volume);
         }
+        if ui
+            .add_enabled(
+                self.selection().notes.len() == 1,
+                egui::Button::new(crate::i18n::tr("Note speed curve…")).wrap(true),
+            )
+            .clicked()
+        {
+            self.open_speed_curve();
+        }
         if ui.button(crate::i18n::tr("Hitsounds…")).clicked() {
             self.open_sounds();
         }

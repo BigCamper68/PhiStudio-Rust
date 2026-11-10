@@ -40,6 +40,7 @@ pub enum Command {
         id: NoteId,
         gain: Option<crate::NoteSoundGain>,
     },
+    EditSpeedCurve(crate::speed_curve::SpeedCurveEdit),
     SetControlCurve {
         line: usize,
         kind: crate::ControlKind,
@@ -127,6 +128,7 @@ enum Delta {
     Shader(crate::shaders::ShaderDelta),
     Advanced(crate::advanced::AdvancedDelta),
     Extras(crate::note_extras::ExtraDelta),
+    SpeedCurve(crate::speed_curve::SpeedCurveDelta),
     Groups(crate::groups::GroupDelta),
     Group(Vec<Delta>),
     Tools(crate::tools::ToolDelta),

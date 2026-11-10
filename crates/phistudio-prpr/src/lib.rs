@@ -10,7 +10,9 @@ mod media;
 mod noise_fields;
 mod note_inspection;
 mod sound_gain;
+mod speed_curve;
 pub use sound_gain::render_hitsound_gain;
+pub use speed_curve::{SpeedCurveProfile, fit_speed_curve, speed_curve_profile};
 mod playback;
 mod render;
 pub use cover::{CoverImage, audio_file_length, load_project_cover, load_texture_thumbnail};
@@ -70,6 +72,7 @@ pub fn suspend_audio() {
 }
 
 pub struct Preview {
+    speed_curve_horizon: f64,
     extension_effects: extension_effects::ExtensionEffects,
     noise_fields: noise_fields::NoiseFields,
     anchors: anchors::Anchors,

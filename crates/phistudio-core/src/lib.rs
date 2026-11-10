@@ -98,3 +98,5 @@ pub use editor_sounds::{
     EditorSoundCategory, EditorSoundEvent, EditorSoundOptions, EditorSoundPack, EditorSoundRule,
     EditorSoundStyle, EditorSoundTone,
 };
+
+pub mod speed_curve;

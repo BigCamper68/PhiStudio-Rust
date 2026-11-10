@@ -34,7 +34,17 @@ impl Workbench {
     fn workflow_modal_open_without_release_notes(&self) -> bool {
         self.sounds.open || self.workflow_modal_open_without_sound_manager()
     }
+    pub(crate) fn modal_open_except_speed_curve(&self) -> bool {
+        self.release_notes_open()
+            || self.sounds.open
+            || self.plugin_editor_action_modal()
+            || self.plugin_dialog_modal()
+            || self.workflow_modal_open_without_curve()
+    }
     fn workflow_modal_open_without_sound_manager(&self) -> bool {
+        self.speed_curve.captures_input() || self.workflow_modal_open_without_curve()
+    }
+    fn workflow_modal_open_without_curve(&self) -> bool {
         self.plugins.permissions_open()
             || self.plugin_provider_modal()
             || self.plugin_file_hook_modal()
@@ -94,6 +104,10 @@ impl Workbench {
         }
         if self.sounds.open && !self.modal_open_except_editor_sounds() {
             self.sounds.open = false;
+            return;
+        }
+        if self.speed_curve.open && !self.modal_open_except_speed_curve() {
+            self.speed_curve.close();
             return;
         }
         if self.cancel_plugin_editor_action() {

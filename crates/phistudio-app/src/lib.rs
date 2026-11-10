@@ -41,6 +41,7 @@ mod settings_ui;
 mod shader_ui;
 mod shortcuts_ui;
 mod skins_ui;
+mod speed_curve_ui;
 mod story_grid;
 mod story_tools;
 mod theme;

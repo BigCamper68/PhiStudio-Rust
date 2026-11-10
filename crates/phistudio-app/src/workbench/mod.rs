@@ -45,6 +45,7 @@ pub struct NoteDraft {
 pub struct Workbench {
     pub(crate) updates: crate::updates::State,
     pub(crate) sounds: crate::editor_sounds::State,
+    pub(crate) speed_curve: crate::speed_curve_ui::State,
     pub(crate) plugins: crate::plugins::State,
     pub(crate) timeline: TimelineState,
     pub(crate) transport: TransportState,
@@ -126,6 +127,7 @@ impl Workbench {
             files: FileWorkflow::default(),
             multi_line: Default::default(),
             sounds: Default::default(),
+            speed_curve: Default::default(),
             updates: Default::default(),
             audio_guide: Default::default(),
             audio_notes: Default::default(),
@@ -182,6 +184,14 @@ impl Workbench {
     }
 
     pub fn ui(&mut self, ctx: &egui::Context, canceled: bool) {
+        if canceled {
+            self.speed_curve.cancel();
+        }
+        if self.speed_curve.open
+            && (self.show_projects || self.preview.fullscreen || self.playtest.active())
+        {
+            self.speed_curve.close();
+        }
         if canceled
             || ctx.input(|i| {
                 !i.raw.has_focus
@@ -261,7 +271,10 @@ impl Workbench {
             self.dialogs(ctx);
             return;
         }
-        if !ctx.wants_keyboard_input() && !ctx.memory(|m| m.any_popup_open()) && !self.modal_open()
+        if !ctx.wants_keyboard_input()
+            && !ctx.memory(|m| m.any_popup_open())
+            && !self.modal_open()
+            && !self.speed_curve.open
         {
             self.tool_shortcuts(ctx);
         }

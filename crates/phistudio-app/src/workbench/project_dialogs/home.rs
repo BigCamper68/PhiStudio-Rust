@@ -5,7 +5,8 @@ impl Workbench {
         self.project_covers
             .get_or_insert_with(crate::covers::Covers::new)
             .update(ctx);
-        let blocked = self.sounds.open
+        let blocked = self.speed_curve.open
+            || self.sounds.open
             || self.release_notes_open()
             || self.plugins.permissions_open()
             || self.plugin_provider_modal()
@@ -146,7 +147,8 @@ impl Workbench {
                         ui.colored_label(flick(), crate::i18n::tr(error));
                     }
                 });
-                let blocked = self.sounds.open
+                let blocked = self.speed_curve.open
+                    || self.sounds.open
                     || self.release_notes_open()
                     || self.plugin_provider_modal()
                     || self.plugin_file_hook_modal()

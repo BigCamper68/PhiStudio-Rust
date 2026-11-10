@@ -78,6 +78,10 @@ impl Delta {
                 return crate::note_extras::volume_delta(doc, id, gain)
                     .map(|d| d.map(|d| (Self::Extras(d), "Edit note sound volume")));
             }
+            Command::EditSpeedCurve(edit) => {
+                return crate::speed_curve::prepare(doc, edit)
+                    .map(|d| d.map(|d| (Self::SpeedCurve(d), "Edit note speed curve")));
+            }
             Command::SetControlCurve { line, kind, points } => {
                 return crate::note_extras::control_delta(doc, line, kind, points)
                     .map(|d| d.map(|d| (Self::Extras(d), "Edit note control curve")));
@@ -189,6 +193,7 @@ impl Delta {
             Self::Noise(delta) => delta.apply(doc, forward),
             Self::Advanced(delta) => delta.apply(doc, forward),
             Self::Extras(delta) => delta.apply(doc, forward),
+            Self::SpeedCurve(delta) => delta.apply(doc, forward),
             Self::Groups(delta) => delta.apply(doc, forward),
             Self::Tools(delta) => delta.apply(doc, forward),
             Self::Group(deltas) => {

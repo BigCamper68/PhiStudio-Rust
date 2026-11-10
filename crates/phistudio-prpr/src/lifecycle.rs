@@ -56,6 +56,7 @@ impl Preview {
         let mut noise_fields = noise_fields::NoiseFields::default();
         noise_fields.load(document).await?;
         let mut preview = Self {
+            speed_curve_horizon: crate::speed_curve::clock::native_horizon(document),
             extension_effects: Default::default(),
             noise_fields,
             anchors,
@@ -128,6 +129,7 @@ impl Preview {
         self.anchors = anchors::Anchors::install(document, &mut chart);
         self.judge = Judge::new(&chart);
         effects::replace(self, &mut chart, document, asset_root).await;
+        self.speed_curve_horizon = crate::speed_curve::clock::native_horizon(document);
         self.chart = chart;
         self.configure_effects();
         self.apply_options(document, asset_root, options).await;
