@@ -35,7 +35,9 @@ note arrays are unchanged by a curve operation.
 A drag or numeric edit stages its curve on a worker and commits once when editing
 ends. Graph gestures consume ordered primary-pointer events from the same touch
 router as Android controls, including whole gestures delivered in one frame and
-final movement carried by the release event. A tap selecting a point does not
+final movement carried by the release event. The main-loop input reset distinguishes
+real dialogs from graph capture: chart tools are blocked during a gesture without
+canceling the pointer or a pending curve commit. A tap selecting a point does not
 snap its distance or create history. Add, delete and easing changes each create
 one Undo action. Touch cancel, lost focus, Escape during an edit, Back or closing the window discard pending
 work. Back/Escape then closes the window. A late worker result cannot overwrite
@@ -94,6 +96,8 @@ cargo test -p phistudio-app --lib --locked speed_curve_ui
 cargo build -p phistudio-app --example ui-layout-probe --locked
 xvfb-run -a -s '-screen 0 873x393x24' target/debug/examples/ui-layout-probe \
   artifacts/checks/speed-curves speed-curves 873x393
+cargo build -p phistudio-app --bin phistudio --locked
+xvfb-run -a -s '-screen 0 1280x800x24' python3 tools/speed-curve-smoke.py
 ```
 
 Tests cover native playback parity, all 29 easings, BPM boundaries, multiple
@@ -101,7 +105,12 @@ layers, negative speed, Y Control, Hold pinning, range-edge preservation,
 stale results, private metadata, region
 persistence, actual canvas input and exact Undo/Redo. Mobile regressions cover
 routed taps, add-mode placement drags, batched movement, release coordinates,
-selection without edits, duplicate beats and second-finger cancellation. The GPU
-probe checks the English and Russian window, a routed touch add-point gesture,
-the native clock and chart round-trips on the requested viewport. Touch/device latency and system keyboard
-behavior still require physical-device checks.
+selection without edits, duplicate beats, second-finger cancellation and real
+dialog transitions. Mobile tests run the production main-loop modal reset and
+the sound-wrapped UI entry point. The GPU probe enters Gui's actual Miniquad touch
+handler with physical framebuffer coordinates, checks the English and Russian
+window and verifies native clock and chart round-trips on the requested viewport.
+`tools/speed-curve-smoke.py` launches the real application and checks point
+creation, dragging, Save and exact Undo/Redo through its ordinary controls.
+Touch/device latency and system keyboard behavior still require physical-device
+checks.

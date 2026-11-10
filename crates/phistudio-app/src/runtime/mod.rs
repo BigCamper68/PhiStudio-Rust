@@ -1,3 +1,5 @@
+mod input;
+pub(crate) use input::ModalInput;
 mod smoke;
 use super::*;
 mod options;
@@ -191,7 +193,7 @@ pub(crate) async fn run(options: Options) -> Result<()> {
     let mut noise_override = None;
     let mut applied_skin: Option<String> = None;
     let mut frame = 0_u32;
-    let mut input_blocked = false;
+    let mut modal_input = ModalInput::default();
     if let Some(dir) = &options.smoke {
         std::fs::create_dir_all(dir)?;
     }
@@ -232,11 +234,9 @@ pub(crate) async fn run(options: Options) -> Result<()> {
                 }
             }
         }
-        let blocked = app.modal_open();
-        if blocked && !input_blocked {
+        if modal_input.update(&app) {
             gui.cancel_input();
         }
-        input_blocked = blocked;
         #[cfg(target_os = "android")]
         {
             use std::sync::atomic::Ordering;

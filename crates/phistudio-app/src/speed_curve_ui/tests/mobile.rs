@@ -4,6 +4,7 @@ use crate::touch::TouchRouter;
 struct Phone {
     ctx: egui::Context,
     router: TouchRouter,
+    modal_input: crate::runtime::ModalInput,
     size: egui::Vec2,
 }
 impl Phone {
@@ -21,7 +22,13 @@ impl Phone {
         }
         self.frame(app, events, canceled);
     }
-    fn frame(&mut self, app: &mut Workbench, events: Vec<egui::Event>, canceled: bool) {
+    fn frame(&mut self, app: &mut Workbench, mut events: Vec<egui::Event>, mut canceled: bool) {
+        if self.modal_input.update(app) {
+            let mut cancel = self.router.cancel();
+            cancel.append(&mut events);
+            events = cancel;
+            canceled = true;
+        }
         let time = self.ctx.input(|i| i.time) + 1. / 60.;
         let _ = self.ctx.run(
             egui::RawInput {
@@ -31,7 +38,7 @@ impl Phone {
                 events,
                 ..Default::default()
             },
-            |ctx| app.ui(ctx, canceled),
+            |ctx| app.sound_ui(ctx, canceled),
         );
     }
     fn touch(&mut self, app: &mut Workbench, phase: egui::TouchPhase, pos: Pos2) {
@@ -82,6 +89,7 @@ fn routed_phone_taps_add_points_and_vertical_drags_move_them() {
         let mut phone = Phone {
             ctx: context(),
             router: TouchRouter::default(),
+            modal_input: Default::default(),
             size,
         };
         let mut app = app();
@@ -142,6 +150,7 @@ fn an_android_drag_delivered_in_one_frame_moves_the_point_once() {
     let mut phone = Phone {
         ctx: context(),
         router: TouchRouter::default(),
+        modal_input: Default::default(),
         size: vec2(360., 780.),
     };
     let mut app = app();
@@ -188,6 +197,7 @@ fn batched_phone_taps_add_select_delete_and_report_duplicate_beats() {
     let mut phone = Phone {
         ctx: context(),
         router: TouchRouter::default(),
+        modal_input: Default::default(),
         size: vec2(360., 780.),
     };
     let mut app = app();
@@ -245,6 +255,7 @@ fn phone_up_uses_its_final_position_and_a_second_finger_cancels_the_edit() {
     let mut phone = Phone {
         ctx: context(),
         router: TouchRouter::default(),
+        modal_input: Default::default(),
         size: vec2(360., 780.),
     };
     let mut app = app();
@@ -294,6 +305,7 @@ fn dragging_in_add_mode_places_a_new_point_at_the_finger_release() {
     let mut phone = Phone {
         ctx: context(),
         router: TouchRouter::default(),
+        modal_input: Default::default(),
         size: vec2(360., 780.),
     };
     let mut app = app();
@@ -324,4 +336,41 @@ fn dragging_in_add_mode_places_a_new_point_at_the_finger_release() {
     assert!((node.distance - distance).abs() > 100.);
     app.history_step_now(false);
     assert_eq!(app.editor.document().as_json(), &original);
+}
+
+#[test]
+fn a_real_dialog_still_resets_the_platform_pointer_during_a_graph_gesture() {
+    let mut phone = Phone {
+        ctx: context(),
+        router: TouchRouter::default(),
+        modal_input: Default::default(),
+        size: vec2(360., 780.),
+    };
+    let mut app = app();
+    phone.settle(&mut app);
+    let before = app.editor.document().as_json().clone();
+    app.speed_curve.mode = Mode::Add;
+    let pos = point(&phone.ctx, &app, 2., 0.);
+    phone.touch(&mut app, egui::TouchPhase::Start, pos);
+    assert!(
+        app.modal_open(),
+        "The graph must reserve chart input while pressed"
+    );
+    assert!(app.speed_curve.captures_input());
+    app.sounds.open = true;
+    phone.frame(&mut app, vec![], false);
+    assert!(!app.speed_curve.captures_input());
+    app.sounds.open = false;
+    phone.touch(&mut app, egui::TouchPhase::End, pos);
+    phone.settle(&mut app);
+    assert_eq!(app.editor.document().as_json(), &before);
+    app.speed_curve.mode = Mode::Add;
+    phone.touch(&mut app, egui::TouchPhase::Start, pos);
+    phone.touch(&mut app, egui::TouchPhase::End, pos);
+    phone.settle(&mut app);
+    assert_ne!(
+        app.editor.document().as_json(),
+        &before,
+        "The dialog must release input for the next graph gesture"
+    );
 }

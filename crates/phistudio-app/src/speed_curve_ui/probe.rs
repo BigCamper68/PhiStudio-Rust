@@ -27,11 +27,16 @@ pub(crate) async fn run(
     let original = app.editor.document().as_json().clone();
     let mut added = false;
     let mut down = None;
-    let mut touch = crate::touch::TouchRouter::default();
-    let mut input_context: Option<egui::Context> = None;
+    let mut modal_input = crate::runtime::ModalInput::default();
+    let mut input_scale = 1.;
+    let mut viewport = egui::Rect::NOTHING;
     let mut plot: Option<egui::Rect> = None;
     let mut window_rect: Option<egui::Rect> = None;
     for frame in 0..100 {
+        if modal_input.update(app) {
+            gui.cancel_input();
+        }
+        gui.set_ui_scale(app.options.ui_scale);
         if app.editor.revision() != revision {
             preview
                 .replace_chart(app.editor.document(), None, &app.project_options)
@@ -56,31 +61,28 @@ pub(crate) async fn run(
                         - (distance / app.speed_curve.limit) as f32 * rect.height() * 0.5,
                 );
                 down = Some(pos);
-                let (events, canceled) = touch.event_with_context(
-                    input_context.as_ref().unwrap(),
-                    egui::TouchPhase::Start,
-                    1,
+                touch(
+                    gui,
+                    macroquad::miniquad::TouchPhase::Started,
                     pos,
-                    get_time(),
+                    input_scale,
                 );
-                gui.probe_input(events, canceled);
                 added = true;
             }
         } else if let Some(pos) = down.take() {
-            let (events, canceled) = touch.event_with_context(
-                input_context.as_ref().unwrap(),
-                egui::TouchPhase::End,
-                1,
+            touch(
+                gui,
+                macroquad::miniquad::TouchPhase::Ended,
                 pos,
-                get_time(),
+                input_scale,
             );
-            gui.probe_input(events, canceled);
         }
         set_default_camera();
         clear_background(BLACK);
         gui.run(|ctx, canceled| {
-            input_context = Some(ctx.clone());
-            app.ui(ctx, canceled);
+            input_scale = ctx.pixels_per_point();
+            viewport = ctx.screen_rect();
+            app.sound_ui(ctx, canceled);
             plot = ctx.data_mut(|d| d.get_temp::<egui::Rect>(egui::Id::new("speed-curve-plot")));
             window_rect = crate::window::visible_rect(ctx, egui::Id::new("Note speed curve"));
         });
@@ -135,7 +137,8 @@ pub(crate) async fn run(
                 preview.speed_curve_horizon(),
             );
             gui.run(|ctx, canceled| {
-                app.ui(ctx, canceled);
+                app.sound_ui(ctx, canceled);
+                viewport = ctx.screen_rect();
                 plot =
                     ctx.data_mut(|d| d.get_temp::<egui::Rect>(egui::Id::new("speed-curve-plot")));
                 window_rect = crate::window::visible_rect(ctx, egui::Id::new("Note speed curve"));
@@ -150,7 +153,7 @@ pub(crate) async fn run(
         let rect =
             window_rect.ok_or_else(|| anyhow::anyhow!("Speed curve window was not rendered"))?;
         ensure!(
-            rect.right() <= screen_width() + 1. && rect.bottom() <= screen_height() + 1.,
+            rect.right() <= viewport.right() + 1. && rect.bottom() <= viewport.bottom() + 1.,
             "Speed curve window exceeds the viewport: {rect:?}"
         );
         get_screen_data().export_png(
@@ -177,8 +180,21 @@ pub(crate) async fn run(
     std::fs::write(
         out.join("result.json"),
         serde_json::to_vec_pretty(
-            &serde_json::json!({"native_clock":true,"canvas_add":true,"routed_touch_add":true,"exact_undo_redo":true,"viewport":[screen_width(),screen_height()],"pass":true}),
+            &serde_json::json!({"native_clock":true,"canvas_add":true,"routed_touch_add":true,"runtime_modal_input":true,"platform_touch":true,"input_scale":input_scale,"exact_undo_redo":true,"viewport":[screen_width(),screen_height()],"pass":true}),
         )?,
     )?;
     Ok(())
+}
+
+// Enter through Gui's real Miniquad handler with physical framebuffer coordinates.
+fn touch(gui: &mut Gui, phase: macroquad::miniquad::TouchPhase, pos: egui::Pos2, scale: f32) {
+    macroquad::miniquad::EventHandler::touch_event(
+        gui,
+        unsafe { get_internal_gl() }.quad_context,
+        phase,
+        1,
+        pos.x * scale,
+        pos.y * scale,
+        get_time(),
+    );
 }
