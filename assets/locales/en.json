@@ -2176,5 +2176,18 @@
   "Native playback cannot represent this curve accurately; simplify its shape or range": "Native playback cannot represent this curve accurately; simplify its shape or range",
   "The native speed curve could not be evaluated": "The native speed curve could not be evaluated",
   "Speed curve worker interrupted": "Speed curve worker interrupted",
-  "Choose an ordered, nonnegative work range": "Choose an ordered, nonnegative work range"
+  "Choose an ordered, nonnegative work range": "Choose an ordered, nonnegative work range",
+  "Fullscreen application": "Fullscreen application",
+  "Use the whole display, including the camera cutout area on Android.": "Use the whole display, including the camera cutout area on Android.",
+  "Choose playback rate 0.25, 0.5, 0.75, 1.0 or 1.5": "Choose playback rate 0.25, 0.5, 0.75, 1.0 or 1.5",
+  "Hitsound audition": "Hitsound audition",
+  "Current line": "Current line",
+  "Line groups": "Line groups",
+  "No groups selected: all hitsounds are muted.": "No groups selected: all hitsounds are muted.",
+  "Audition hitsounds on the current line or selected line groups": "Audition hitsounds on the current line or selected line groups",
+  "Changes hitsound audio only. Note visibility and judgment stay unchanged.": "Changes hitsound audio only. Note visibility and judgment stay unchanged.",
+  "Curve actions": "Curve actions",
+  "Curve actions…": "Curve actions…",
+  "Loop range": "Loop range",
+  "Drag empty space to pan. Pinch to zoom distance; spread horizontally to zoom time. Drag the white playhead to seek. Drag the bottom range handles to set playback bounds.": "Drag empty space to pan. Pinch to zoom distance; spread horizontally to zoom time. Drag the white playhead to seek. Drag the bottom range handles to set playback bounds."
 }

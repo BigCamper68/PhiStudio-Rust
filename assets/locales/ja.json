@@ -2176,5 +2176,18 @@
   "Native playback cannot represent this curve accurately; simplify its shape or range": "ネイティブ再生で正確に再現できません。形状を簡単にするか範囲を狭めてください",
   "The native speed curve could not be evaluated": "ネイティブ速度カーブを計算できませんでした",
   "Speed curve worker interrupted": "速度カーブの計算が中断されました",
-  "Choose an ordered, nonnegative work range": "0以降で順序通りの編集範囲を指定してください"
+  "Choose an ordered, nonnegative work range": "0以降で順序通りの編集範囲を指定してください",
+  "Fullscreen application": "アプリを全画面表示",
+  "Use the whole display, including the camera cutout area on Android.": "Androidのカメラ切り欠き周辺を含む画面全体を使います。",
+  "Choose playback rate 0.25, 0.5, 0.75, 1.0 or 1.5": "再生速度は0.25、0.5、0.75、1.0、1.5から選んでください",
+  "Hitsound audition": "ヒット音の試聴範囲",
+  "Current line": "現在のライン",
+  "Line groups": "ライングループ",
+  "No groups selected: all hitsounds are muted.": "グループ未選択のため全ヒット音をミュートしています。",
+  "Audition hitsounds on the current line or selected line groups": "現在のラインまたは選択グループのヒット音を試聴",
+  "Changes hitsound audio only. Note visibility and judgment stay unchanged.": "ヒット音だけを変更し、ノーツの表示と判定を維持します。",
+  "Curve actions": "カーブ操作",
+  "Curve actions…": "カーブ操作…",
+  "Loop range": "範囲をループ",
+  "Drag empty space to pan. Pinch to zoom distance; spread horizontally to zoom time. Drag the white playhead to seek. Drag the bottom range handles to set playback bounds.": "空白部分をドラッグして移動。ピンチで距離、指を左右に広げて時間を拡大縮小します。白い再生ヘッドでシークし、下部のハンドルで再生範囲を指定します。"
 }

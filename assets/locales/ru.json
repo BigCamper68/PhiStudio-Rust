@@ -2176,5 +2176,18 @@
   "Native playback cannot represent this curve accurately; simplify its shape or range": "Предпросмотр не может точно воспроизвести кривую. Упростите форму или уменьшите диапазон",
   "The native speed curve could not be evaluated": "Не удалось рассчитать кривую скорости",
   "Speed curve worker interrupted": "Расчёт кривой скорости прерван",
-  "Choose an ordered, nonnegative work range": "Задайте рабочий диапазон по порядку, начиная с нуля или позже"
+  "Choose an ordered, nonnegative work range": "Задайте рабочий диапазон по порядку, начиная с нуля или позже",
+  "Fullscreen application": "Приложение на весь экран",
+  "Use the whole display, including the camera cutout area on Android.": "Использовать весь экран, включая область возле выреза камеры на Android.",
+  "Choose playback rate 0.25, 0.5, 0.75, 1.0 or 1.5": "Выберите скорость 0.25, 0.5, 0.75, 1.0 или 1.5",
+  "Hitsound audition": "Прослушивание звуков нот",
+  "Current line": "Текущая линия",
+  "Line groups": "Группы линий",
+  "No groups selected: all hitsounds are muted.": "Группы не выбраны: звуки всех нот отключены.",
+  "Audition hitsounds on the current line or selected line groups": "Слушать звуки нот текущей линии или выбранных групп линий",
+  "Changes hitsound audio only. Note visibility and judgment stay unchanged.": "Меняет только звуки нот, сохраняя их видимость и обработку попаданий.",
+  "Curve actions": "Действия с кривой",
+  "Curve actions…": "Действия с кривой…",
+  "Loop range": "Зациклить диапазон",
+  "Drag empty space to pan. Pinch to zoom distance; spread horizontally to zoom time. Drag the white playhead to seek. Drag the bottom range handles to set playback bounds.": "Перетаскивайте пустую область для прокрутки. Щипок меняет масштаб расстояния, горизонтальное разведение пальцев — масштаб времени. Белая линия перематывает чарт, нижние маркеры задают диапазон воспроизведения."
 }

@@ -25,7 +25,7 @@ use the local Android debug signing key; do not commit signing credentials.
 Use clean Gradle packaging before distributing a build to avoid stale payloads.
 Incremental APK updates can retain unused ZIP space after replacing native
 libraries. The APK verifier rejects excessive unused space. Android builds show
-their version name and code on the Projects screen; both come from
+their version name and code in Settings → About; both come from
 `android/app/build.gradle` and distinguish installed test builds.
 
 On ARM64 Linux, the official NDK's Linux host tools may require an ARM64 overlay:
@@ -98,3 +98,19 @@ usable by authorized workflows but cannot be downloaded through the normal
 Secrets interface. Changes to the signing workflow must be reviewed carefully:
 code with access to signing credentials can disclose them. Do not add untrusted
 pull-request triggers or upload signing directories as artifacts.
+
+## Application fullscreen
+
+Settings → Fullscreen application controls the entire app and is persisted with
+editor preferences. On Android it enables display-cutout layout, hides system
+bars and restores normal safe padding when disabled. The surface continues to
+use physical coordinates and the existing IME resize policy. Window focus
+restoration reapplies immersive bars without requesting the keyboard.
+
+```sh
+javac -d app/build/window-tests app/src/main/java/com/phistudio/rust/WindowLayoutPolicy.java tests/WindowLayoutPolicyTest.java
+java -cp app/build/window-tests com.phistudio.rust.WindowLayoutPolicyTest
+```
+
+Check portrait/landscape cutouts, keyboard opening/closing and transient system
+bars on a physical device before claiming device coverage.

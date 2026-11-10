@@ -2176,5 +2176,18 @@
   "Native playback cannot represent this curve accurately; simplify its shape or range": "La reproducción nativa no puede representar la curva; simplifica su forma o intervalo",
   "The native speed curve could not be evaluated": "No se pudo evaluar la curva de velocidad nativa",
   "Speed curve worker interrupted": "Se interrumpió el cálculo de la curva",
-  "Choose an ordered, nonnegative work range": "Elige un intervalo ordenado y no negativo"
+  "Choose an ordered, nonnegative work range": "Elige un intervalo ordenado y no negativo",
+  "Fullscreen application": "Aplicación a pantalla completa",
+  "Use the whole display, including the camera cutout area on Android.": "Usa toda la pantalla, incluida la zona de la cámara en Android.",
+  "Choose playback rate 0.25, 0.5, 0.75, 1.0 or 1.5": "Elige velocidad 0.25, 0.5, 0.75, 1.0 o 1.5",
+  "Hitsound audition": "Escucha de sonidos de notas",
+  "Current line": "Línea actual",
+  "Line groups": "Grupos de líneas",
+  "No groups selected: all hitsounds are muted.": "Sin grupos seleccionados: todos los sonidos están silenciados.",
+  "Audition hitsounds on the current line or selected line groups": "Escucha sonidos de la línea actual o los grupos seleccionados",
+  "Changes hitsound audio only. Note visibility and judgment stay unchanged.": "Cambia solo los sonidos de notas y conserva la visibilidad y el juicio.",
+  "Curve actions": "Acciones de curva",
+  "Curve actions…": "Acciones de curva…",
+  "Loop range": "Repetir intervalo",
+  "Drag empty space to pan. Pinch to zoom distance; spread horizontally to zoom time. Drag the white playhead to seek. Drag the bottom range handles to set playback bounds.": "Arrastra el espacio vacío para desplazar. Pellizca para ajustar la distancia; separa horizontalmente para ampliar el tiempo. Arrastra la línea blanca para buscar y los marcadores inferiores para fijar el intervalo."
 }

@@ -59,10 +59,15 @@ pub(crate) struct State {
     pub open: bool,
     pub(crate) input_canceled: bool,
     pointer: Option<graph::PointerGesture>,
+    navigation: graph::Navigation,
+    context: Option<egui::Pos2>,
+    looping: bool,
+    play_range: [Beat; 2],
     target: Option<Target>,
     native_clock: Option<(u64, u64, f64)>,
     clock_required: bool,
     clock_waiting: bool,
+    navigation_limit: f64,
     source: Option<Arc<SpeedCurveSource>>,
     profile: Option<Arc<SpeedCurveProfile>>,
     preview: Option<SpeedCurveProfile>,
@@ -91,10 +96,15 @@ impl Default for State {
             open: false,
             input_canceled: false,
             pointer: None,
+            navigation: Default::default(),
+            context: None,
+            looping: false,
+            play_range: [Beat::ZERO, Beat::new(8, 0, 1).unwrap()],
             target: None,
             native_clock: None,
             clock_required: false,
             clock_waiting: false,
+            navigation_limit: 1_000_000.,
             source: None,
             profile: None,
             preview: None,
@@ -221,8 +231,13 @@ impl State {
                 if done.serial == self.serial {
                     match done.result {
                         Ok(Done::Loaded(profile)) => {
+                            let selected = self
+                                .selected
+                                .and_then(|i| self.points.get(i))
+                                .map(|p| p.beat);
                             self.points = profile.points.clone();
-                            self.selected = self.selected.filter(|i| *i < self.points.len());
+                            self.selected = selected
+                                .and_then(|beat| self.points.iter().position(|p| p.beat == beat));
                             if self.fit_view {
                                 self.start = profile.range[0].as_f64();
                                 self.span = profile.range[1].as_f64() - self.start;
@@ -289,7 +304,9 @@ impl State {
         self.serial = self.serial.wrapping_add(1);
         self.queued = None;
         self.drag = None;
-        self.pointer = None;
+        if let Some(pointer) = self.pointer.take() {
+            pointer.restore_range(&mut self.play_range);
+        }
         self.preview = None;
         self.commit_pending = false;
         if let Some(profile) = &self.profile {
@@ -299,8 +316,13 @@ impl State {
     pub(crate) fn captures_input(&self) -> bool {
         self.open && (self.pointer.is_some() || self.drag.is_some() || self.commit_pending)
     }
+    pub(crate) fn dismiss_context(&mut self) -> bool {
+        self.context.take().is_some()
+    }
     pub(crate) fn close(&mut self) {
         self.cancel();
+        self.navigation = Default::default();
+        self.context = None;
         self.open = false;
         self.serial = self.serial.wrapping_add(1);
         self.queued = None;
@@ -316,11 +338,67 @@ impl State {
         self.error = None;
         self.queue(Task::Load);
     }
+    pub(crate) fn is_scrubbing(&self) -> bool {
+        self.open && self.pointer.as_ref().is_some_and(|p| p.is_scrubbing())
+    }
+    fn navigation_end(&self) -> f64 {
+        self.navigation_limit
+    }
+    fn clamp_view(&mut self) {
+        self.span = self.span.clamp(0.05, self.navigation_end().max(0.05));
+        self.start = self
+            .start
+            .clamp(0., (self.navigation_end() - self.span).max(0.));
+        self.limit = self.limit.clamp(1., 1e9);
+    }
+    fn load_visible_range(&mut self) {
+        if self.commit_pending || self.source.is_none() {
+            return;
+        }
+        let low = self.start.min(self.range[0].as_f64()).floor().max(0.);
+        let high = (self.start + self.span)
+            .max(self.range[1].as_f64())
+            .ceil()
+            .min(self.navigation_end());
+        if let (Ok(a), Ok(b)) = (Beat::from_grid(low, 1920), Beat::from_grid(high, 1920))
+            && [a, b] != self.range
+        {
+            self.range = [a, b];
+            if let Some(source) = &self.source {
+                ui::expand_nonlinear_range(source, self.layer, &mut self.range);
+            }
+            self.range_text = self.range.map(|b| b.to_string());
+            self.fit_view = false;
+            self.load();
+        }
+    }
     fn busy(&self) -> bool {
         self.profile.is_none() || self.commit_pending
     }
 }
 impl Workbench {
+    /// Called after the native music clock advances, before updating playback.
+    pub(crate) fn constrain_curve_playback(&mut self) -> bool {
+        let state = &self.speed_curve;
+        if !state.open || state.source.is_none() || !self.transport.playing || self.is_scrubbing() {
+            return false;
+        }
+        let [start, end] = state.play_range.map(|b| b.as_f64());
+        if self.transport.beat >= end {
+            if state.looping {
+                self.transport.beat = start + (self.transport.beat - end).rem_euclid(end - start);
+            } else {
+                self.transport.beat = end;
+                self.transport.playing = false;
+            }
+            true
+        } else if self.transport.beat < start {
+            self.transport.beat = start;
+            true
+        } else {
+            false
+        }
+    }
     fn speed_curve_note(&self) -> Option<NoteId> {
         let selection = self.selection();
         (selection.notes.len() == 1

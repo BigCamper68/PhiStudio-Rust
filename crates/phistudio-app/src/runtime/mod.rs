@@ -192,6 +192,7 @@ pub(crate) async fn run(options: Options) -> Result<()> {
     );
     let mut noise_override = None;
     let mut applied_skin: Option<String> = None;
+    let mut applied_fullscreen = None;
     let mut frame = 0_u32;
     let mut modal_input = ModalInput::default();
     if let Some(dir) = &options.smoke {
@@ -205,6 +206,10 @@ pub(crate) async fn run(options: Options) -> Result<()> {
         .transpose()?;
     loop {
         files.update(&mut app);
+        if Some(app.options.fullscreen_app) != applied_fullscreen {
+            applied_fullscreen = Some(app.options.fullscreen_app);
+            macroquad::window::set_fullscreen(app.options.fullscreen_app);
+        }
         if options.smoke.is_none() && options.playback_smoke.is_none() {
             app.updates.tick(app.options.check_updates_on_start);
             app.poll_release_notes();
@@ -369,7 +374,7 @@ pub(crate) async fn run(options: Options) -> Result<()> {
             app.asset_revision,
         );
         let chart_changed = key != rendered;
-        let seek = before_ui != app.transport.beat;
+        let mut seek = before_ui != app.transport.beat;
         if chart_changed {
             if key.0 != rendered.0 || key.3 != rendered.3 {
                 preview.invalidate_resources();
@@ -403,6 +408,7 @@ pub(crate) async fn run(options: Options) -> Result<()> {
         if let Err(error) = preview.set_editor_options(&app.options, app.line) {
             app.error = Some(format!("Could not configure preview: {error:#}"));
         }
+        preview.set_hitsound_lines(app.hitsound_lines());
         if let Some((reference, kind)) = app.inspector.audition.take()
             && let Err(error) = preview.audition(reference.as_deref(), kind)
         {
@@ -431,6 +437,7 @@ pub(crate) async fn run(options: Options) -> Result<()> {
                 }
             }
         }
+        seek |= app.constrain_curve_playback();
         let seconds = app.editor.document().tempo().seconds_at(app.transport.beat);
         if let Err(error) = preview.set_playback(
             seconds,

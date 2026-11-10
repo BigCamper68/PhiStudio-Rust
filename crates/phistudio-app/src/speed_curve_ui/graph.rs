@@ -1,8 +1,10 @@
 mod input;
+mod navigation;
 use super::*;
 use crate::{i18n::tr, theme};
 use egui::{Align2, FontId, Pos2, Rect, Shape, Stroke, pos2, vec2};
 pub(super) use input::PointerGesture;
+pub(super) use navigation::Navigation;
 struct View {
     rect: Rect,
     start: f64,
@@ -49,7 +51,7 @@ pub(super) fn canvas(
     ui: &mut egui::Ui,
     state: &mut State,
     division: i32,
-    cursor: f64,
+    cursor: &mut f64,
     height: f32,
 ) -> bool {
     let (outer, response) = ui.allocate_exact_size(
@@ -181,12 +183,40 @@ pub(super) fn canvas(
             }
         }
     }
-    let x = view.point(cursor, 0.).x;
+    let x = view.point(*cursor, 0.).x;
     if x >= rect.left() && x <= rect.right() {
         plot.line_segment(
             [pos2(x, rect.top()), pos2(x, rect.bottom())],
             Stroke::new(1_f32, theme::text()),
         );
+    }
+    // The top handle remains reachable even when a point coincides with time.
+    if x >= rect.left() && x <= rect.right() {
+        plot.add(Shape::convex_polygon(
+            vec![
+                pos2(x - 7., rect.top()),
+                pos2(x + 7., rect.top()),
+                pos2(x, rect.top() + 10.),
+            ],
+            theme::text(),
+            Stroke::NONE,
+        ));
+    }
+    for (edge, beat) in state.play_range.iter().enumerate() {
+        let x = view.point(beat.as_f64(), 0.).x;
+        if x >= rect.left() && x <= rect.right() {
+            plot.line_segment(
+                [pos2(x, rect.bottom() - 12.), pos2(x, rect.bottom())],
+                Stroke::new(3_f32, theme::accent()),
+            );
+            plot.line_segment(
+                [
+                    pos2(x, rect.bottom() - 6.),
+                    pos2(x + if edge == 0 { 9. } else { -9. }, rect.bottom() - 6.),
+                ],
+                Stroke::new(2_f32, theme::accent()),
+            );
+        }
     }
     for (i, point) in state.points.iter().enumerate() {
         let pos = view.point(point.beat.as_f64(), point.distance);
@@ -218,6 +248,12 @@ pub(super) fn canvas(
             );
         }
     }
+    if !ui.is_enabled() {
+        return false;
+    }
+    if navigation::handle(ui, state, &view) {
+        return false;
+    }
     if state.busy() {
         return false;
     }
@@ -233,11 +269,9 @@ pub(super) fn canvas(
             } else {
                 state.start -= f64::from(scroll.x + scroll.y) * state.span / 600.;
             }
-            state.start = state.start.clamp(
-                state.range[0].as_f64(),
-                (state.range[1].as_f64() - state.span).max(state.range[0].as_f64()),
-            );
+            state.clamp_view();
+            state.load_visible_range();
         }
     }
-    input::handle(ui, state, &view, division)
+    input::handle(ui, state, &view, division, cursor)
 }

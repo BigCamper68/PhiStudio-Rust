@@ -61,6 +61,7 @@ impl PreviewAspect {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct EditorOptions {
+    pub fullscreen_app: bool,
     pub check_updates_on_start: bool,
     pub release_notes_seen: Option<String>,
     pub editor_sounds: crate::EditorSoundOptions,
@@ -106,6 +107,7 @@ pub struct EditorOptions {
 impl Default for EditorOptions {
     fn default() -> Self {
         Self {
+            fullscreen_app: false,
             check_updates_on_start: true,
             release_notes_seen: None,
             editor_sounds: crate::EditorSoundOptions::default(),

@@ -70,6 +70,7 @@ impl Preview {
             shader_key,
             picking: picking::PickingState::new(source_ids),
             sound_schedule: Default::default(),
+            hitsound_audition: Default::default(),
             editor_options: phistudio_core::EditorOptions {
                 mark_active_line_id: false,
                 highlight_current_line: false,
@@ -131,6 +132,7 @@ impl Preview {
         effects::replace(self, &mut chart, document, asset_root).await;
         self.speed_curve_horizon = crate::speed_curve::clock::native_horizon(document);
         self.chart = chart;
+        self.hitsound_audition = Default::default();
         self.configure_effects();
         self.apply_options(document, asset_root, options).await;
         self.last_time = f64::NEG_INFINITY;

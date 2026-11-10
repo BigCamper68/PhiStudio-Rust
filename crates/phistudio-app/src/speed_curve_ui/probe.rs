@@ -163,6 +163,57 @@ pub(crate) async fn run(
         );
         next_frame().await;
     }
+    app.options.language = Language::English;
+    app.transport.beat = 2.;
+    app.transport.playing = true;
+    app.speed_curve.mode = Mode::Edit;
+    let rect = plot.ok_or_else(|| anyhow::anyhow!("Missing plot for touch navigation"))?;
+    let x = |beat: f64| {
+        rect.left() + ((beat - app.speed_curve.start) / app.speed_curve.span) as f32 * rect.width()
+    };
+    let from = egui::pos2(x(2.), rect.top() + 5.);
+    let to = egui::pos2(x(3.5), rect.top() + 5.);
+    touch(
+        gui,
+        macroquad::miniquad::TouchPhase::Started,
+        from,
+        input_scale,
+    );
+    pump(gui, app, preview, &mut modal_input).await;
+    ensure!(
+        app.is_scrubbing(),
+        "The real platform playhead did not capture touch"
+    );
+    touch(gui, macroquad::miniquad::TouchPhase::Moved, to, input_scale);
+    pump(gui, app, preview, &mut modal_input).await;
+    touch(gui, macroquad::miniquad::TouchPhase::Ended, to, input_scale);
+    pump(gui, app, preview, &mut modal_input).await;
+    ensure!(
+        (app.transport.beat - 3.5).abs() < 1e-4 && app.transport.playing && !app.is_scrubbing(),
+        "Playhead lost the final touch position or playback intent"
+    );
+    let initial = app.speed_curve.limit;
+    let center = rect.center();
+    for (phase, id, delta) in [
+        (macroquad::miniquad::TouchPhase::Started, 1, -30.),
+        (macroquad::miniquad::TouchPhase::Started, 2, 30.),
+        (macroquad::miniquad::TouchPhase::Moved, 1, -60.),
+        (macroquad::miniquad::TouchPhase::Moved, 2, 60.),
+        (macroquad::miniquad::TouchPhase::Ended, 1, -60.),
+        (macroquad::miniquad::TouchPhase::Ended, 2, 60.),
+    ] {
+        touch_id(gui, phase, id, center + egui::vec2(delta, 0.), input_scale);
+        pump(gui, app, preview, &mut modal_input).await;
+    }
+    ensure!(
+        (app.speed_curve.limit - initial * 0.5).abs() < 0.01,
+        "Actual Gui touch pinch failed"
+    );
+    ensure!(
+        app.editor.document().as_json() == &edited,
+        "Navigation authored an unintended chart edit"
+    );
+    app.transport.playing = false;
     app.history_step_now(false);
     ensure!(
         app.editor.document().as_json() == &original,
@@ -180,19 +231,54 @@ pub(crate) async fn run(
     std::fs::write(
         out.join("result.json"),
         serde_json::to_vec_pretty(
-            &serde_json::json!({"native_clock":true,"canvas_add":true,"routed_touch_add":true,"runtime_modal_input":true,"platform_touch":true,"input_scale":input_scale,"exact_undo_redo":true,"viewport":[screen_width(),screen_height()],"pass":true}),
+            &serde_json::json!({"native_clock":true,"canvas_add":true,"routed_touch_add":true,"runtime_modal_input":true,"platform_touch":true,"input_scale":input_scale,"pinch":true,"playhead_during_playback":true,"exact_undo_redo":true,"viewport":[screen_width(),screen_height()],"pass":true}),
         )?,
     )?;
     Ok(())
 }
 
+async fn pump(
+    gui: &mut Gui,
+    app: &mut Workbench,
+    preview: &mut phistudio_prpr::Preview,
+    modal: &mut crate::runtime::ModalInput,
+) {
+    if modal.update(app) {
+        gui.cancel_input();
+    }
+    app.speed_curve.record_native_clock(
+        app.session,
+        app.editor.revision(),
+        preview.speed_curve_horizon(),
+    );
+    set_default_camera();
+    clear_background(BLACK);
+    gui.run(|ctx, canceled| app.sound_ui(ctx, canceled));
+    preview.render(
+        app.editor.document().tempo().seconds_at(app.transport.beat),
+        preview.target_viewport(),
+    );
+    gui.draw();
+    unsafe { macroquad::miniquad::gl::glFinish() };
+    next_frame().await;
+}
+
 // Enter through Gui's real Miniquad handler with physical framebuffer coordinates.
 fn touch(gui: &mut Gui, phase: macroquad::miniquad::TouchPhase, pos: egui::Pos2, scale: f32) {
+    touch_id(gui, phase, 1, pos, scale);
+}
+fn touch_id(
+    gui: &mut Gui,
+    phase: macroquad::miniquad::TouchPhase,
+    id: u64,
+    pos: egui::Pos2,
+    scale: f32,
+) {
     macroquad::miniquad::EventHandler::touch_event(
         gui,
         unsafe { get_internal_gl() }.quad_context,
         phase,
-        1,
+        id,
         pos.x * scale,
         pos.y * scale,
         get_time(),

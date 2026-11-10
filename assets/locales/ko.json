@@ -2176,5 +2176,18 @@
   "Native playback cannot represent this curve accurately; simplify its shape or range": "기본 재생에서 곡선을 정확하게 표현할 수 없습니다. 모양이나 범위를 단순화하세요",
   "The native speed curve could not be evaluated": "기본 속도 곡선을 계산하지 못했습니다",
   "Speed curve worker interrupted": "속도 곡선 계산이 중단되었습니다",
-  "Choose an ordered, nonnegative work range": "0 이상의 정렬된 작업 범위를 선택하세요"
+  "Choose an ordered, nonnegative work range": "0 이상의 정렬된 작업 범위를 선택하세요",
+  "Fullscreen application": "앱 전체 화면",
+  "Use the whole display, including the camera cutout area on Android.": "Android 카메라 컷아웃 영역을 포함한 전체 디스플레이를 사용합니다.",
+  "Choose playback rate 0.25, 0.5, 0.75, 1.0 or 1.5": "재생 속도 0.25, 0.5, 0.75, 1.0 또는 1.5를 선택하세요",
+  "Hitsound audition": "히트사운드 모니터링",
+  "Current line": "현재 선",
+  "Line groups": "선 그룹",
+  "No groups selected: all hitsounds are muted.": "선택한 그룹이 없어 모든 히트사운드가 음소거됩니다.",
+  "Audition hitsounds on the current line or selected line groups": "현재 선 또는 선택한 선 그룹의 히트사운드 모니터링",
+  "Changes hitsound audio only. Note visibility and judgment stay unchanged.": "히트사운드만 변경하며 노트 표시와 판정을 유지합니다.",
+  "Curve actions": "곡선 작업",
+  "Curve actions…": "곡선 작업…",
+  "Loop range": "구간 반복",
+  "Drag empty space to pan. Pinch to zoom distance; spread horizontally to zoom time. Drag the white playhead to seek. Drag the bottom range handles to set playback bounds.": "빈 공간을 끌어 이동합니다. 핀치로 거리를, 손가락을 가로로 벌려 시간을 확대합니다. 흰 재생선을 끌어 탐색하고 아래 핸들로 재생 구간을 설정합니다."
 }

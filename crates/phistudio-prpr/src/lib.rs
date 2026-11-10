@@ -6,6 +6,7 @@ mod authoring_tests;
 mod cover;
 mod inspection;
 mod lifecycle;
+mod line_audio;
 mod media;
 mod noise_fields;
 mod note_inspection;
@@ -85,6 +86,7 @@ pub struct Preview {
     shader_warning: Option<String>,
     shader_key: Option<effects::ShaderKey>,
     sound_schedule: editor_audio::SoundSchedule,
+    hitsound_audition: line_audio::HitsoundMask,
     picking: picking::PickingState,
     editor_options: phistudio_core::EditorOptions,
     active_line: usize,

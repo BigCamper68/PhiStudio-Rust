@@ -85,6 +85,9 @@ impl Workbench {
                             });
                     });
                     ui.menu_button(crate::i18n::tr("Windows"), |ui| {
+                        if compact {
+                            ui.set_min_width((ctx.screen_rect().width() - 24.).min(260.));
+                        }
                         egui::ScrollArea::vertical()
                             .id_source("windows-menu-scroll")
                             .max_height((ctx.screen_rect().height() - 60.).max(60.))
@@ -152,13 +155,17 @@ impl Workbench {
                                     ui.with_layout(egui::Layout::top_down(Align::Min), |ui| {
                                         ui.label(crate::i18n::tr("Playback speed"));
                                     });
-                                    for rate in [1., 0.75, 0.5] {
-                                        ui.selectable_value(
-                                            &mut self.advanced.playback_rate,
-                                            rate,
-                                            format!("{rate}×"),
-                                        );
-                                    }
+                                    ui.horizontal_wrapped(|ui| {
+                                        ui.spacing_mut().button_padding.x = 4.;
+                                        ui.spacing_mut().item_spacing.x = 4.;
+                                        for rate in phistudio_core::PLAYBACK_RATES {
+                                            ui.selectable_value(
+                                                &mut self.advanced.playback_rate,
+                                                rate,
+                                                format!("{rate}×"),
+                                            );
+                                        }
+                                    });
                                 }
                                 if ui.button(crate::i18n::tr("Controls and help")).clicked() {
                                     self.windows.help = true;
@@ -167,18 +174,7 @@ impl Workbench {
                             });
                     });
                     if !compact {
-                        egui::ComboBox::from_id_source("playback-rate")
-                            .width(55.)
-                            .selected_text(format!("{}×", self.advanced.playback_rate))
-                            .touch_show_ui(ui, |ui| {
-                                for rate in [1., 0.75, 0.5] {
-                                    ui.selectable_value(
-                                        &mut self.advanced.playback_rate,
-                                        rate,
-                                        format!("{rate}×"),
-                                    );
-                                }
-                            });
+                        playback_rate(ui, &mut self.advanced.playback_rate, "playback-rate");
                     }
                     ui.separator();
                     if ui
@@ -257,4 +253,15 @@ impl Workbench {
                 });
             });
     }
+}
+
+fn playback_rate(ui: &mut egui::Ui, selected: &mut f64, id: &str) {
+    egui::ComboBox::from_id_source(id)
+        .width(70.)
+        .selected_text(format!("{selected}×"))
+        .touch_show_ui(ui, |ui| {
+            for rate in phistudio_core::PLAYBACK_RATES {
+                ui.selectable_value(selected, rate, format!("{rate}×"));
+            }
+        });
 }

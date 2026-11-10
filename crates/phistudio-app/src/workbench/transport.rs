@@ -2,7 +2,8 @@ use super::*;
 
 impl Workbench {
     pub fn is_scrubbing(&self) -> bool {
-        self.transport.scrubbing
+        self.speed_curve.is_scrubbing()
+            || self.transport.scrubbing
             || self.plugin_editor_action_modal()
             || self.timeline.input.is_scrubbing()
             || self.preview.drag.as_ref().is_some_and(|d| !d.exit)

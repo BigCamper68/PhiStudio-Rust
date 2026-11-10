@@ -24,6 +24,7 @@ fn preferences_round_trip_layout_and_audio_without_touching_project_or_recovery(
         music_volume: 0.3,
         hitsound_volume: 0.6,
         options: EditorOptions {
+            fullscreen_app: true,
             audio_notes: tools::AudioNoteOptions {
                 position: tools::AudioPosition::Random,
                 seed: 975,

@@ -116,9 +116,12 @@ impl Workbench {
     }
     pub(crate) fn sidebar_preview(&mut self, ui: &mut egui::Ui) {
         if self.options.preview_behind_grid {
-            if ui.button(crate::i18n::tr("Fullscreen Preview ↗")).clicked() {
-                self.open_fullscreen_preview();
-            }
+            ui.horizontal_wrapped(|ui| {
+                if ui.button(crate::i18n::tr("Fullscreen Preview ↗")).clicked() {
+                    self.open_fullscreen_preview();
+                }
+                self.hitsound_menu(ui);
+            });
             ui.separator();
         } else if !self.preview.floating {
             let height = ui.spacing().interact_size.y;
@@ -126,6 +129,7 @@ impl Workbench {
             ui.horizontal(|ui| {
                 ui.small(egui::RichText::new(crate::i18n::tr("PREVIEW")).color(muted()));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    self.hitsound_menu(ui);
                     if ui
                         .small_button("↗")
                         .on_hover_text(crate::i18n::tr("Open in a floating window"))
@@ -138,6 +142,8 @@ impl Workbench {
             ui.spacing_mut().interact_size.y = height;
             self.preview_panel_contents(ui, true);
             ui.separator();
+        } else {
+            self.hitsound_menu(ui);
         }
     }
     pub(crate) fn preview_panel_impl(&mut self, ui: &mut egui::Ui) {

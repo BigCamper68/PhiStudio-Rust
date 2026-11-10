@@ -2,6 +2,13 @@ use crate::{scroll::TouchCombo as _, workbench::Workbench};
 use phistudio_core::PreviewAspect;
 impl Workbench {
     pub(crate) fn settings_ui(&mut self, ui: &mut egui::Ui) {
+        ui.checkbox(
+            &mut self.options.fullscreen_app,
+            crate::i18n::tr("Fullscreen application"),
+        )
+        .on_hover_text(crate::i18n::tr(
+            "Use the whole display, including the camera cutout area on Android.",
+        ));
         ui.horizontal(|ui| {
             ui.label(crate::i18n::tr("Language"));
             egui::ComboBox::from_id_source("interface-language")

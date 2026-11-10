@@ -6,13 +6,48 @@ pub(in crate::speed_curve_ui) struct PointerGesture {
     origin: Pos2,
     mode: Mode,
     moved: bool,
+    started: f64,
+    action: Action,
 }
 
-pub(super) fn handle(ui: &egui::Ui, state: &mut State, view: &View, division: i32) -> bool {
+enum Action {
+    Point,
+    Pan { start: f64 },
+    Seek,
+    Range { edge: usize, before: [Beat; 2] },
+}
+impl PointerGesture {
+    pub(in crate::speed_curve_ui) fn is_scrubbing(&self) -> bool {
+        matches!(self.action, Action::Seek)
+    }
+    pub(in crate::speed_curve_ui) fn restore_range(self, range: &mut [Beat; 2]) {
+        if let Action::Range { before, .. } = self.action {
+            *range = before;
+        }
+    }
+}
+pub(super) fn handle(
+    ui: &egui::Ui,
+    state: &mut State,
+    view: &View,
+    division: i32,
+    cursor: &mut f64,
+) -> bool {
     if !ui.is_enabled() || state.input_canceled {
         return false;
     }
     let mut changed = false;
+    let held = state.pointer.as_ref().is_some_and(|p| {
+        !p.moved
+            && !matches!(p.action, Action::Seek | Action::Range { .. })
+            && ui.input(|i| i.time) - p.started > 0.5
+    });
+    if held {
+        let pos = state.pointer.as_ref().unwrap().origin;
+        state.cancel();
+        state.context = Some(pos);
+        return false;
+    }
     let events = ui.input(|i| i.events.clone());
     for event in events {
         match event {
@@ -30,19 +65,49 @@ pub(super) fn handle(ui: &egui::Ui, state: &mut State, view: &View, division: i3
                 }
                 state.error = None;
                 state.selected = view.nearest(&state.points, pos);
+                let cursor_x = view.point(*cursor, 0.).x;
+                let range_edge = state
+                    .play_range
+                    .iter()
+                    .position(|b| (view.point(b.as_f64(), 0.).x - pos.x).abs() < 14.);
+                let action = if pos.y < view.rect.top() + 16. && (cursor_x - pos.x).abs() < 14. {
+                    Action::Seek
+                } else if pos.y > view.rect.bottom() - 18. && range_edge.is_some() {
+                    Action::Range {
+                        edge: range_edge.unwrap(),
+                        before: state.play_range,
+                    }
+                } else if state.mode == Mode::Edit
+                    && state.selected.is_none()
+                    && (cursor_x - pos.x).abs() < 10.
+                {
+                    Action::Seek
+                } else if (state.mode == Mode::Edit && state.selected.is_some())
+                    || state.mode == Mode::Add
+                {
+                    Action::Point
+                } else {
+                    Action::Pan { start: state.start }
+                };
                 state.pointer = Some(PointerGesture {
                     origin: pos,
                     mode: state.mode,
                     moved: false,
+                    started: ui.input(|i| i.time),
+                    action,
                 });
-                if state.mode == Mode::Edit
+                if state
+                    .pointer
+                    .as_ref()
+                    .is_some_and(|p| matches!(p.action, Action::Point))
+                    && state.mode == Mode::Edit
                     && state.selected.is_some_and(|i| !state.points[i].fixed)
                 {
                     state.drag = Some(state.points.clone());
                 }
             }
             Event::PointerMoved(pos) if state.pointer.is_some() => {
-                changed |= move_pointer(state, view, division, pos);
+                changed |= move_pointer(state, view, division, pos, cursor);
             }
             Event::PointerButton {
                 pos,
@@ -51,10 +116,17 @@ pub(super) fn handle(ui: &egui::Ui, state: &mut State, view: &View, division: i3
                 ..
             } if state.pointer.is_some() => {
                 // Android UP can carry the final position without a preceding MOVE.
-                changed |= move_pointer(state, view, division, pos);
+                changed |= move_pointer(state, view, division, pos, cursor);
                 let Some(pointer) = state.pointer.take() else {
                     continue;
                 };
+                if matches!(pointer.action, Action::Pan { .. }) && pointer.moved {
+                    state.load_visible_range();
+                    continue;
+                }
+                if matches!(pointer.action, Action::Seek | Action::Range { .. }) {
+                    continue;
+                }
                 match pointer.mode {
                     Mode::Edit => {
                         if let Some(before) = state.drag.as_ref() {
@@ -78,17 +150,59 @@ pub(super) fn handle(ui: &egui::Ui, state: &mut State, view: &View, division: i3
                     _ => {}
                 }
             }
+            Event::PointerButton {
+                pos,
+                button: PointerButton::Secondary,
+                pressed: false,
+                ..
+            } if view.rect.contains(pos) && ui.ctx().layer_id_at(pos) == Some(ui.layer_id()) => {
+                state.cancel();
+                state.selected = view.nearest(&state.points, pos);
+                state.context = Some(pos);
+            }
             _ => {}
         }
     }
     changed
 }
 
-fn move_pointer(state: &mut State, view: &View, division: i32, pos: Pos2) -> bool {
+fn move_pointer(
+    state: &mut State,
+    view: &View,
+    division: i32,
+    pos: Pos2,
+    cursor: &mut f64,
+) -> bool {
     let Some(pointer) = &mut state.pointer else {
         return false;
     };
     pointer.moved |= pointer.origin.distance(pos) > 6.;
+    match pointer.action {
+        Action::Seek => {
+            *cursor = view.world(pos)[0].clamp(0., state.navigation_end());
+            return false;
+        }
+        Action::Range { edge, .. } => {
+            if let Ok(beat) = Beat::from_grid(
+                view.world(pos)[0].clamp(0., state.navigation_end()),
+                division.max(1),
+            ) && ((edge == 0 && beat < state.play_range[1])
+                || (edge == 1 && beat > state.play_range[0]))
+            {
+                state.play_range[edge] = beat;
+            }
+            return false;
+        }
+        Action::Pan { start } => {
+            if pointer.moved {
+                state.start =
+                    start - f64::from((pos.x - pointer.origin.x) / view.rect.width()) * view.span;
+                state.clamp_view();
+            }
+            return false;
+        }
+        Action::Point => {}
+    }
     if pointer.mode != Mode::Edit || !pointer.moved || state.drag.is_none() {
         return false;
     }

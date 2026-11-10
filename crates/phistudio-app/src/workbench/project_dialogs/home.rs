@@ -83,9 +83,6 @@ impl Workbench {
                             }
                         });
                     });
-                    if let Some(version) = option_env!("PHISTUDIO_ANDROID_BUILD") {
-                        ui.small(format!("PhiStudio Rust {version}"));
-                    }
                     ui.add_space(12.);
                     ui.add_enabled_ui(!blocked, |ui| {
                         let layout = if spare >= 0. {

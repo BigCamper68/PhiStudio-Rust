@@ -232,6 +232,8 @@ public class MainActivity extends Activity {
     //% MAIN_ACTIVITY_BODY
 
     private QuadSurface view;
+    private View editorContainer;
+    private boolean editorFullscreen;
     private KeyboardController keyboard;
     private volatile boolean resumed = false;
     private DocumentBridge documents;
@@ -316,21 +318,27 @@ public class MainActivity extends Activity {
         android.widget.FrameLayout container = new android.widget.FrameLayout(this);
         container.setBackgroundColor(android.graphics.Color.rgb(12,17,29));
         container.addView(view,new android.widget.FrameLayout.LayoutParams(-1,-1));
+        editorContainer = container;
         container.setOnApplyWindowInsetsListener((root,insets) -> {
-            int left,top,right,bottom;
-            if (android.os.Build.VERSION.SDK_INT >= 30) {
-                android.graphics.Insets safe=insets.getInsets(android.view.WindowInsets.Type.systemBars() | android.view.WindowInsets.Type.displayCutout());
-                left=safe.left; top=safe.top; right=safe.right; bottom=safe.bottom;
+            int[] system;
+            int[] cutout = new int[4];
+            boolean separate = android.os.Build.VERSION.SDK_INT >= 30;
+            if (separate) {
+                android.graphics.Insets bars = insets.getInsets(android.view.WindowInsets.Type.systemBars());
+                android.graphics.Insets camera = insets.getInsets(android.view.WindowInsets.Type.displayCutout());
+                system = new int[]{bars.left, bars.top, bars.right, bars.bottom};
+                cutout = new int[]{camera.left, camera.top, camera.right, camera.bottom};
             } else {
-                left=insets.getSystemWindowInsetLeft(); top=insets.getSystemWindowInsetTop();
-                right=insets.getSystemWindowInsetRight(); bottom=insets.getSystemWindowInsetBottom();
+                system = new int[]{insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(),
+                    insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom()};
                 if (android.os.Build.VERSION.SDK_INT >= 28 && insets.getDisplayCutout()!=null) {
-                    android.view.DisplayCutout cutout=insets.getDisplayCutout();
-                    left=Math.max(left,cutout.getSafeInsetLeft()); top=Math.max(top,cutout.getSafeInsetTop());
-                    right=Math.max(right,cutout.getSafeInsetRight()); bottom=Math.max(bottom,cutout.getSafeInsetBottom());
+                    android.view.DisplayCutout camera = insets.getDisplayCutout();
+                    cutout = new int[]{camera.getSafeInsetLeft(), camera.getSafeInsetTop(),
+                        camera.getSafeInsetRight(), camera.getSafeInsetBottom()};
                 }
             }
-            root.setPadding(left,top,right,bottom);
+            int[] padding = WindowLayoutPolicy.padding(editorFullscreen, separate, system, cutout);
+            root.setPadding(padding[0], padding[1], padding[2], padding[3]);
             return insets;
         });
         if (android.os.Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
@@ -356,6 +364,7 @@ public class MainActivity extends Activity {
     public void onWindowFocusChanged(boolean focused) {
         super.onWindowFocusChanged(focused);
         if (keyboard != null) keyboard.windowFocusChanged(focused);
+        if (focused && editorFullscreen) setFullScreen(true);
     }
 
     @Override
@@ -407,47 +416,34 @@ public class MainActivity extends Activity {
     }
 
     public void setFullScreen(final boolean fullscreen) {
-        runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    View decorView = getWindow().getDecorView();
-
+        runOnUiThread(() -> {
+            editorFullscreen = fullscreen;
+            View decor = getWindow().getDecorView();
+            if (android.os.Build.VERSION.SDK_INT >= 28) {
+                LayoutParams attributes = getWindow().getAttributes();
+                attributes.layoutInDisplayCutoutMode = fullscreen
+                    ? (android.os.Build.VERSION.SDK_INT >= 30
+                        ? LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                        : LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES)
+                    : LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT;
+                getWindow().setAttributes(attributes);
+            }
+            if (android.os.Build.VERSION.SDK_INT >= 30) {
+                getWindow().setDecorFitsSystemWindows(false);
+                android.view.WindowInsetsController controller = decor.getWindowInsetsController();
+                if (controller != null) {
                     if (fullscreen) {
-                        if (android.os.Build.VERSION.SDK_INT >= 28) {
-                            getWindow().getAttributes().layoutInDisplayCutoutMode = LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
-                        }
-                        // Android deprecate dsetSystemUiVisibility, but it is not clear
-                        // from the deprecation notes what exaclty we should do instead
-                        // hope this works! but just in case, left the old code in a comment below
-                        //int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
-                        //decorView.setSystemUiVisibility(uiOptions);
-                        if (android.os.Build.VERSION.SDK_INT >= 30) {
-                            getWindow().setDecorFitsSystemWindows(false);
-                            android.view.WindowInsetsController controller=decorView.getWindowInsetsController();
-                            if (controller!=null) {
-                                controller.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
-                                controller.hide(android.view.WindowInsets.Type.systemBars());
-                            }
-                        } else {
-                            decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                                    | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
-                        }
-                    }
-                    else {
-                       // there might be a bug hidden here: setSystemUiVisibility was dealing with the bars
-                        // and setDecorFitsSystemWindows might not, needs some testing
-                        //decorView.setSystemUiVisibility(0);
-                        if (android.os.Build.VERSION.SDK_INT >= 30) {
-                            getWindow().setDecorFitsSystemWindows(false);
-                            android.view.WindowInsetsController controller=decorView.getWindowInsetsController();
-                            if (controller!=null) controller.show(android.view.WindowInsets.Type.systemBars());
-                        } else {
-                            decorView.setSystemUiVisibility(0);
-                        }
-
-                    }
+                        controller.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                        controller.hide(android.view.WindowInsets.Type.systemBars());
+                    } else controller.show(android.view.WindowInsets.Type.systemBars());
                 }
-            });
+            } else {
+                decor.setSystemUiVisibility(fullscreen
+                    ? View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    : 0);
+            }
+            if (editorContainer != null) editorContainer.requestApplyInsets();
+        });
     }
 
     public void showKeyboard(final boolean show) {

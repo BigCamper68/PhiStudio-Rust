@@ -24,7 +24,7 @@ mod tests {
         let _ = ctx.run(egui::RawInput::default(), |ctx| {
             for family in [egui::FontFamily::Proportional, egui::FontFamily::Monospace] {
                 let font = egui::FontId::new(16., family);
-                for c in "Русский ё Україна Ω Ⅱ ← ↗ ↔ ★ ♯ ∞ 中文 日本語 한글 ไทย 😀 🎵"
+                for c in "Русский ё Україна Ω Ⅱ ← ↗ ↔ ✎ ↻ ⋯ ★ ♯ ∞ 中文 日本語 한글 ไทย 😀 🎵"
                     .chars()
                     .filter(|c| !c.is_whitespace())
                 {

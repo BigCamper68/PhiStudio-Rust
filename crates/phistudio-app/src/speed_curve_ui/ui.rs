@@ -29,6 +29,23 @@ impl Workbench {
                     )
                 })
         });
+        if blocked
+            || ctx.input(|i| {
+                !i.raw.has_focus
+                    || i.events.iter().any(|e| {
+                        matches!(
+                            e,
+                            egui::Event::Touch {
+                                phase: egui::TouchPhase::Cancel,
+                                ..
+                            }
+                        )
+                    })
+            })
+        {
+            state.navigation = Default::default();
+            state.context = None;
+        }
         if state.input_canceled || blocked {
             state.cancel();
         }
@@ -66,6 +83,10 @@ impl Workbench {
                 match SpeedCurveSource::capture(self.editor.document(), id) {
                     Ok(mut source) => {
                         source.native_horizon = horizon;
+                        state.navigation_limit = horizon
+                            .map(|s| self.editor.document().tempo().beat_at(s) - 1. / 1920.)
+                            .unwrap_or(1_000_000.)
+                            .max(0.05);
                         if different
                             || state
                                 .source
@@ -95,6 +116,9 @@ impl Workbench {
                                 }
                             }
                             expand_nonlinear_range(&source, state.layer, &mut state.range);
+                            state.play_range = state.range;
+                            state.context = None;
+                            state.navigation = Default::default();
                             state.range_text = state.range.map(|b| b.to_string());
                             state.fit_view = true;
                         }
@@ -122,7 +146,7 @@ impl Workbench {
         let mut history = None;
         let escape = ctx.input(|i| i.key_pressed(egui::Key::Escape));
         if escape && !blocked {
-            if state.drag.is_some() || ctx.wants_keyboard_input() {
+            if state.dismiss_context() || state.drag.is_some() || ctx.wants_keyboard_input() {
                 state.cancel();
             } else {
                 open = false;
@@ -155,6 +179,7 @@ impl Workbench {
                 ui.small(tr(
                     "Speed events belong to the judge line and affect all its notes.",
                 ));
+                let compact = ui.available_width() < 620.;
                 ui.horizontal_wrapped(|ui| {
                     for (mode, label) in [
                         (Mode::Edit, "Edit point"),
@@ -162,14 +187,32 @@ impl Workbench {
                         (Mode::Delete, "Delete point"),
                     ] {
                         if ui
-                            .selectable_value(&mut state.mode, mode, tr(label))
+                            .selectable_value(
+                                &mut state.mode,
+                                mode,
+                                if compact {
+                                    match mode {
+                                        Mode::Edit => "✎",
+                                        Mode::Add => "+",
+                                        Mode::Delete => "−",
+                                    }
+                                    .to_owned()
+                                } else {
+                                    tr(label)
+                                },
+                            )
+                            .on_hover_text(tr(label))
                             .clicked()
                         {
                             state.cancel();
                         }
                     }
-                    ui.label(tr("Layer"));
+                    if !compact {
+                        ui.label(tr("Layer"));
+                    }
                     let old = state.layer;
+                    let wrap = ui.style().wrap;
+                    ui.style_mut().wrap = Some(false);
                     egui::ComboBox::from_id_source("speed-curve-layer")
                         .width(56.)
                         .selected_text(state.layer.to_string())
@@ -178,6 +221,7 @@ impl Workbench {
                                 ui.selectable_value(&mut state.layer, layer, layer.to_string());
                             }
                         });
+                    ui.style_mut().wrap = wrap;
                     if old != state.layer {
                         state.selected = None;
                         if let Some(source) = &state.source {
@@ -208,23 +252,93 @@ impl Workbench {
                         }
                     }
                     if ui
-                        .button(tr(if self.transport.playing {
+                        .button(if compact {
+                            if self.transport.playing {
+                                "Ⅱ".to_owned()
+                            } else {
+                                "▶".to_owned()
+                            }
+                        } else {
+                            tr(if self.transport.playing {
+                                "Pause"
+                            } else {
+                                "Play"
+                            })
+                        })
+                        .on_hover_text(tr(if self.transport.playing {
                             "Pause"
                         } else {
                             "Play"
                         }))
                         .clicked()
                     {
+                        if !self.transport.playing
+                            && (self.transport.beat < state.play_range[0].as_f64()
+                                || self.transport.beat >= state.play_range[1].as_f64())
+                        {
+                            self.transport.beat = state.play_range[0].as_f64();
+                        }
                         self.transport.playing = !self.transport.playing;
                     }
+                    ui.toggle_value(
+                        &mut state.looping,
+                        if compact {
+                            "↻".to_owned()
+                        } else {
+                            tr("Loop range")
+                        },
+                    )
+                    .on_hover_text(tr("Loop range"));
+                    if ui
+                        .button(if compact {
+                            "⋯".to_owned()
+                        } else {
+                            tr("Curve actions…")
+                        })
+                        .on_hover_text(tr("Curve actions…"))
+                        .clicked()
+                    {
+                        state.context = Some(ui.next_widget_position());
+                    }
+                    for (redo, label, enabled) in [
+                        (false, "Undo", self.editor.can_undo()),
+                        (true, "Redo", self.editor.can_redo()),
+                    ] {
+                        let response = if compact {
+                            crate::theme::history_button(ui, redo, enabled && !state.commit_pending)
+                        } else {
+                            ui.add_enabled(
+                                enabled && !state.commit_pending,
+                                egui::Button::new(tr(label)),
+                            )
+                        };
+                        if response.on_hover_text(tr(label)).clicked() {
+                            state.cancel();
+                            history = Some(redo);
+                        }
+                    }
                 });
-                let height = (ui.available_height() - 145.).clamp(100., 360.);
+                let error_height = state.error.as_ref().map_or(0., |error| {
+                    ui.fonts(|fonts| {
+                        fonts
+                            .layout(
+                                tr(error),
+                                egui::TextStyle::Body.resolve(ui.style()),
+                                crate::theme::flick(),
+                                ui.available_width(),
+                            )
+                            .size()
+                            .y
+                            + 8.
+                    })
+                });
+                let height = (ui.available_height() - 10. - error_height).clamp(64., 640.);
                 if state.profile.is_some() {
                     let changed = graph::canvas(
                         ui,
                         &mut state,
                         self.timeline.division,
-                        self.transport.beat,
+                        &mut self.transport.beat,
                         height,
                     );
                     if changed {
@@ -238,42 +352,36 @@ impl Workbench {
                         }
                     });
                 }
-                egui::ScrollArea::vertical()
-                    .id_source("speed-curve-controls")
-                    .max_height(ui.available_height().max(64.))
-                    .touch_show_y(ui, |ui| {
-                        if let Some(error) = &state.error {
-                            ui.colored_label(crate::theme::flick(), tr(error));
-                        }
-                        curve_controls(ui, &mut state);
-                        ui.horizontal_wrapped(|ui| {
-                            if ui
-                                .add_enabled(
-                                    self.editor.can_undo() && !state.commit_pending,
-                                    egui::Button::new(tr("Undo")),
-                                )
-                                .clicked()
-                            {
-                                state.cancel();
-                                history = Some(false);
-                            }
-                            if ui
-                                .add_enabled(
-                                    self.editor.can_redo() && !state.commit_pending,
-                                    egui::Button::new(tr("Redo")),
-                                )
-                                .clicked()
-                            {
-                                state.cancel();
-                                history = Some(true);
-                            }
-                            if state.worker.is_some() || state.queued.is_some() {
-                                ui.spinner();
-                                ui.small(tr("Updating speed curve…"));
-                            }
-                        });
-                    });
+                if let Some(error) = &state.error {
+                    ui.colored_label(crate::theme::flick(), tr(error));
+                }
+                if state.worker.is_some() || state.queued.is_some() {
+                    ui.ctx()
+                        .request_repaint_after(std::time::Duration::from_millis(16));
+                }
             });
+        if let Some(anchor) = state.context {
+            let mut context_open = true;
+            crate::i18n::window("Curve actions")
+                .id(egui::Id::new("speed-curve-context"))
+                .open(&mut context_open)
+                .collapsible(false).resizable(false)
+                .default_pos(anchor)
+                .default_width((ctx.screen_rect().width() - 56.).min(430.))
+                .show(ctx, |ui| {
+                    ui.set_enabled(!blocked);
+                    ui.style_mut().wrap = Some(true);
+                    egui::ScrollArea::vertical().id_source("curve-context-scroll")
+                        .max_height((ctx.screen_rect().height() - 150.).max(100.))
+                        .touch_show_y(ui, |ui| {
+                            ui.small(tr("Drag empty space to pan. Pinch to zoom distance; spread horizontally to zoom time. Drag the white playhead to seek. Drag the bottom range handles to set playback bounds."));
+                            curve_controls(ui, &mut state);
+                        });
+                });
+            if !context_open {
+                state.context = None;
+            }
+        }
         if !ctx.wants_keyboard_input() && !blocked && !state.commit_pending {
             if ctx
                 .input(|i| (i.modifiers.command || i.modifiers.ctrl) && i.key_pressed(egui::Key::Z))
@@ -282,6 +390,12 @@ impl Workbench {
                 history = Some(ctx.input(|i| i.modifiers.shift));
             }
             if ctx.input(|i| i.key_pressed(egui::Key::Space)) {
+                if !self.transport.playing
+                    && (self.transport.beat < state.play_range[0].as_f64()
+                        || self.transport.beat >= state.play_range[1].as_f64())
+                {
+                    self.transport.beat = state.play_range[0].as_f64();
+                }
                 self.transport.playing = !self.transport.playing;
             }
             if ctx
@@ -453,7 +567,7 @@ fn curve_controls(ui: &mut egui::Ui, state: &mut State) {
         });
         let low = state.range[0].as_f64();
         let high = (state.range[1].as_f64() - state.span).max(low);
-        state.start = state.start.clamp(low, high);
+        state.clamp_view();
         ui.add(egui::Slider::new(&mut state.start, low..=high).text(tr("Pan graph")));
         ui.horizontal_wrapped(|ui| {
             ui.label(tr("Work range"));
@@ -473,6 +587,7 @@ fn curve_controls(ui: &mut egui::Ui, state: &mut State) {
                 ) {
                     (Ok(a), Ok(b)) if a >= Beat::ZERO && b > a => {
                         state.range = [a, b];
+                        state.play_range = [a, b];
                         state.fit_view = true;
                         state.selected = None;
                         state.load();
@@ -485,7 +600,11 @@ fn curve_controls(ui: &mut egui::Ui, state: &mut State) {
 }
 
 // Do not truncate an imported nonlinear event merely to establish the initial view.
-fn expand_nonlinear_range(source: &SpeedCurveSource, layer: usize, range: &mut [Beat; 2]) {
+pub(super) fn expand_nonlinear_range(
+    source: &SpeedCurveSource,
+    layer: usize,
+    range: &mut [Beat; 2],
+) {
     let Some(events) = source.layers.get(layer) else {
         return;
     };

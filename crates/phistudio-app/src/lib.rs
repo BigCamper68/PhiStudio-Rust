@@ -13,6 +13,7 @@ mod fonts;
 mod form;
 mod grid_input;
 mod gui;
+mod hitsound_ui;
 mod i18n;
 mod inspector;
 #[cfg(test)]

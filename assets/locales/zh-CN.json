@@ -2176,5 +2176,18 @@
   "Native playback cannot represent this curve accurately; simplify its shape or range": "原生播放无法准确表示此曲线，请简化形状或缩小范围",
   "The native speed curve could not be evaluated": "无法计算原生速度曲线",
   "Speed curve worker interrupted": "速度曲线计算已中断",
-  "Choose an ordered, nonnegative work range": "请选择非负且顺序正确的编辑范围"
+  "Choose an ordered, nonnegative work range": "请选择非负且顺序正确的编辑范围",
+  "Fullscreen application": "应用全屏",
+  "Use the whole display, including the camera cutout area on Android.": "使用整个屏幕，包括 Android 摄像头挖孔区域。",
+  "Choose playback rate 0.25, 0.5, 0.75, 1.0 or 1.5": "请选择播放速度 0.25、0.5、0.75、1.0 或 1.5",
+  "Hitsound audition": "打击音试听",
+  "Current line": "当前判定线",
+  "Line groups": "判定线分组",
+  "No groups selected: all hitsounds are muted.": "未选择分组：所有打击音已静音。",
+  "Audition hitsounds on the current line or selected line groups": "试听当前判定线或所选分组的打击音",
+  "Changes hitsound audio only. Note visibility and judgment stay unchanged.": "仅更改打击音，音符可见性和判定保持不变。",
+  "Curve actions": "曲線操作",
+  "Curve actions…": "曲線操作…",
+  "Loop range": "循环范围",
+  "Drag empty space to pan. Pinch to zoom distance; spread horizontally to zoom time. Drag the white playhead to seek. Drag the bottom range handles to set playback bounds.": "拖动空白区域平移。双指缩放距离；水平张开双指缩放时间。拖动白色播放头定位，拖动底部标记设置播放范围。"
 }

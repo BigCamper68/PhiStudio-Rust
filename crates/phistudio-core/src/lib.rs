@@ -100,3 +100,6 @@ pub use editor_sounds::{
 };
 
 pub mod speed_curve;
+
+/// Editor playback rates shared by the UI and native music transport.
+pub const PLAYBACK_RATES: [f64; 5] = [0.25, 0.5, 0.75, 1., 1.5];

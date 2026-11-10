@@ -107,7 +107,9 @@ impl Workbench {
             return;
         }
         if self.speed_curve.open && !self.modal_open_except_speed_curve() {
-            self.speed_curve.close();
+            if !self.speed_curve.dismiss_context() {
+                self.speed_curve.close();
+            }
             return;
         }
         if self.cancel_plugin_editor_action() {

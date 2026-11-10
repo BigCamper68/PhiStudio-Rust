@@ -166,8 +166,8 @@ impl Transport {
     }
     pub fn set_rate(&mut self, audio: &mut AudioManager, rate: f64) -> Result<()> {
         anyhow::ensure!(
-            matches!(rate, 0.5 | 0.75 | 1.),
-            "Choose playback rate 0.5, 0.75 or 1.0"
+            phistudio_core::PLAYBACK_RATES.contains(&rate),
+            "Choose playback rate 0.25, 0.5, 0.75, 1.0 or 1.5"
         );
         if self.clock.speed != rate {
             let position = self.audio_time();
@@ -357,7 +357,7 @@ mod tests {
         transport.clock.pause();
         let mut audio = AudioManager::new(crate::resources::SilentBackend::default()).unwrap();
         transport.synchronize(8., false, true, -0.2).unwrap();
-        for (i, rate) in [0.5, 0.75, 1.].into_iter().enumerate() {
+        for (i, rate) in phistudio_core::PLAYBACK_RATES.into_iter().enumerate() {
             transport.set_rate(&mut audio, rate).unwrap();
             assert!(!transport.playing());
             now.set(i as f64 * 20. + 10.);
@@ -369,8 +369,10 @@ mod tests {
             assert!((transport.advance().unwrap() - 3.).abs() < 1e-10);
             transport.synchronize(8., false, true, -0.2).unwrap();
         }
-        assert!(transport.set_rate(&mut audio, 0.).is_err());
-        assert_eq!(transport.clock.speed, 1.);
+        for invalid in [0., -1., 0.3, 2., f64::NAN, f64::INFINITY] {
+            assert!(transport.set_rate(&mut audio, invalid).is_err());
+            assert_eq!(transport.clock.speed, 1.5);
+        }
     }
     #[test]
     fn signed_offsets_pause_resume_seek_and_clock_use_one_timeline() {
