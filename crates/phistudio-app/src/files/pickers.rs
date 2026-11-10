@@ -17,12 +17,20 @@ impl FileManager {
         app.status = kind.checking_message().into();
         let sound_root = self.root.clone();
         std::thread::spawn(move || {
-            let result = if matches!(kind, MediaKind::EditorSound(_)) {
-                import_editor_sound(sound_root, file)
+            let result = if kind == MediaKind::SoundPack {
+                sound_library(sound_root).and_then(|root| {
+                    crate::editor_sounds::archive::import(file.path(), &root)
+                        .map(WorkerResult::SoundPack)
+                        .map_err(|e| format!("{e:#}"))
+                })
             } else {
-                file.validate(kind)
-            }
-            .map(|file| WorkerResult::Media { kind, file });
+                if matches!(kind, MediaKind::EditorSound(_)) {
+                    import_editor_sound(sound_root, file)
+                } else {
+                    file.validate(kind)
+                }
+                .map(|file| WorkerResult::Media { kind, file })
+            };
             let _ = sender.send(result);
         });
     }
@@ -136,10 +144,8 @@ impl FileManager {
     }
 }
 
-// Keep imported feedback independent of project lifetime and mobile picker snapshots.
-fn import_editor_sound(root: Option<PathBuf>, file: MediaFile) -> Result<MediaFile, String> {
-    let root = root
-        .map(Ok)
+fn sound_library(root: Option<PathBuf>) -> Result<PathBuf, String> {
+    root.map(Ok)
         .unwrap_or_else(|| {
             #[cfg(not(any(target_os = "android", target_os = "ios")))]
             {
@@ -149,8 +155,13 @@ fn import_editor_sound(root: Option<PathBuf>, file: MediaFile) -> Result<MediaFi
             {
                 std::env::current_dir().map_err(|e| e.to_string())
             }
-        })?
-        .join("editor-sounds");
+        })
+        .map(|root| root.join("editor-sounds"))
+}
+
+// Keep imported feedback independent of project lifetime and mobile picker snapshots.
+fn import_editor_sound(root: Option<PathBuf>, file: MediaFile) -> Result<MediaFile, String> {
+    let root = sound_library(root)?;
     std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
     let name = file
         .name()

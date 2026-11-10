@@ -95,5 +95,6 @@ pub mod branches;
 
 mod editor_sounds;
 pub use editor_sounds::{
-    EditorSoundEvent, EditorSoundOptions, EditorSoundRule, EditorSoundStyle, EditorSoundTone,
+    EditorSoundCategory, EditorSoundEvent, EditorSoundOptions, EditorSoundPack, EditorSoundRule,
+    EditorSoundStyle, EditorSoundTone,
 };

@@ -1,4 +1,6 @@
 //! Semantic feedback wins over widget clicks; decoding never runs in a UI callback.
+pub(crate) mod archive;
+const MAX_PACK_FILES: usize = Event::ALL.len() * 4;
 #[cfg(test)]
 mod tests;
 mod ui;
@@ -14,32 +16,58 @@ use std::{
 pub(crate) struct State {
     pending: BTreeSet<Event>,
     preview: Option<Event>,
+    preview_slot: Option<usize>,
     selected: Event,
     pub warning: Option<String>,
     inactive: bool,
+    gesture_committed: bool,
+    pub open: bool,
+    files: Vec<FileInfo>,
+    import_target: Option<String>,
+    export: Option<Receiver<Result<phistudio_core::ProjectExport, String>>>,
+    delete_confirm: bool,
 }
 impl Default for State {
     fn default() -> Self {
         Self {
             pending: BTreeSet::new(),
             preview: None,
+            preview_slot: None,
             selected: Event::Click,
             warning: None,
             inactive: false,
+            gesture_committed: false,
+            open: false,
+            files: Vec::new(),
+            import_target: None,
+            export: None,
+            delete_confirm: false,
         }
     }
 }
 impl State {
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    pub(crate) fn select_for_probe(&mut self, event: Event) {
+        self.selected = event;
+    }
+    pub fn suppress_gesture_commit(&mut self) {
+        self.pending.remove(&Event::Edit);
+        self.gesture_committed = true;
+    }
     pub fn emit(&mut self, event: Event) {
         self.pending.insert(event);
     }
 }
 pub(crate) fn command_event(command: &Command) -> Event {
     match command {
-        Command::AddNote { .. }
-        | Command::InsertNote { .. }
-        | Command::AddEvent { .. }
-        | Command::InsertEvent { .. }
+        Command::AddNote { note, .. } => match note.kind {
+            phistudio_core::NoteKind::Tap => Event::PlaceTap,
+            phistudio_core::NoteKind::Hold => Event::PlaceHold,
+            phistudio_core::NoteKind::Flick => Event::PlaceFlick,
+            phistudio_core::NoteKind::Drag => Event::PlaceDrag,
+        },
+        Command::AddEvent { .. } | Command::InsertEvent { .. } => Event::PlaceEvent,
+        Command::InsertNote { .. }
         | Command::AddBpm(_)
         | Command::AddLine { .. }
         | Command::AddLines { .. }
@@ -88,6 +116,11 @@ fn priority(event: Event) -> u8 {
         Event::Undo | Event::Redo => 90,
         Event::Copy | Event::Paste => 85,
         Event::Delete => 80,
+        Event::PlaceTap
+        | Event::PlaceHold
+        | Event::PlaceFlick
+        | Event::PlaceDrag
+        | Event::PlaceEvent => 76,
         Event::Place => 75,
         Event::MoveResize => 74,
         Event::Edit => 70,
@@ -103,6 +136,7 @@ fn priority(event: Event) -> u8 {
 }
 impl Workbench {
     pub(crate) fn sound_ui(&mut self, ctx: &egui::Context, canceled: bool) {
+        self.sounds.gesture_committed = false;
         let revision = self.editor.revision();
         let session = self.session;
         let selection = (
@@ -138,7 +172,7 @@ impl Workbench {
             return;
         }
         if session == self.session {
-            if revision != self.editor.revision() {
+            if revision != self.editor.revision() && !self.sounds.gesture_committed {
                 self.sounds.emit(Event::Edit);
             }
             let current = (
@@ -149,7 +183,7 @@ impl Workbench {
                 self.tools.selection.events.len(),
                 self.advanced.story_selection.len(),
             );
-            if selection != current {
+            if selection != current && !self.sounds.gesture_committed {
                 self.sounds.emit(
                     if current.0.is_some()
                         || current.1.is_some()
@@ -188,55 +222,107 @@ impl Workbench {
 #[derive(Clone, PartialEq)]
 struct Sources {
     style: EditorSoundStyle,
-    files: Vec<Option<String>>,
+    files: Vec<Vec<String>>,
 }
 impl Sources {
     fn new(options: &EditorSoundOptions) -> Self {
+        let pack = options.pack();
         Self {
-            style: options.style,
+            style: pack.style,
             files: Event::ALL
                 .iter()
-                .map(|e| options.events.get(e).and_then(|r| r.file.clone()))
+                .map(|e| pack.rule(*e).paths().take(4).cloned().collect())
                 .collect(),
         }
     }
 }
+#[derive(Clone)]
+struct FileInfo {
+    path: String,
+    duration: f64,
+    bytes: u64,
+    peaks: Vec<f32>,
+}
 struct Prepared {
     sources: Sources,
-    clips: Vec<ResourceAudioClip>,
+    clips: Vec<Vec<Option<ResourceAudioClip>>>,
+    bank: Vec<ResourceAudioClip>,
+    files: Vec<FileInfo>,
     warning: Option<String>,
 }
 fn prepare(sources: Sources) -> Prepared {
+    use std::collections::BTreeMap;
     let mut warning = Vec::new();
-    let clips = Event::ALL
-        .iter()
-        .zip(&sources.files)
-        .map(|(event, file)| {
-            file.as_ref().and_then(|path| {
-                match phistudio_prpr::load_interface_sound(std::path::Path::new(path)) {
-                    Ok(clip) => Some(clip),
-                    Err(error) => {
-                        warning.push(format!("{}: {error}", event.label()));
-                        None
-                    }
-                }
+    let mut decoded = BTreeMap::new();
+    let mut files = Vec::new();
+    let mut memory = 0;
+    for path in sources.files.iter().flatten() {
+        if decoded.contains_key(path) {
+            continue;
+        }
+        let clip = if decoded.len() >= MAX_PACK_FILES {
+            Err(anyhow::anyhow!(
+                "A sound pack supports up to {MAX_PACK_FILES} unique files"
+            ))
+        } else {
+            phistudio_prpr::load_interface_sound(std::path::Path::new(path))
+        };
+        let clip = clip
+            .and_then(|clip| {
+                memory += std::mem::size_of_val(clip.frames());
+                anyhow::ensure!(
+                    memory <= 64 * 1024 * 1024,
+                    "Decoded sound pack exceeds 64 MiB"
+                );
+                let peaks = clip
+                    .frames()
+                    .chunks(clip.frames().len().div_ceil(96).max(1))
+                    .map(|chunk| {
+                        chunk
+                            .iter()
+                            .map(|f| f.0.abs().max(f.1.abs()))
+                            .fold(0_f32, f32::max)
+                            .min(1.)
+                    })
+                    .collect();
+                files.push(FileInfo {
+                    path: path.clone(),
+                    duration: clip.length(),
+                    bytes: std::fs::metadata(path).map_or(0, |m| m.len()),
+                    peaks,
+                });
+                Ok(clip)
             })
+            .map_err(|error| {
+                warning.push(format!(
+                    "{}: {error}",
+                    std::path::Path::new(path)
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                ));
+            });
+        decoded.insert(path.clone(), clip.ok());
+    }
+    let clips = sources
+        .files
+        .iter()
+        .map(|paths| {
+            paths
+                .iter()
+                .map(|p| decoded.get(p).cloned().flatten())
+                .collect()
         })
-        .collect::<Vec<_>>();
-    // Tone overrides use the same small bank; each custom file is decoded only once per reload.
+        .collect();
     let bank = phistudio_core::EditorSoundTone::ALL
         .iter()
         .map(|tone| phistudio_prpr::interface_tone(sources.style, *tone))
-        .collect::<Vec<_>>();
-    let clips = clips
-        .into_iter()
-        .zip(Event::ALL)
-        .map(|(clip, event)| clip.unwrap_or_else(|| bank[event.default_tone() as usize].clone()))
-        .chain(bank.iter().cloned())
         .collect();
     Prepared {
         sources,
         clips,
+        bank,
+        files,
         warning: (!warning.is_empty()).then(|| warning.join("\n")),
     }
 }
@@ -244,9 +330,13 @@ pub(crate) struct Engine {
     output: InterfaceAudio,
     ready: Option<Prepared>,
     loading: Option<Receiver<Prepared>>,
-    last: Option<(Event, Instant)>,
+    last: std::collections::BTreeMap<phistudio_core::EditorSoundCategory, Instant>,
+    variants: Vec<Option<usize>>,
+    random: u64,
     preview: Option<Event>,
+    preview_slot: Option<usize>,
     error: Option<String>,
+    preview_until: Option<Instant>,
 }
 impl Engine {
     pub fn new(output: InterfaceAudio) -> Self {
@@ -254,9 +344,16 @@ impl Engine {
             output,
             ready: None,
             loading: None,
-            last: None,
+            last: Default::default(),
+            variants: vec![None; Event::ALL.len()],
+            random: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(1, |d| d.as_nanos() as u64)
+                .max(1),
             preview: None,
+            preview_slot: None,
             error: None,
+            preview_until: None,
         }
     }
     pub fn update(&mut self, app: &mut Workbench) {
@@ -266,9 +363,12 @@ impl Engine {
                 Ok(ready) => {
                     if ready.sources == sources {
                         app.sounds.warning = ready.warning.clone();
+                        app.sounds.files = ready.files.clone();
                     }
                     self.ready = Some(ready);
                     self.loading = None;
+                    self.variants.fill(None);
+                    self.last.clear();
                 }
                 Err(mpsc::TryRecvError::Disconnected) => {
                     self.loading = None;
@@ -285,7 +385,10 @@ impl Engine {
                 let _ = sender.send(prepare(sources));
             });
         }
-        self.preview = app.sounds.preview.take().or(self.preview);
+        if let Some(event) = app.sounds.preview.take() {
+            self.preview = Some(event);
+            self.preview_slot = app.sounds.preview_slot.take();
+        }
         if app.error.is_some() && self.error != app.error {
             app.sounds.emit(Event::Error);
         }
@@ -298,11 +401,20 @@ impl Engine {
             .max_by_key(|e| priority(*e));
         app.sounds.pending.clear();
         let options = &app.options.editor_sounds;
-        let muted =
-            app.playtest.active() || (options.mute_during_playback && app.transport.playing);
-        self.output
-            .set_muted(muted || (!options.enabled && self.preview.is_none()));
+        let muted = app.sounds.inactive
+            || app.playtest.active()
+            || (options.mute_during_playback && app.transport.playing);
+        self.output.set_muted(
+            muted
+                || (!options.enabled
+                    && self.preview.is_none()
+                    && self
+                        .preview_until
+                        .is_none_or(|until| Instant::now() >= until)),
+        );
         if muted {
+            self.preview_until = None;
+            self.preview_slot = None;
             self.preview = None;
             return;
         }
@@ -313,34 +425,76 @@ impl Engine {
         let Some(event) = preview.or(event) else {
             return;
         };
-        let rule = options.rule(event);
+        let pack = options.pack();
+        let rule = pack.rule(event);
         if preview.is_none() && (!options.enabled || !rule.enabled) {
             return;
         }
-        let cooldown = options
-            .cooldown_ms
-            .max(if event == Event::Value || event == Event::Seek {
-                90
-            } else {
-                20
-            });
         if preview.is_none()
-            && self.last.is_some_and(|(last, time)| {
-                last == event && time.elapsed().as_millis() < cooldown as u128
-            })
+            && self
+                .last
+                .get(&event.category())
+                .is_some_and(|time| time.elapsed().as_millis() < pack.interval(event) as u128)
         {
             return;
         }
-        let clip = if rule.file.is_some() {
-            &ready.clips[event as usize]
-        } else {
-            &ready.clips[Event::ALL.len() + rule.tone.unwrap_or(event.default_tone()) as usize]
-        };
+        let variants = &ready.clips[event as usize];
+        let slot = self
+            .preview_slot
+            .take()
+            .filter(|i| *i < variants.len())
+            .or_else(|| {
+                choose_variant(
+                    variants.len(),
+                    self.variants[event as usize],
+                    rule.random,
+                    &mut self.random,
+                )
+            });
+        self.variants[event as usize] = slot;
+        let clip = slot
+            .and_then(|slot| variants[slot].as_ref())
+            .unwrap_or(&ready.bank[rule.tone.unwrap_or(event.default_tone()) as usize]);
+        if preview.is_some() {
+            self.preview_until = Some(
+                Instant::now()
+                    + std::time::Duration::from_secs_f64(
+                        clip.length() / f64::from(pack.pitch * rule.pitch),
+                    ),
+            );
+        }
         self.output.play(
             clip.clone(),
             options.volume * rule.volume,
-            options.pitch * rule.pitch,
+            pack.pitch * rule.pitch,
         );
-        self.last = Some((event, Instant::now()));
+        self.last.insert(event.category(), Instant::now());
     }
+}
+fn choose_variant(
+    count: usize,
+    previous: Option<usize>,
+    random: bool,
+    state: &mut u64,
+) -> Option<usize> {
+    if count == 0 {
+        return None;
+    }
+    if count == 1 {
+        return Some(0);
+    }
+    let previous = previous.filter(|p| *p < count);
+    if !random {
+        return Some(previous.map_or(0, |p| (p + 1) % count));
+    }
+    *state ^= *state << 13;
+    *state ^= *state >> 7;
+    *state ^= *state << 17;
+    let choices = count - usize::from(previous.is_some());
+    let next = (*state % choices as u64) as usize;
+    Some(if previous.is_some_and(|p| next >= p) {
+        next + 1
+    } else {
+        next
+    })
 }

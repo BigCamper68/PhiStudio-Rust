@@ -4,6 +4,7 @@ pub(super) fn update(app: &mut Workbench, pos: Pos2) {
     let Some(mut gesture) = app.timeline.drag.take() else {
         return;
     };
+    let previous = sound_position(app, &gesture, app.timeline.division);
     match &mut gesture {
         Gesture::SelectionScale {
             grid,
@@ -215,5 +216,48 @@ pub(super) fn update(app: &mut Workbench, pos: Pos2) {
             }
         }
     }
+    if sound_position(app, &gesture, app.timeline.division) != previous {
+        app.sounds
+            .emit(phistudio_core::EditorSoundEvent::MoveResize);
+    }
     app.timeline.drag = Some(gesture);
+}
+
+// Compare snapped preview positions, not pointer pixels or the eventual commit.
+fn sound_position(app: &Workbench, gesture: &Gesture, division: i32) -> Option<(Beat, Beat, i64)> {
+    match gesture {
+        Gesture::Move { id, .. } | Gesture::Resize { id, .. }
+            if app.editor.document().note(id.line, id.index).is_err() =>
+        {
+            return None;
+        }
+        Gesture::Event(crate::event_grid::EventGesture::Edit { id, .. })
+            if app.editor.document().event(*id).is_err() =>
+        {
+            return None;
+        }
+        _ => {}
+    }
+    let beat = |b: Beat| Beat::from_grid(b.as_f64(), division).unwrap_or(b);
+    let lane = |x: f64, grid: &Grid| {
+        let step = 1350. / (grid.lanes.max(2) - 1) as f64;
+        (x / step).round() as i64
+    };
+    match gesture {
+        Gesture::Move { current, grid, .. } | Gesture::Resize { current, grid, .. } => Some((
+            beat(current.start_time),
+            beat(current.end_time),
+            lane(current.x, grid),
+        )),
+        Gesture::Event(crate::event_grid::EventGesture::Edit { current, .. }) => {
+            Some((beat(current.start_time), beat(current.end_time), 0))
+        }
+        Gesture::SelectionMove { beats, x, grid, .. } => {
+            Some((beat(*beats), Beat::ZERO, lane(*x, grid)))
+        }
+        Gesture::SelectionScale { factor, .. } => {
+            Some((Beat::ZERO, Beat::ZERO, (factor * 20.).round() as i64))
+        }
+        _ => None,
+    }
 }

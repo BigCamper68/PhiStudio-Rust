@@ -181,7 +181,9 @@ impl Workbench {
         if let Some(package) = &self.files.export_package {
             let mut open = true;
             let mut write = false;
-            crate::i18n::window(if package.name.ends_with(".phiversions.zip") {
+            crate::i18n::window(if package.name.ends_with(".phisounds.json") {
+                "Export sound pack…"
+            } else if package.name.ends_with(".phiversions.zip") {
                 "Export history…"
             } else {
                 "Export project"
@@ -193,7 +195,9 @@ impl Workbench {
             .show(ctx, |ui| {
                 ui.label(&package.name);
                 ui.label(crate::i18n::tr(
-                    if package.name.ends_with(".phiversions.zip") {
+                    if package.name.ends_with(".phisounds.json") {
+                        "Sound pack destination (.phisounds.json)"
+                    } else if package.name.ends_with(".phiversions.zip") {
                         "History archive path"
                     } else {
                         "Package destination (.pez)"
@@ -203,7 +207,13 @@ impl Workbench {
                 write = ui
                     .add_enabled(
                         !self.files.export_path.trim().is_empty(),
-                        egui::Button::new(crate::i18n::tr("Export project")),
+                        egui::Button::new(crate::i18n::tr(
+                            if package.name.ends_with(".phisounds.json") {
+                                "Export sound pack…"
+                            } else {
+                                "Export project"
+                            },
+                        )),
                     )
                     .clicked();
             });

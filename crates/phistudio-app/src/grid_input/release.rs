@@ -206,8 +206,7 @@ pub(super) fn finish(app: &mut Workbench) {
         _ => {}
     }
     if move_resize && revision != app.editor.revision() {
-        app.sounds
-            .emit(phistudio_core::EditorSoundEvent::MoveResize);
+        app.sounds.suppress_gesture_commit();
     }
     if preserve_properties_position {
         // Commits can remap source IDs and reselect the edited objects. Only an

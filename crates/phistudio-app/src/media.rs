@@ -6,6 +6,7 @@ use std::{
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum MediaKind {
     EditorSound(phistudio_core::EditorSoundEvent),
+    SoundPack,
     Shader,
     Resource,
     LineTexture,
@@ -23,6 +24,7 @@ impl MediaKind {
             Self::Audio => "Checking audio…",
             Self::HitSound => "Checking hitsound…",
             Self::EditorSound(_) => "Checking editor sound…",
+            Self::SoundPack => "Importing sound pack…",
             Self::Illustration => "Checking illustration…",
         }
     }
@@ -35,12 +37,14 @@ impl MediaKind {
             Self::Audio => "Audio",
             Self::HitSound => "Hitsound",
             Self::EditorSound(_) => "Editor sound",
+            Self::SoundPack => "Sound pack",
             Self::Illustration => "Illustration",
         }
     }
     #[cfg(any(target_os = "android", target_os = "ios"))]
     pub fn protocol(self) -> &'static str {
         match self {
+            Self::SoundPack => "resource",
             Self::Shader => "shader",
             Self::Resource => "resource",
             Self::LineTexture => "line-texture",
@@ -104,6 +108,9 @@ impl MediaFile {
     }
     pub fn validate(self, kind: MediaKind) -> Result<Self, String> {
         match kind {
+            MediaKind::SoundPack => {
+                return Err("Sound packs must be imported through the sound library".into());
+            }
             MediaKind::EditorSound(_) => {
                 phistudio_prpr::load_interface_sound(self.path())
                     .map_err(|e| format!("Could not load editor sound: {e:#}"))?;

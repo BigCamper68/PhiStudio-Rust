@@ -2,6 +2,7 @@ use super::*;
 
 impl Workbench {
     pub(super) fn dialogs(&mut self, ctx: &egui::Context) {
+        self.editor_sounds_window(ctx);
         self.plugin_windows(ctx);
         self.workspace_window(ctx);
         self.playtest_setup(ctx);

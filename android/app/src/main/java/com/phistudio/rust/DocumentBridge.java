@@ -78,7 +78,7 @@ final class DocumentBridge {
         requestExport(path, name, requestedToken, "video/mp4");
     }
     void requestExport(String path, String name, long requestedToken) {
-        requestExport(path, name, requestedToken, "application/zip");
+        requestExport(path, name, requestedToken, name.endsWith(".phisounds.json") ? "application/json" : "application/zip");
     }
     void requestExportFile(String path, String name, long requestedToken) {
         requestExport(path, name, requestedToken, "application/octet-stream");

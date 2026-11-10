@@ -116,6 +116,7 @@ impl FileRequest {
 }
 
 enum WorkerResult {
+    SoundPack(phistudio_core::EditorSoundPack),
     ProviderResource {
         operation: phistudio_plugins::Operation,
         kind: MediaKind,

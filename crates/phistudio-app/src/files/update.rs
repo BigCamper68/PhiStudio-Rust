@@ -147,6 +147,14 @@ impl FileManager {
                             }
                             app.skins.loaded = true;
                         }
+                        Ok(WorkerResult::SoundPack(pack)) => {
+                            if app.options.editor_sounds.add_pack(pack) {
+                                app.status = "Sound pack imported".into();
+                                app.error = None;
+                            } else {
+                                app.error = Some("Sound pack library is full (32 packs)".into());
+                            }
+                        }
                         Ok(WorkerResult::Media { kind, file }) => {
                             app.status = "Media selected".into();
                             app.error = None;

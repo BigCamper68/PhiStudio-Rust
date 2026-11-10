@@ -25,7 +25,16 @@ impl Workbench {
             || self.plugin_dialog_modal()
             || self.workflow_modal_open_without_release_notes()
     }
+    pub(crate) fn modal_open_except_editor_sounds(&self) -> bool {
+        self.release_notes_open()
+            || self.plugin_editor_action_modal()
+            || self.plugin_dialog_modal()
+            || self.workflow_modal_open_without_sound_manager()
+    }
     fn workflow_modal_open_without_release_notes(&self) -> bool {
+        self.sounds.open || self.workflow_modal_open_without_sound_manager()
+    }
+    fn workflow_modal_open_without_sound_manager(&self) -> bool {
         self.plugins.permissions_open()
             || self.plugin_provider_modal()
             || self.plugin_file_hook_modal()
@@ -81,6 +90,10 @@ impl Workbench {
 
     pub fn back(&mut self) {
         if self.release_notes_back() {
+            return;
+        }
+        if self.sounds.open && !self.modal_open_except_editor_sounds() {
+            self.sounds.open = false;
             return;
         }
         if self.cancel_plugin_editor_action() {

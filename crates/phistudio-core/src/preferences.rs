@@ -442,6 +442,9 @@ pub(crate) fn bounded(value: f32, min: f32, max: f32, default: f32) -> f32 {
         default
     }
 }
+// Sound pack libraries contain bounded paths and rules, never embedded audio.
+const MAX_PREFERENCES_BYTES: usize = 8 * 1024 * 1024;
+
 fn path(root: &Path) -> Result<PathBuf, ChartError> {
     let path = root.canonicalize()?.join("editor-settings.json");
     match fs::symlink_metadata(&path) {
@@ -463,11 +466,11 @@ pub fn load_editor_preferences(root: &Path) -> Result<EditorPreferences, ChartEr
         }
         Err(e) => return Err(e.into()),
     }
-    .take(64 * 1024 + 1);
+    .take(MAX_PREFERENCES_BYTES as u64 + 1);
     let mut bytes = Vec::new();
     file.read_to_end(&mut bytes)?;
-    if bytes.len() > 64 * 1024 {
-        return Err(ChartError::Invalid("Editor settings exceed 64 KiB".into()));
+    if bytes.len() > MAX_PREFERENCES_BYTES {
+        return Err(ChartError::Invalid("Editor settings exceed 8 MiB".into()));
     }
     let preferences: EditorPreferences = serde_json::from_slice(&bytes)?;
     if preferences.version != 1 {

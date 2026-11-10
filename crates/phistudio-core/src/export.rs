@@ -13,6 +13,13 @@ pub struct ProjectExport {
     pub name: String,
 }
 impl ProjectExport {
+    /// Prepare a non-chart export for the existing platform save workflow.
+    pub fn from_bytes(name: String, bytes: &[u8]) -> Result<Self, ChartError> {
+        let mut file = tempfile::NamedTempFile::new()?;
+        file.write_all(bytes)?;
+        file.as_file().sync_all()?;
+        Ok(Self { file, name })
+    }
     pub fn path(&self) -> &Path {
         self.file.path()
     }

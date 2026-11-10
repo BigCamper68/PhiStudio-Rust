@@ -1,4 +1,5 @@
 mod gestures;
+mod manager;
 use super::*;
 use egui::{WidgetInfo, WidgetType, output::OutputEvent};
 use phistudio_core::{Beat, ChartDocument, Note, NoteKind};
@@ -63,7 +64,7 @@ fn semantic_actions_emit_only_after_success_and_win_over_button_clicks() {
         },
     });
     app.sounds.emit(Event::Click);
-    assert_eq!(dominant(&mut app), Some(Event::Place));
+    assert_eq!(dominant(&mut app), Some(Event::PlaceTap));
     app.history_step_now(false);
     assert_eq!(dominant(&mut app), Some(Event::Undo));
     app.history_step_now(true);
@@ -121,14 +122,19 @@ fn real_button_release_emits_feedback_and_cancel_drops_pending_actions() {
 #[test]
 fn missing_custom_sound_falls_back_without_blocking_other_events() {
     let mut options = EditorSoundOptions::default();
-    options.events.entry(Event::Place).or_default().file = Some("/missing/editor-sound.wav".into());
+    options.add_pack(phistudio_core::EditorSoundPack::default());
+    options
+        .selected_pack_mut()
+        .unwrap()
+        .events
+        .entry(Event::Place)
+        .or_default()
+        .files = vec!["/missing/editor-sound.wav".into()];
     let prepared = prepare(Sources::new(&options));
-    assert!(prepared.warning.unwrap().contains("Place objects"));
-    assert_eq!(
-        prepared.clips.len(),
-        Event::ALL.len() + phistudio_core::EditorSoundTone::ALL.len()
-    );
-    assert!(prepared.clips[Event::Place as usize].length() > 0.);
+    assert!(prepared.warning.unwrap().contains("editor-sound.wav"));
+    assert_eq!(prepared.clips.len(), Event::ALL.len());
+    assert!(prepared.clips[Event::Place as usize][0].is_none());
+    assert!(prepared.bank[Event::Place.default_tone() as usize].length() > 0.);
 }
 #[test]
 fn sound_customization_does_not_change_chart_history_and_survives_project_switches() {
@@ -137,6 +143,11 @@ fn sound_customization_does_not_change_chart_history_and_survives_project_switch
     app.options.editor_sounds.volume = 0.7;
     app.options
         .editor_sounds
+        .add_pack(phistudio_core::EditorSoundPack::default());
+    app.options
+        .editor_sounds
+        .selected_pack_mut()
+        .unwrap()
         .events
         .entry(Event::Select)
         .or_default()
@@ -155,15 +166,34 @@ fn gesture_sound_is_independent_and_custom_audio_uses_the_correct_bank_slot() {
     let file = root.path().join("move.wav");
     std::fs::write(&file, crate::media::tests::wav_bytes()).unwrap();
     let mut options = EditorSoundOptions::default();
-    options.events.entry(Event::MoveResize).or_default().file =
-        Some(file.to_string_lossy().into_owned());
+    options.add_pack(phistudio_core::EditorSoundPack::default());
+    options
+        .selected_pack_mut()
+        .unwrap()
+        .events
+        .entry(Event::MoveResize)
+        .or_default()
+        .files = vec![file.to_string_lossy().into_owned()];
     let prepared = prepare(Sources::new(&options));
     assert!(prepared.warning.is_none());
-    assert!((prepared.clips[Event::MoveResize as usize].length() - 0.01).abs() < 1e-6);
-    assert!((prepared.clips[Event::Edit as usize].length() - 0.045).abs() < 1e-6);
+    assert!(
+        (prepared.clips[Event::MoveResize as usize][0]
+            .as_ref()
+            .unwrap()
+            .length()
+            - 0.01)
+            .abs()
+            < 1e-6
+    );
+    assert!((prepared.bank[Event::Edit.default_tone() as usize].length() - 0.045).abs() < 1e-6);
     let mut app = app();
     app.options
         .editor_sounds
+        .add_pack(phistudio_core::EditorSoundPack::default());
+    app.options
+        .editor_sounds
+        .selected_pack_mut()
+        .unwrap()
         .events
         .entry(Event::MoveResize)
         .or_default()
@@ -177,4 +207,92 @@ fn gesture_sound_is_independent_and_custom_audio_uses_the_correct_bank_slot() {
         Event::MoveResize.default_tone(),
         phistudio_core::EditorSoundTone::Slide
     );
+}
+
+#[test]
+fn variants_never_repeat_immediately_and_sequential_mode_is_predictable() {
+    let mut random = 42;
+    for count in 2..=4 {
+        let mut last = None;
+        let mut seen = BTreeSet::new();
+        for _ in 0..100 {
+            let next = choose_variant(count, last, true, &mut random).unwrap();
+            assert!(next < count);
+            assert_ne!(Some(next), last);
+            seen.insert(next);
+            last = Some(next);
+        }
+        assert_eq!(seen.len(), count);
+    }
+    assert_eq!(choose_variant(0, None, true, &mut random), None);
+    assert_eq!(choose_variant(1, Some(0), true, &mut random), Some(0));
+    assert_eq!(
+        (0..4)
+            .scan(None, |last, _| {
+                *last = choose_variant(3, *last, false, &mut random);
+                Some(last.unwrap())
+            })
+            .collect::<Vec<_>>(),
+        vec![0, 1, 2, 0]
+    );
+}
+#[test]
+fn manager_back_does_not_close_an_underlying_file_picker_and_preserves_custom_packs() {
+    let mut app = app();
+    app.options
+        .editor_sounds
+        .add_pack(phistudio_core::EditorSoundPack::default());
+    app.sounds.open = true;
+    app.files.media = Some(crate::media::MediaKind::SoundPack);
+    app.back();
+    assert!(app.files.media.is_none());
+    assert!(app.sounds.open);
+    app.back();
+    assert!(!app.sounds.open);
+    assert_eq!(app.options.editor_sounds.packs.len(), 1);
+}
+
+#[test]
+fn pending_audio_import_keeps_its_pack_target_and_inherited_action_settings() {
+    let mut app = app();
+    app.options
+        .editor_sounds
+        .add_pack(phistudio_core::EditorSoundPack::default());
+    let original = app.options.editor_sounds.selected_pack.clone();
+    app.options
+        .editor_sounds
+        .selected_pack_mut()
+        .unwrap()
+        .events
+        .entry(Event::Place)
+        .or_default()
+        .volume = 0.6;
+    app.sounds.import_target = Some(original.clone());
+    app.options
+        .editor_sounds
+        .add_pack(phistudio_core::EditorSoundPack::default());
+    let root = tempfile::tempdir().unwrap();
+    let file = root.path().join("tap.wav");
+    std::fs::write(&file, crate::media::tests::wav_bytes()).unwrap();
+    app.accept_media(
+        crate::media::MediaKind::EditorSound(Event::PlaceTap),
+        crate::media::MediaFile::new(file.clone(), "tap.wav".into(), false),
+    );
+    assert!(
+        app.options
+            .editor_sounds
+            .rule(Event::PlaceTap)
+            .files
+            .is_empty()
+    );
+    let imported = app
+        .options
+        .editor_sounds
+        .packs
+        .iter()
+        .find(|p| p.id == original)
+        .unwrap()
+        .rule(Event::PlaceTap);
+    assert_eq!(imported.volume, 0.6);
+    assert_eq!(imported.files, vec![file.to_string_lossy().into_owned()]);
 }

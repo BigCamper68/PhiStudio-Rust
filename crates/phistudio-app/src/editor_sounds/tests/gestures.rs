@@ -59,13 +59,28 @@ fn event_app() -> (Workbench, EventId) {
 fn changed_gesture(app: &mut Workbench, grid: Grid, down: Pos2, up: Pos2) {
     let before = app.editor.document().as_json().clone();
     input(app, grid, &[button(down, true)], false);
+    input(
+        app,
+        grid,
+        &[egui::Event::PointerMoved(up + vec2(1., 1.))],
+        false,
+    );
+    assert_eq!(
+        dominant(app),
+        Some(Event::MoveResize),
+        "Feedback must play while the pointer is still down"
+    );
     input(app, grid, &[egui::Event::PointerMoved(up)], false);
-    assert_eq!(dominant(app), None, "Staged motion must not play feedback");
+    assert_eq!(dominant(app), None, "Staying in one grid cell is silent");
     assert_eq!(app.editor.document().as_json(), &before);
     input(app, grid, &[button(up, false)], false);
     assert!(app.error.is_none(), "{:?}", app.error);
     assert_ne!(app.editor.document().as_json(), &before);
-    assert_eq!(dominant(app), Some(Event::MoveResize));
+    assert_eq!(
+        dominant(app),
+        None,
+        "Releasing at the same snapped position is silent"
+    );
     assert_eq!(
         dominant(app),
         None,
@@ -80,7 +95,7 @@ fn changed_gesture(app: &mut Workbench, grid: Grid, down: Pos2, up: Pos2) {
     assert_eq!(dominant(app), Some(Event::Undo));
 }
 #[test]
-fn all_note_moves_and_both_hold_endpoints_share_one_committed_sound() {
+fn all_note_moves_and_both_hold_endpoints_sound_on_grid_crossings() {
     for kind in [
         NoteKind::Tap,
         NoteKind::Flick,
@@ -136,7 +151,7 @@ fn dragging_a_mixed_selection_emits_one_shared_sound_and_keeps_one_undo() {
     changed_gesture(&mut app, grid, down, down - vec2(0., grid.zoom * 0.5));
 }
 #[test]
-fn canceled_and_returned_gestures_do_not_emit_move_feedback() {
+fn cancellation_is_silent_and_returning_to_the_original_cell_has_live_feedback() {
     for event in [false, true] {
         for canceled in [false, true] {
             let mut app = if event {
@@ -160,14 +175,21 @@ fn canceled_and_returned_gestures_do_not_emit_move_feedback() {
                 &[button(down, true), egui::Event::PointerMoved(moved)],
                 false,
             );
-            assert_eq!(dominant(&mut app), None);
+            assert_eq!(dominant(&mut app), Some(Event::MoveResize));
             if canceled {
                 input(&mut app, grid, &[], true);
             }
             input(&mut app, grid, &[button(down, false)], false);
             assert_eq!(app.editor.document().as_json(), &before);
             assert_eq!(app.editor.revision(), revision);
-            assert_eq!(dominant(&mut app), None);
+            assert_eq!(
+                dominant(&mut app),
+                if canceled {
+                    None
+                } else {
+                    Some(Event::MoveResize)
+                }
+            );
         }
     }
 }
@@ -242,6 +264,7 @@ fn touch_cancel_discards_staged_movement_without_a_commit_sound() {
         ],
         false,
     );
+    assert_eq!(dominant(&mut app), Some(Event::MoveResize));
     input(
         &mut app,
         grid,
@@ -250,4 +273,28 @@ fn touch_cancel_discards_staged_movement_without_a_commit_sound() {
     );
     assert_eq!(app.editor.document().as_json(), &before);
     assert_eq!(dominant(&mut app), None);
+}
+
+#[test]
+fn a_drag_sounds_at_each_new_grid_cell_before_one_final_commit() {
+    let mut app = note_app(NoteKind::Tap);
+    let grid = grid(&app);
+    let down = pos2(grid.x(0.), grid.y(3.));
+    let before = app.editor.document().as_json().clone();
+    input(&mut app, grid, &[button(down, true)], false);
+    for beat in [3.25, 3.5, 3.75, 4.] {
+        let pos = pos2(down.x, grid.y(beat));
+        input(&mut app, grid, &[egui::Event::PointerMoved(pos)], false);
+        assert_eq!(dominant(&mut app), Some(Event::MoveResize));
+        assert_eq!(app.editor.document().as_json(), &before);
+    }
+    input(
+        &mut app,
+        grid,
+        &[button(pos2(down.x, grid.y(4.)), false)],
+        false,
+    );
+    assert_eq!(dominant(&mut app), None);
+    app.history_step_now(false);
+    assert_eq!(app.editor.document().as_json(), &before);
 }
