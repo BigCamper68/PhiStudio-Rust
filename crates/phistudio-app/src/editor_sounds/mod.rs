@@ -89,6 +89,7 @@ fn priority(event: Event) -> u8 {
         Event::Copy | Event::Paste => 85,
         Event::Delete => 80,
         Event::Place => 75,
+        Event::MoveResize => 74,
         Event::Edit => 70,
         Event::Tool => 65,
         Event::Playback => 60,

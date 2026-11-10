@@ -14,6 +14,17 @@ pub(super) fn finish(app: &mut Workbench) {
     }
     app.timeline.input.pointer_active = false;
     let gesture = app.timeline.drag.take();
+    let revision = app.editor.revision();
+    let move_resize = matches!(
+        gesture.as_ref(),
+        Some(
+            Gesture::Move { moved: true, .. }
+                | Gesture::Resize { moved: true, .. }
+                | Gesture::SelectionMove { moved: true, .. }
+                | Gesture::SelectionScale { moved: true, .. }
+                | Gesture::Event(crate::event_grid::EventGesture::Edit { moved: true, .. })
+        )
+    );
     let preserve_properties_position = match gesture.as_ref() {
         Some(
             Gesture::Move { moved, .. }
@@ -193,6 +204,10 @@ pub(super) fn finish(app: &mut Workbench) {
             app.execute(Command::UpdateNote { id, note: current });
         }
         _ => {}
+    }
+    if move_resize && revision != app.editor.revision() {
+        app.sounds
+            .emit(phistudio_core::EditorSoundEvent::MoveResize);
     }
     if preserve_properties_position {
         // Commits can remap source IDs and reselect the edited objects. Only an

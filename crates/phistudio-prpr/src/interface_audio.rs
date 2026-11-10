@@ -145,11 +145,18 @@ pub fn interface_tone(style: Style, tone: Tone) -> AudioClip {
         Tone::Glass => (1250., 0.09, 52.),
         Tone::Chime => (880., 0.14, 35.),
         Tone::Bass => (180., 0.08, 60.),
+        Tone::Slide => (920., 0.075, 65.),
     };
     let frames = (0..(duration * 48000.) as usize)
         .map(|i| {
             let t = i as f32 / 48000.;
-            let phase = std::f32::consts::TAU * frequency * t;
+            let cycles = if tone == Tone::Slide {
+                // A short descending glide distinguishes committed moves from edits.
+                frequency * t - 2600. * t * t
+            } else {
+                frequency * t
+            };
+            let phase = std::f32::consts::TAU * cycles;
             let signal = match style {
                 Style::Soft => (phase + 1.8 * (-100. * t).exp()).sin(),
                 Style::Mechanical => {

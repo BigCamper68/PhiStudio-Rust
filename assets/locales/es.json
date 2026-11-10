@@ -2068,5 +2068,7 @@
   "No stable release has been published yet.": "Todavía no hay una versión estable publicada.",
   "The release information could not be read. Open the releases page to check manually.": "No se pudo leer la versión. Consulta la página de versiones.",
   "GitHub is temporarily unavailable. Try again later.": "GitHub no está disponible temporalmente. Inténtalo más tarde.",
-  "Update check interrupted. Try again.": "Comprobación interrumpida. Inténtalo de nuevo."
+  "Update check interrupted. Try again.": "Comprobación interrumpida. Inténtalo de nuevo.",
+  "Move and resize objects": "Mover y redimensionar objetos",
+  "Slide": "Deslizamiento"
 }

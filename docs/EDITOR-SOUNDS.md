@@ -8,7 +8,7 @@ Preferences are saved automatically with the editor's existing settings.
 - Adjust master volume, pitch and the minimum interval for repeated feedback.
   Value changes and scrubbing have a minimum interval of 90 ms.
 - Choose an action under **Customize each action** to enable/mute it, select one
-  of six tones, or set its volume and pitch independently.
+  of seven tones, or set its volume and pitch independently.
 - **Import sound…** accepts audio supported by the existing decoder, including
   WAV, OGG, MP3 and FLAC, up to 2 seconds and 2 MiB. Mobile uses the system picker;
   desktop uses the editor's existing path dialog. A private copy lives under
@@ -22,7 +22,13 @@ Preferences are saved automatically with the editor's existing settings.
 
 Sounds cover buttons, toggles, numeric changes, menus, object selection, tools,
 seeking, playback, successful editing commands, copy/paste, undo/redo, saves and
-errors. Semantic actions take priority over their button click so one action
+errors. **Move and resize objects** shares one Slide cue for dragging notes or
+events, changing either Hold/event endpoint and moving/scaling selections. It
+plays once after a successful changed gesture, replacing the generic edit cue;
+unchanged, rejected and canceled gestures do not play this cue. The action has its own
+volume, pitch, enable switch and custom file assignment.
+
+Semantic actions take priority over their button click so one action
 produces one cue. Canceled input is silent. Playback muting is on by default;
 Playtest and application suspension always mute feedback and discard stale cues.
 

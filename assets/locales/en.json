@@ -2068,5 +2068,7 @@
   "No stable release has been published yet.": "No stable release has been published yet.",
   "The release information could not be read. Open the releases page to check manually.": "The release information could not be read. Open the releases page to check manually.",
   "GitHub is temporarily unavailable. Try again later.": "GitHub is temporarily unavailable. Try again later.",
-  "Update check interrupted. Try again.": "Update check interrupted. Try again."
+  "Update check interrupted. Try again.": "Update check interrupted. Try again.",
+  "Move and resize objects": "Move and resize objects",
+  "Slide": "Slide"
 }

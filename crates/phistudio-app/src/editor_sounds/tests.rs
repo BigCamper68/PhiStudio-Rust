@@ -1,3 +1,4 @@
+mod gestures;
 use super::*;
 use egui::{WidgetInfo, WidgetType, output::OutputEvent};
 use phistudio_core::{Beat, ChartDocument, Note, NoteKind};
@@ -146,4 +147,34 @@ fn sound_customization_does_not_change_chart_history_and_survives_project_switch
     assert_eq!(app.editor.document().as_json(), &chart);
     app.replace_document(ChartDocument::empty("Next", 140.).unwrap(), None, None);
     assert_eq!(app.preferences(), preferences);
+}
+
+#[test]
+fn gesture_sound_is_independent_and_custom_audio_uses_the_correct_bank_slot() {
+    let root = tempfile::tempdir().unwrap();
+    let file = root.path().join("move.wav");
+    std::fs::write(&file, crate::media::tests::wav_bytes()).unwrap();
+    let mut options = EditorSoundOptions::default();
+    options.events.entry(Event::MoveResize).or_default().file =
+        Some(file.to_string_lossy().into_owned());
+    let prepared = prepare(Sources::new(&options));
+    assert!(prepared.warning.is_none());
+    assert!((prepared.clips[Event::MoveResize as usize].length() - 0.01).abs() < 1e-6);
+    assert!((prepared.clips[Event::Edit as usize].length() - 0.045).abs() < 1e-6);
+    let mut app = app();
+    app.options
+        .editor_sounds
+        .events
+        .entry(Event::MoveResize)
+        .or_default()
+        .enabled = false;
+    app.sounds.emit(Event::MoveResize);
+    app.sounds.emit(Event::Edit);
+    app.sounds.emit(Event::Select);
+    assert_eq!(dominant(&mut app), Some(Event::MoveResize));
+    assert!(app.options.editor_sounds.rule(Event::Edit).enabled);
+    assert_eq!(
+        Event::MoveResize.default_tone(),
+        phistudio_core::EditorSoundTone::Slide
+    );
 }

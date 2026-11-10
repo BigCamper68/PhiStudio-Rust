@@ -2068,5 +2068,7 @@
   "No stable release has been published yet.": "Стабильные релизы ещё не опубликованы.",
   "The release information could not be read. Open the releases page to check manually.": "Не удалось прочитать сведения о версии. Проверьте обновления на странице релизов.",
   "GitHub is temporarily unavailable. Try again later.": "GitHub временно недоступен. Попробуйте позже.",
-  "Update check interrupted. Try again.": "Проверка обновлений прервана. Попробуйте снова."
+  "Update check interrupted. Try again.": "Проверка обновлений прервана. Попробуйте снова.",
+  "Move and resize objects": "Перемещение и изменение длины",
+  "Slide": "Сдвиг"
 }

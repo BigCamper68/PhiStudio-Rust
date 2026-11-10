@@ -23,9 +23,10 @@ pub enum EditorSoundEvent {
     Redo,
     Save,
     Error,
+    MoveResize,
 }
 impl EditorSoundEvent {
-    pub const ALL: [Self; 18] = [
+    pub const ALL: [Self; 19] = [
         Self::Click,
         Self::Toggle,
         Self::Value,
@@ -44,6 +45,7 @@ impl EditorSoundEvent {
         Self::Redo,
         Self::Save,
         Self::Error,
+        Self::MoveResize,
     ];
     pub fn label(self) -> &'static str {
         match self {
@@ -65,6 +67,7 @@ impl EditorSoundEvent {
             Self::Redo => "Redo",
             Self::Save => "Save",
             Self::Error => "Errors",
+            Self::MoveResize => "Move and resize objects",
         }
     }
     pub fn default_tone(self) -> EditorSoundTone {
@@ -75,6 +78,7 @@ impl EditorSoundEvent {
             Self::Expand | Self::Paste | Self::Undo | Self::Redo => EditorSoundTone::Glass,
             Self::Playback | Self::Save => EditorSoundTone::Chime,
             Self::Delete | Self::Error => EditorSoundTone::Bass,
+            Self::MoveResize => EditorSoundTone::Slide,
         }
     }
 }
@@ -103,15 +107,17 @@ pub enum EditorSoundTone {
     Glass,
     Chime,
     Bass,
+    Slide,
 }
 impl EditorSoundTone {
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 7] = [
         Self::Tick,
         Self::Pop,
         Self::Wood,
         Self::Glass,
         Self::Chime,
         Self::Bass,
+        Self::Slide,
     ];
     pub fn label(self) -> &'static str {
         match self {
@@ -121,6 +127,7 @@ impl EditorSoundTone {
             Self::Glass => "Glass",
             Self::Chime => "Chime",
             Self::Bass => "Bass",
+            Self::Slide => "Slide",
         }
     }
 }
@@ -203,6 +210,14 @@ mod tests {
                 file: Some("/private/sounds/place.wav".into()),
                 volume: 0.6,
                 pitch: 1.2,
+                ..Default::default()
+            },
+        );
+        preferences.options.editor_sounds.events.insert(
+            EditorSoundEvent::MoveResize,
+            EditorSoundRule {
+                tone: Some(EditorSoundTone::Slide),
+                volume: 0.7,
                 ..Default::default()
             },
         );

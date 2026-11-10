@@ -2068,5 +2068,7 @@
   "No stable release has been published yet.": "安定版はまだ公開されていません。",
   "The release information could not be read. Open the releases page to check manually.": "リリース情報を読み取れません。リリースページで確認してください。",
   "GitHub is temporarily unavailable. Try again later.": "GitHubは一時的に利用できません。後で再試行してください。",
-  "Update check interrupted. Try again.": "更新確認が中断されました。再試行してください。"
+  "Update check interrupted. Try again.": "更新確認が中断されました。再試行してください。",
+  "Move and resize objects": "オブジェクトの移動とサイズ変更",
+  "Slide": "スライド"
 }

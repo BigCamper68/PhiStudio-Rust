@@ -2068,5 +2068,7 @@
   "No stable release has been published yet.": "尚未发布稳定版本。",
   "The release information could not be read. Open the releases page to check manually.": "无法读取版本信息，请打开发布页面手动检查。",
   "GitHub is temporarily unavailable. Try again later.": "GitHub 暂时不可用，请稍后重试。",
-  "Update check interrupted. Try again.": "更新检查已中断，请重试。"
+  "Update check interrupted. Try again.": "更新检查已中断，请重试。",
+  "Move and resize objects": "移动对象与调整长度",
+  "Slide": "滑动"
 }
