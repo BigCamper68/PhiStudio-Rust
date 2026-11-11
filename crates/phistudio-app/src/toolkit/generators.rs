@@ -119,12 +119,11 @@ impl Workbench {
             include_endpoints: s.include_ends,
         };
         let easing = s.easing;
-        if self
-            .tools
-            .note_preview
-            .as_ref()
-            .is_none_or(|cache| cache.pattern != pattern || cache.easing != easing)
-        {
+        if self.tools.note_preview.as_ref().is_none_or(|cache| {
+            cache.pattern != pattern
+                || cache.easing != easing
+                || cache.defaults != self.options.new_note_defaults
+        }) {
             let curve = phistudio_prpr::EventCurve::new(
                 EventType::MoveX,
                 &LineEvent {
@@ -135,9 +134,18 @@ impl Workbench {
             );
             let result = pattern
                 .notes(|t| f64::from(curve.sample(t as f32)))
+                .map(|mut notes| {
+                    for note in &mut notes {
+                        self.options
+                            .new_note_defaults
+                            .apply_style(note, phistudio_core::NoteCreationPolicy::Regular);
+                    }
+                    notes
+                })
                 .map(Arc::new)
                 .map_err(|e| e.to_string());
             self.tools.note_preview = Some(NotePreview {
+                defaults: self.options.new_note_defaults.clone(),
                 pattern,
                 easing,
                 result,

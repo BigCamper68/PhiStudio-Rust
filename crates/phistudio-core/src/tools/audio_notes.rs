@@ -28,6 +28,8 @@ pub enum AudioCollision {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AudioNoteOptions {
+    #[serde(default)]
+    pub use_creation_defaults: bool,
     pub minimum_strength: f32,
     pub every: usize,
     pub minimum_gap_beats: f64,
@@ -60,6 +62,7 @@ pub struct AudioNoteOptions {
 impl Default for AudioNoteOptions {
     fn default() -> Self {
         Self {
+            use_creation_defaults: true,
             minimum_strength: 0.,
             every: 1,
             minimum_gap_beats: 0.,

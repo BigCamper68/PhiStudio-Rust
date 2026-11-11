@@ -21,6 +21,9 @@ const ROLES: [&str; 11] = [
 ];
 #[derive(Clone)]
 enum Target {
+    NoteDefaults {
+        before: Option<[u8; 3]>,
+    },
     Noise {
         field: usize,
         keyframe: Option<(usize, bool)>,
@@ -66,6 +69,14 @@ pub(crate) fn swatch(ui: &mut egui::Ui, rgb: [u8; 3], label: &str) -> egui::Resp
     response
 }
 impl Workbench {
+    pub(crate) fn open_note_default_color(&mut self, rgb: [u8; 3]) {
+        self.open_color(
+            Target::NoteDefaults {
+                before: self.options.new_note_defaults.tint_hit_effects,
+            },
+            [rgb[0], rgb[1], rgb[2], 255],
+        );
+    }
     pub(crate) fn open_note_color(&mut self, id: phistudio_core::NoteId, rgb: [u8; 3]) {
         self.open_color(
             Target::Note {
@@ -208,6 +219,7 @@ impl Workbench {
                                         p.target,
                                         Target::Story { .. }
                                             | Target::Note { .. }
+                                            | Target::NoteDefaults { .. }
                                             | Target::Noise { .. }
                                     );
                                     changed |= ui
@@ -312,6 +324,11 @@ impl Workbench {
             }
         }
         if apply {
+            if let Target::NoteDefaults { before } = p.target
+                && self.options.new_note_defaults.tint_hit_effects == before
+            {
+                self.options.new_note_defaults.tint_hit_effects = Some([rgba[0], rgba[1], rgba[2]]);
+            }
             if let Target::Note {
                 id,
                 session,

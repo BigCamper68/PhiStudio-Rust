@@ -28,7 +28,7 @@ pub use audio_notes::{
     preview_audio_notes,
 };
 pub(crate) use generate::generated_event_edit;
-pub use generate::{NotePattern, Pattern, Random, generate_motion, generate_notes};
+pub use generate::{NotePattern, Pattern, Random, create_note, generate_motion, generate_notes};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 

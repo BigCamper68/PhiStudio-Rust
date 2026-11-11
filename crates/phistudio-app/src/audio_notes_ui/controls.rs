@@ -152,12 +152,17 @@ impl Workbench {
                 ui.checkbox(&mut o.trim_holds,tr("Trim holds at the next generated note"));
                 ui.small(tr("Attack markers do not estimate sustain length. Holds use this duration and stay inside the chosen range."));
             }
+            ui.checkbox(&mut o.use_creation_defaults,tr("Use new-note defaults"));
+            if o.use_creation_defaults {
+                ui.small(tr("Properties follow Settings → New note defaults. Disable this option to override them for this generator."));
+            } else {
             choice(ui,"Note side",&mut o.side,&[(AudioSide::Above,"Above the line"),(AudioSide::Below,"Below the line"),(AudioSide::Alternating,"Alternate sides")]);
             number(ui,"Speed",&mut o.speed,0.01,0.000001..=10000.);
             number(ui,"Size",&mut o.size,0.01,0.000001..=10000.);
             number(ui,"Alpha",&mut o.alpha,1.,0..=255);
             number(ui,"Y offset",&mut o.y_offset,1.,-100000. ..=100000.);
             ui.checkbox(&mut o.fake,tr("Fake"));
+            }
         });
         ui.collapsing(tr("Horizontal placement"), |ui| {
             choice(

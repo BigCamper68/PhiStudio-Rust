@@ -18,6 +18,18 @@ impl FileManager {
             }
         };
         match request {
+            FileRequest::PrepareNoteCreation(request) => {
+                let (sender, receiver) = mpsc::channel();
+                self.worker = Some(receiver);
+                app.files.busy = true;
+                std::thread::spawn(move || {
+                    let (target, result) = crate::note_creation::prepare(*request);
+                    let _ = sender.send(Ok(WorkerResult::PreparedNoteCreation {
+                        target: Box::new(target),
+                        result,
+                    }));
+                });
+            }
             FileRequest::AfterHook { .. } => {}
             FileRequest::ImportSource(source) => self.import_now(app, source),
             #[cfg(any(target_os = "android", target_os = "ios"))]

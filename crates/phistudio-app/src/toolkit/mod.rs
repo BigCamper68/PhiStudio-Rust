@@ -49,6 +49,7 @@ enum Profile {
 }
 
 struct NotePreview {
+    defaults: phistudio_core::NoteCreationDefaults,
     pattern: tools::NotePattern,
     easing: i32,
     result: Result<Arc<Vec<phistudio_core::Note>>, String>,

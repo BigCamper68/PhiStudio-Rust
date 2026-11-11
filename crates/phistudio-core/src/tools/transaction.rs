@@ -27,6 +27,36 @@ impl ToolDelta {
 }
 
 impl ToolEdit {
+    pub fn with_note_defaults(
+        mut self,
+        defaults: &crate::NoteCreationDefaults,
+        sounds: &crate::NoteCreationSounds,
+        policy: crate::NoteCreationPolicy,
+        canceled: impl Fn() -> bool,
+    ) -> Result<Self, ChartError> {
+        for (track, edit) in &mut self.tracks {
+            if matches!(track, Track::Notes(_)) {
+                if !edit.remove.is_empty() {
+                    return Err(invalid(
+                        "Creation defaults apply only to newly authored notes",
+                    ));
+                }
+                for value in &mut edit.add {
+                    if canceled() {
+                        return Err(invalid("Note creation canceled"));
+                    }
+                    *value = defaults.decorate(value, sounds, policy)?;
+                }
+            }
+        }
+        Ok(self)
+    }
+    pub fn added_note_count(&self) -> usize {
+        self.tracks
+            .iter()
+            .filter_map(|(track, edit)| matches!(track, Track::Notes(_)).then_some(edit.add.len()))
+            .sum()
+    }
     pub fn validate_preview(&self, doc: &ChartDocument) -> Result<(), ChartError> {
         for (track, edit) in &self.tracks {
             if let Track::Events(line, layer, kind) = track {

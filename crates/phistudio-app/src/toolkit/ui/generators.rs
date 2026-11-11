@@ -65,11 +65,14 @@ impl Workbench {
                 });
                 pattern_preview(ui, &notes);
                 if ui.button(crate::i18n::tr("Generate notes")).clicked() {
-                    self.apply_tool(tools::generate_notes(
-                        self.editor.document(),
-                        self.line,
-                        notes.as_ref().clone(),
-                    ));
+                    self.create_tool_notes(
+                        tools::generate_notes(
+                            self.editor.document(),
+                            self.line,
+                            notes.as_ref().clone(),
+                        ),
+                        phistudio_core::NoteCreationPolicy::Regular,
+                    );
                 }
             }
             Err(e) => {

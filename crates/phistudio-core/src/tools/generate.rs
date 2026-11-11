@@ -136,6 +136,18 @@ pub fn generate_notes(
         .collect::<Result<_, ChartError>>()?;
     plan(doc, &Selection::default(), items, "Generate notes")
 }
+pub fn create_note(doc: &ChartDocument, line: usize, note: Note) -> Result<ToolEdit, ChartError> {
+    plan(
+        doc,
+        &Selection::default(),
+        vec![Object {
+            line,
+            event: None,
+            value: note.merge_into(None)?,
+        }],
+        "Add note",
+    )
+}
 
 #[derive(Clone, Debug)]
 pub struct Random(pub u64);

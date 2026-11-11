@@ -1,6 +1,8 @@
 use super::*;
 use std::sync::mpsc::{self, Receiver, SyncSender};
 pub(super) struct Request {
+    pub sounds: crate::note_creation::SoundKey,
+    pub defaults: phistudio_core::NoteCreationDefaults,
     pub id: u64,
     pub document: phistudio_core::ChartDocument,
     pub markers: Vec<AudioMarker>,
@@ -22,15 +24,29 @@ impl Planner {
         std::thread::Builder::new()
             .name("audio-note-planner".into())
             .spawn(move || {
+                let mut audition_cache: Option<(
+                    crate::note_creation::SoundKey,
+                    phistudio_prpr::PreparedNoteAudition,
+                )> = None;
                 while let Ok(request) = requests.recv() {
                     let result = (|| {
-                        let plan = preview_audio_notes(
+                        let mut plan = preview_audio_notes(
                             &request.document,
                             &request.markers,
                             &request.spec,
                             || request.cancel.load(Ordering::Acquire),
                         )
                         .map_err(|e| e.to_string())?;
+                        for item in &mut plan.notes {
+                            request.defaults.apply_style(
+                                &mut item.note,
+                                if request.spec.options.use_creation_defaults {
+                                    phistudio_core::NoteCreationPolicy::Regular
+                                } else {
+                                    phistudio_core::NoteCreationPolicy::Audio
+                                },
+                            );
+                        }
                         let mut groups =
                             BTreeMap::<usize, Vec<(usize, phistudio_core::Note)>>::new();
                         for item in &plan.notes {
@@ -45,7 +61,26 @@ impl Planner {
                             })
                             .collect();
                         let audio = audio::Audio::new(&plan, request.document.tempo());
+                        let audition = if let Some((_, audition)) = audition_cache
+                            .as_ref()
+                            .filter(|(key, _)| key == &request.sounds)
+                        {
+                            audition.clone()
+                        } else {
+                            let audition =
+                                pollster::block_on(phistudio_prpr::prepare_note_audition(
+                                    request.sounds.root.as_deref(),
+                                    request.sounds.skin.as_deref(),
+                                    request.sounds.reference.as_deref(),
+                                    request.sounds.volume,
+                                ))
+                                .map_err(|e| format!("{e:#}"))?;
+                            audition_cache = Some((request.sounds.clone(), audition.clone()));
+                            audition
+                        };
                         Ok(Prepared {
+                            audition,
+                            audition_id: request.id,
                             plan,
                             ghosts,
                             audio,

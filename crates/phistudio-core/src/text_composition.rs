@@ -175,6 +175,24 @@ pub struct Plan {
     pub(crate) values: Vec<Value>,
 }
 impl Plan {
+    pub fn with_note_defaults(
+        mut self,
+        defaults: &crate::NoteCreationDefaults,
+        sounds: &crate::NoteCreationSounds,
+        canceled: impl Fn() -> bool,
+    ) -> Result<Self, ChartError> {
+        for line in &mut self.values {
+            if let Some(notes) = line["notes"].as_array_mut() {
+                for note in notes {
+                    if canceled() {
+                        return Err(invalid("Note creation canceled"));
+                    }
+                    *note = defaults.decorate(note, sounds, crate::NoteCreationPolicy::Text)?;
+                }
+            }
+        }
+        Ok(self)
+    }
     pub fn apply(self, editor: &mut Editor) -> Result<Selection, ChartError> {
         editor.execute_text_composition(self.values, self.spec.mode == Mode::Lines)
     }

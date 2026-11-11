@@ -206,21 +206,5 @@ fn box_single(app: &mut Workbench, grid: Grid, origin: Pos2, current: Pos2) -> S
 }
 
 pub(super) fn add(app: &mut Workbench, kind: NoteKind, start: Beat, end: Beat, x: f64) {
-    let index = app.notes().len();
-    app.execute(Command::AddNote {
-        line: app.line,
-        note: Note {
-            kind,
-            start_time: start,
-            end_time: end,
-            x,
-            ..Note::default()
-        },
-    });
-    if app.error.is_none() {
-        app.select(Some(NoteId {
-            line: app.line,
-            index,
-        }));
-    }
+    app.place_note_with_defaults(app.line, kind, start, end, x);
 }

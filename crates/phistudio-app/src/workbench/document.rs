@@ -89,6 +89,7 @@ impl Workbench {
         assets: Option<PathBuf>,
     ) {
         let mut workspace = std::mem::take(&mut self.workspace);
+        self.note_creation.clear_project();
         let mut audio_guide = std::mem::take(&mut self.audio_guide);
         audio_guide.clear_project();
         let mut audio_notes = std::mem::take(&mut self.audio_notes);

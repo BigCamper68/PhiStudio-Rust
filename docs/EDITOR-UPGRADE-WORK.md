@@ -24,7 +24,7 @@ upstream source is studied as a behavior reference, not copied or bundled.
   full menus and actual music/clock transport.
 - [x] Sidebar hitsound audition: selected line or selected groups of lines,
   without changing visual line visibility or judgment, including in playtest.
-- [ ] New-note defaults: all applicable Note Properties (including size, speed,
+- [x] New-note defaults: all applicable Note Properties (including size, speed,
   fake, above and extensions), editing once and applying consistently to new
   authoring paths, without altering imports, existing notes or pasted objects.
 - [x] New-line defaults: initial X/Y/Rotation/Alpha/Speed events, persistent
@@ -120,9 +120,9 @@ twice at density 2.75 and framebuffer 990x2145. Its two sessions accumulated
 bytes stayed identical. Evidence is in `artifacts/checks/project-activity-runtime`
 and the reusable runner is `tools/project-activity-smoke.py`.
 
-Still required: the full custom easing workspace, Note Tracing inside Motion
-Generator, persistent new-note/new-line defaults, then advanced stem/ML audio guidance LAST. This delivery
-slice does not complete the active user goal. The current reference cache also
+At that checkpoint, custom easing, Note Tracing, creation defaults and advanced
+stem/ML audio guidance remained. This delivery slice did not complete the active
+user goal. The current reference cache also
 includes rpe-next's animation-curve editor/library, note-tracking and placement
 models; no upstream implementation or assets are copied into this repository.
 
@@ -169,8 +169,8 @@ Note Tracing validation:
 - `tools/verify-prpr-source.py`: 186 upstream files verified; no vendor/phira
   source changes. Physical Android/APK verification has not been performed.
 
-Remaining requested work is custom easing, new-note defaults and, last, advanced
-stem/ML audio guidance. This delivery does not complete the overall goal.
+After Note Tracing, custom easing, creation defaults and, last, advanced stem/ML
+audio guidance remained. This delivery did not complete the overall goal.
 
 Implemented in the new-line defaults delivery slice:
 
@@ -206,3 +206,47 @@ New-line defaults validation:
   The script reads the authoritative active copied chart from last-project.json;
   external imported input bytes remain untouched. Clean shutdown retains the
   preferences for the next session. Physical Android validation remains pending.
+
+Implemented in the new-note defaults delivery slice:
+
+- Settings → New note defaults and Note Properties → Use selected note as
+  defaults persist size, speed, fake/below, visibility, Y offset, alpha, optional
+  judge area/color, hitsound and volume. Note reset and line reset are independent;
+  preference edits do not add chart history. Custom sound defaults retain stable
+  project ownership and fall back to type cues in another project.
+- Manual placement and pattern generation use the same template and display it
+  in their ghosts. Audio generation exposes an explicit common-defaults/own-style
+  choice; legacy generator preferences retain their own style. Text generation
+  keeps required fake-note geometry and inherits applicable style/extensions.
+  Imports, duplication, pasted objects and existing notes remain unchanged.
+- Native sound preparation runs on the file worker, caches three note-type cues
+  or one shared custom cue, and uses ordinary project WAVs understood by Phira.
+  Project/revision/asset/preference guards and cancellation protect pending edits.
+  Placement/batches each have one Undo. Audio-generator previews use the original
+  native SFX backend with the chosen source and volume, without gain-file writes.
+
+New-note defaults validation:
+
+- Workspace: 824 passed, zero failed, 26 explicitly ignored. Focused cases cover
+  all four note kinds, generator policies, extension/unknown JSON preservation,
+  exact Undo, preference migration/normalization/persistence, sound ownership,
+  native WAV preparation/cache, cancellation, stale revisions/preferences and
+  old-project reply collisions. Original PCM cues match staged preview cues;
+  export/reimport reaches native prpr with judge-area/color/gain intact.
+- Actual Miniquad touch probes pass at 873×393 and at density 2.75 with framebuffer
+  990×2145: numeric swipe, independent Reset, seven locales, Tap/Hold gestures,
+  real file worker and native prpr loading, exact one-step Undo and Redo. Direct
+  framebuffer readback avoids a GLES texture-copy capture issue; screenshots were
+  inspected. Evidence: `artifacts/checks/note-defaults-222` and `note-defaults-223`.
+- `tools/note-defaults-smoke.py` passes two ordinary application sessions with
+  private managed storage: real placement, Save, all note fields and gain asset,
+  exact header Undo/Redo, retained preferences and unchanged external source.
+  Evidence: `artifacts/checks/note-defaults-runtime`. Workspace Clippy and desktop
+  app/probe builds pass; original prpr/skin/preview-resource provenance passes.
+  The native audio-generator GPU probe also passes: eight staged cues through the
+  original SFX backend, visible grid ghosts, native loading, exact Undo/Redo,
+  idempotent repeated generation and reused FFT (`audio-notes-225`).
+  Physical Android/APK verification remains pending.
+
+Remaining work is the full custom easing workspace and, last, advanced stem/ML
+audio guidance. The overall user goal remains active.

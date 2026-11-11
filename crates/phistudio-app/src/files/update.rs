@@ -87,6 +87,9 @@ impl FileManager {
                     self.worker = None;
                     app.files.busy = false;
                     match result {
+                        Ok(WorkerResult::PreparedNoteCreation { target, result }) => {
+                            app.receive_note_creation(*target, result)
+                        }
                         Ok(WorkerResult::ProviderSource { operation, result }) => {
                             app.receive_plugin_provider_source(operation, result)
                         }
@@ -234,6 +237,7 @@ impl FileManager {
                 }
                 Err(mpsc::TryRecvError::Disconnected) => {
                     self.worker = None;
+                    app.note_creation.clear_project();
                     app.files.busy = false;
                     app.files.recovery_loading = false;
                     app.error = Some("File operation interrupted".into());

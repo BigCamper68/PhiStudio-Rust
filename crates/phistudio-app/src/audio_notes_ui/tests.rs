@@ -12,6 +12,49 @@ fn app() -> Workbench {
     app.open_audio_notes();
     app
 }
+#[test]
+fn common_defaults_are_visible_in_audio_previews_and_owned_overrides_remain_explicit() {
+    let mut app = app();
+    app.options.new_note_defaults = phistudio_core::NoteCreationDefaults {
+        size: 1.6,
+        speed: 1.3,
+        above: 0,
+        is_fake: 1,
+        judge_area: Some(2.5),
+        ..Default::default()
+    };
+    app.options.audio_notes.use_creation_defaults = true;
+    app.build_audio_note_preview();
+    wait(&mut app);
+    let plan = &app.audio_notes.preview.as_ref().unwrap().1.plan;
+    assert!(!plan.notes.is_empty());
+    for item in &plan.notes {
+        assert_eq!(
+            (
+                item.note.size,
+                item.note.speed,
+                item.note.above,
+                item.note.is_fake
+            ),
+            (1.6, 1.3, 0, 1)
+        );
+        assert_eq!(item.note.judge_area, Some(2.5));
+    }
+    app.apply_audio_note_preview();
+    for (_, note) in app.editor.document().notes(0) {
+        assert_eq!(note.size, 1.6);
+    }
+    app.history_step_now(false);
+    app.options.audio_notes.use_creation_defaults = false;
+    app.options.audio_notes.size = 2.2;
+    app.options.audio_notes.fake = false;
+    app.open_audio_notes();
+    app.build_audio_note_preview();
+    wait(&mut app);
+    for item in &app.audio_notes.preview.as_ref().unwrap().1.plan.notes {
+        assert_eq!((item.note.size, item.note.is_fake), (2.2, 0));
+    }
+}
 fn wait(app: &mut Workbench) {
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
     while app.audio_notes.pending.is_some() && std::time::Instant::now() < deadline {
@@ -684,6 +727,7 @@ fn preview_audio_is_passive_and_stops_on_stale_input_close_or_fake_notes() {
     assert_eq!(app.editor.document().as_json(), &before);
     assert!(!app.editor.is_dirty());
     app.open_audio_notes();
+    app.options.audio_notes.use_creation_defaults = false;
     app.options.audio_notes.fake = true;
     app.options.audio_notes.kind = phistudio_core::NoteKind::Hold;
     app.options.audio_notes.per_band = false;

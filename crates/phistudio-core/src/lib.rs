@@ -12,7 +12,10 @@ mod authoring;
 mod beat;
 mod conversion;
 mod creation_defaults;
-pub use creation_defaults::LineCreationDefaults;
+pub use creation_defaults::{
+    DefaultNoteSound, LineCreationDefaults, NoteCreationDefaults, NoteCreationPolicy,
+    NoteCreationSounds,
+};
 mod document;
 mod events;
 mod export;

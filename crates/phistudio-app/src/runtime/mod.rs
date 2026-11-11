@@ -450,8 +450,11 @@ pub(crate) async fn run(options: Options) -> Result<()> {
             app.error = Some(format!("Audio playback failed: {error:#}"));
             app.transport.playing = false;
         }
+        if let Err(error) = preview.set_note_audition(app.staged_note_sounds()) {
+            app.error = Some(format!("Could not prepare staged note audio: {error:#}"));
+        }
         if let Err(error) =
-            app.audition_audio_notes(seconds, seek, |kind| preview.audition(None, kind))
+            app.audition_audio_notes(seconds, seek, |kind| preview.audition_staged_note(kind))
         {
             app.error = Some(format!("Could not play hitsound: {error:#}"));
         }

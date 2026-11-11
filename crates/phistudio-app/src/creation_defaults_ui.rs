@@ -1,4 +1,5 @@
 use crate::{i18n::tr, workbench::Workbench};
+mod notes;
 
 impl Workbench {
     pub(crate) fn new_line_defaults_ui(&mut self, ui: &mut egui::Ui) {

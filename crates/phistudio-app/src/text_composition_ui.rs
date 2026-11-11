@@ -235,23 +235,11 @@ impl Workbench {
             )
             .clicked()
             && let Some((_, Ok(plan))) = state.preview.take()
+            && self.create_notes(crate::note_creation::Action::Text(Box::new(plan)))
+            && let Ok(mut v) = self.parameter_snapshot()
         {
-            let line = self.editor.document().line_count();
-            let anchor = self.anchor();
-            match plan.apply(&mut self.editor) {
-                Ok(selection) => {
-                    self.remember_anchor(anchor);
-                    self.line = line;
-                    self.transport.playing = false;
-                    self.set_selection(selection);
-                    self.error = None;
-                    if let Ok(mut v) = self.parameter_snapshot() {
-                        v["text_composition"] = serde_json::to_value(&state.spec).unwrap();
-                        self.presets.remember(v);
-                    }
-                }
-                Err(error) => self.error = Some(error.to_string()),
-            }
+            v["text_composition"] = serde_json::to_value(&state.spec).unwrap();
+            self.presets.remember(v);
         }
         self.text_composition = state;
     }

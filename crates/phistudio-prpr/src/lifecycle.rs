@@ -70,6 +70,7 @@ impl Preview {
             shader_key,
             picking: picking::PickingState::new(source_ids),
             sound_schedule: Default::default(),
+            note_audition: None,
             hitsound_audition: Default::default(),
             editor_options: phistudio_core::EditorOptions {
                 mark_active_line_id: false,

@@ -30,6 +30,8 @@ enum Range {
 }
 #[derive(Clone, PartialEq)]
 struct Key {
+    sounds: crate::note_creation::SoundKey,
+    defaults: phistudio_core::NoteCreationDefaults,
     session: u64,
     revision: u64,
     assets: u64,
@@ -41,6 +43,8 @@ struct Ghosts {
     index: crate::note_index::NoteIndex,
 }
 struct Prepared {
+    audition: phistudio_prpr::PreparedNoteAudition,
+    audition_id: u64,
     plan: AudioNotePreview,
     ghosts: BTreeMap<usize, Ghosts>,
     audio: audio::Audio,
@@ -175,13 +179,29 @@ impl Workbench {
         } else {
             vec![self.audio_notes.line]
         };
+        let mut options = self.options.audio_notes.clone();
+        if options.use_creation_defaults {
+            let defaults = &self.options.new_note_defaults;
+            options.size = defaults.size;
+            options.speed = defaults.speed;
+            options.alpha = defaults.alpha;
+            options.y_offset = defaults.y_offset;
+            options.fake = defaults.is_fake != 0;
+            options.side = if defaults.above == 1 {
+                phistudio_core::tools::AudioSide::Above
+            } else {
+                phistudio_core::tools::AudioSide::Below
+            };
+        }
         Ok(Key {
+            sounds: self.note_creation_key()?,
+            defaults: self.options.new_note_defaults.clone(),
             session: self.session,
             revision: self.editor.revision(),
             assets: self.asset_revision,
             source,
             spec: AudioNoteSpec {
-                options: self.options.audio_notes.clone(),
+                options,
                 range,
                 lines,
                 audio_offset: offset,
@@ -257,6 +277,8 @@ impl Workbench {
                 .as_ref()
                 .unwrap()
                 .send(worker::Request {
+                    sounds: key.sounds.clone(),
+                    defaults: self.options.new_note_defaults.clone(),
                     id,
                     document: self.editor.document().clone(),
                     markers,
@@ -281,12 +303,17 @@ impl Workbench {
                 Some("The preview is out of date. Build it again before inserting notes.".into());
             return;
         }
-        let (_, prepared) = self.audio_notes.preview.take().unwrap();
+        let (key, prepared) = self.audio_notes.preview.take().unwrap();
         if prepared.plan.notes.is_empty() {
             return;
         }
         let edit = insert_audio_notes(self.editor.document(), &prepared.plan.notes);
-        if self.apply_tool(edit) {
+        let policy = if key.spec.options.use_creation_defaults {
+            phistudio_core::NoteCreationPolicy::Regular
+        } else {
+            phistudio_core::NoteCreationPolicy::Audio
+        };
+        if self.create_tool_notes(edit, policy) {
             self.audio_notes.close();
         } else {
             self.audio_notes.error = self.error.take();

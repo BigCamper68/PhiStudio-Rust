@@ -1,5 +1,7 @@
 //! Persistent authoring preferences, separate from imported chart data.
+mod notes;
 use crate::{ChartDocument, ChartError, EventType};
+pub use notes::{DefaultNoteSound, NoteCreationDefaults, NoteCreationPolicy, NoteCreationSounds};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 

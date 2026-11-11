@@ -233,24 +233,21 @@ pub(super) fn paint(
                 ..
             }) = &app.timeline.drag
         {
-            draw_note(
-                &mut batch,
-                &grid,
-                &Note {
-                    kind: *kind,
-                    start_time: *start,
-                    end_time: if *kind == NoteKind::Hold {
-                        (*end).max(*start)
-                    } else {
-                        *start
-                    },
-                    x: *x,
-                    ..Note::default()
+            let mut ghost = Note {
+                kind: *kind,
+                start_time: *start,
+                end_time: if *kind == NoteKind::Hold {
+                    (*end).max(*start)
+                } else {
+                    *start
                 },
-                true,
-                true,
-                skin,
-            );
+                x: *x,
+                ..Default::default()
+            };
+            app.options
+                .new_note_defaults
+                .apply_style(&mut ghost, phistudio_core::NoteCreationPolicy::Regular);
+            draw_note(&mut batch, &grid, &ghost, true, true, skin);
         }
         batch.flush();
         app.paint_audio_note_preview(&clipped, line, grid);

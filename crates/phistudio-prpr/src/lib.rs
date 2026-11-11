@@ -27,7 +27,9 @@ mod compatibility;
 mod curve;
 mod editor_audio;
 mod interface_audio;
+mod note_audition;
 pub use interface_audio::{InterfaceAudio, interface_tone, load_interface_sound};
+pub use note_audition::{PreparedNoteAudition, prepare_note_audition};
 mod editor_options;
 mod effects;
 mod extension_effects;
@@ -74,6 +76,7 @@ pub fn suspend_audio() {
 }
 
 pub struct Preview {
+    note_audition: Option<note_audition::NoteAudition>,
     speed_curve_horizon: f64,
     extension_effects: extension_effects::ExtensionEffects,
     noise_fields: noise_fields::NoiseFields,

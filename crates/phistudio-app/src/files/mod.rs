@@ -65,6 +65,7 @@ pub enum FileRequest {
         volume: f64,
         target: crate::inspector::SoundTarget,
     },
+    PrepareNoteCreation(Box<crate::note_creation::Request>),
     Startup,
     Projects,
     CreateProject {
@@ -155,6 +156,10 @@ enum WorkerResult {
     NoteVolume {
         gain: phistudio_core::NoteSoundGain,
         target: crate::inspector::SoundTarget,
+    },
+    PreparedNoteCreation {
+        target: Box<crate::note_creation::Target>,
+        result: Result<crate::note_creation::Prepared, String>,
     },
     Imported(ImportedProject),
     Created(phistudio_core::ProjectLocation),

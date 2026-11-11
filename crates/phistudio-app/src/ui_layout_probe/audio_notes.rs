@@ -26,7 +26,7 @@ async fn capture(
         frame(gui, app, preview).await?;
     }
     paint(gui, app, preview, 260.)?;
-    let image = get_screen_data();
+    let image = read_framebuffer();
     image.export_png(out.join(format!("{name}.png")).to_str().unwrap());
     Ok(image)
 }
@@ -157,12 +157,13 @@ pub(super) async fn run(
     // The staged notes use the same native skin SFX player without entering
     // the chart/Judge. Exercise the real player, not only a counted callback.
     preview.set_audio_levels(0.5, 0.5)?;
+    preview.set_note_audition(app.staged_note_sounds())?;
     app.transport.playing = true;
-    app.audition_audio_notes(0., true, |kind| preview.audition(None, kind))?;
+    app.audition_audio_notes(0., true, |kind| preview.audition_staged_note(kind))?;
     let mut preview_hitsounds = 0;
     for step in 1..=90 {
         preview_hitsounds += app.audition_audio_notes(f64::from(step) * 0.05, false, |kind| {
-            preview.audition(None, kind)
+            preview.audition_staged_note(kind)
         })?;
     }
     app.transport.playing = false;

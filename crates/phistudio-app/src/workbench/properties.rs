@@ -219,6 +219,12 @@ impl Workbench {
             self.open_sounds();
         }
         if ui
+            .button(crate::i18n::tr("Use selected note as defaults"))
+            .clicked()
+        {
+            self.use_selected_note_defaults();
+        }
+        if ui
             .button(RichText::new(crate::i18n::tr("Delete note")).color(flick()))
             .clicked()
         {

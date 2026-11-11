@@ -11,7 +11,7 @@ pub struct NoteSoundGain {
     pub volume: f64,
 }
 impl NoteSoundGain {
-    fn validate(&self) -> Result<(), ChartError> {
+    pub(crate) fn validate(&self) -> Result<(), ChartError> {
         if !self.volume.is_finite() || !(0. ..1.).contains(&self.volume) {
             return Err(ChartError::Invalid(
                 "Note sound volume must be between 0 and 100%".into(),

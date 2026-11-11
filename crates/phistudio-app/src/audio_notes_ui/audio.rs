@@ -66,6 +66,13 @@ impl Audio {
     }
 }
 impl Workbench {
+    pub(crate) fn staged_note_sounds(
+        &self,
+    ) -> Option<((u64, u64), &phistudio_prpr::PreparedNoteAudition)> {
+        let (key, prepared) = self.audio_notes.preview.as_ref()?;
+        (self.audio_note_key().as_ref().ok() == Some(key))
+            .then_some(((self.session, prepared.audition_id), &prepared.audition))
+    }
     pub(crate) fn audition_audio_notes(
         &mut self,
         seconds: f64,

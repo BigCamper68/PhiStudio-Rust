@@ -14,6 +14,15 @@ pub async fn render_hitsound_gain(
         volume.is_finite() && (0. ..1.).contains(&volume),
         "Note sound volume must be between 0 and 100%"
     );
+    let clip = load_note_sound(Some(assets), skin, reference, kind).await?;
+    encode(&clip, volume)
+}
+pub(crate) async fn load_note_sound(
+    assets: Option<&Path>,
+    skin: Option<&Path>,
+    reference: Option<&str>,
+    kind: NoteKind,
+) -> Result<sasa::AudioClip> {
     let cue = match reference {
         Some("tap.mp3") => Some("click"),
         Some("flick.mp3") => Some("flick"),
@@ -28,7 +37,8 @@ pub async fn render_hitsound_gain(
     let bytes = if let Some(cue) = cue {
         crate::skin::sound_bytes(skin, cue).await?
     } else {
-        let path = phistudio_core::hitsound_path(assets, reference.unwrap())?;
+        let root = assets.ok_or_else(|| anyhow::anyhow!("Choose a project for default sounds"))?;
+        let path = phistudio_core::hitsound_path(root, reference.unwrap())?;
         let mut bytes = vec![];
         std::fs::File::open(path)?
             .take(MAX_HITSOUND_BYTES + 1)
@@ -40,7 +50,20 @@ pub async fn render_hitsound_gain(
         "Hitsound audio must contain 1 byte–8 MiB"
     );
     let clip = sasa::AudioClip::new(bytes)?;
-    encode(&clip, volume)
+    ensure!(
+        clip.length().is_finite()
+            && clip.length() > 0.
+            && clip.length() <= 10.
+            && clip.sample_rate() <= 192000,
+        "Hitsounds must be at most 10 seconds and 192 kHz"
+    );
+    ensure!(
+        clip.frames()
+            .iter()
+            .all(|f| f.0.is_finite() && f.1.is_finite()),
+        "Hitsound contains invalid samples"
+    );
+    Ok(clip)
 }
 
 fn encode(clip: &sasa::AudioClip, volume: f64) -> Result<Vec<u8>> {

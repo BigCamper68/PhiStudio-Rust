@@ -2,7 +2,14 @@ use super::*;
 
 impl Workbench {
     pub(crate) fn apply_tool(&mut self, edit: Result<ToolEdit, ChartError>) -> bool {
-        if edit.is_ok() {
+        self.apply_tool_with_memory(edit, true)
+    }
+    pub(crate) fn apply_tool_with_memory(
+        &mut self,
+        edit: Result<ToolEdit, ChartError>,
+        remember: bool,
+    ) -> bool {
+        if remember && edit.is_ok() {
             self.remember_tool_parameters();
         }
         let anchor = self.anchor();
