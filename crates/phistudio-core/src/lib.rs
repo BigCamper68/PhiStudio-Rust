@@ -12,6 +12,7 @@ mod authoring;
 mod beat;
 mod conversion;
 mod creation_defaults;
+pub mod custom_easing;
 pub use creation_defaults::{
     DefaultNoteSound, LineCreationDefaults, NoteCreationDefaults, NoteCreationPolicy,
     NoteCreationSounds,

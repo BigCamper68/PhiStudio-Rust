@@ -25,6 +25,8 @@ mod autoplay;
 mod background;
 mod compatibility;
 mod curve;
+mod custom_easing;
+pub use custom_easing::editable_easing;
 mod editor_audio;
 mod interface_audio;
 mod note_audition;

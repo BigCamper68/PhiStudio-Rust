@@ -250,3 +250,10 @@ New-note defaults validation:
 
 Remaining work is the full custom easing workspace and, last, advanced stem/ML
 audio guidance. The overall user goal remains active.
+
+Custom easing foundation is now implemented and covered by eight focused core
+cases and three original-prpr integration cases. This is not the finished
+workspace: authoritative logical event storage, renderer/export projection,
+property/tool integration and the actual touch UI remain. In particular, native
+compiled fragments must not become the editor's primary event model. See
+`CUSTOM-EASING-WORK.md` for current evidence and the remaining integration gates.
