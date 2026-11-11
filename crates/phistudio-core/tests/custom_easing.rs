@@ -200,6 +200,74 @@ fn portable_templates_roundtrip_and_import_merge_is_atomic() {
 }
 
 #[test]
+fn rpen_templates_normalize_optional_metadata_and_export_without_format_edits() {
+    let c = Curve {
+        name: "Root name".into(),
+        ..Default::default()
+    };
+    let bytes = serde_json::to_vec(&serde_json::json!({"format":"rpen-animation-curves","version":1,"templates":[{"curve":c},{"id":"imported-1","name":"Named","curve":Curve::default()}]})).unwrap();
+    let imported = CurveLibrary::parse(&bytes).unwrap();
+    assert_eq!(imported.templates[0].name, "Root name");
+    assert_eq!(imported.templates[0].id, "imported-2");
+    assert_eq!(imported.templates[1].id, "imported-1");
+    let portable = imported.export_rpen().unwrap();
+    assert_eq!(
+        serde_json::from_slice::<serde_json::Value>(&portable).unwrap()["format"],
+        "rpen-animation-curves"
+    );
+    assert_eq!(CurveLibrary::parse(&portable).unwrap(), imported);
+    let native = String::from_utf8(bytes)
+        .unwrap()
+        .replace("rpen-animation-curves", "phistudio-animation-curves");
+    assert!(CurveLibrary::parse(native.as_bytes()).is_err());
+}
+
+#[test]
+fn imported_automatic_nodes_with_subnormal_gaps_keep_finite_geometry() {
+    let curve = Curve {
+        nodes: vec![
+            Node::new(0., 0., Mode::Auto),
+            Node::new(f64::from_bits(1), 1., Mode::Auto),
+            Node::new(1., 1., Mode::Auto),
+        ],
+        ..Default::default()
+    };
+    curve.validate().unwrap();
+    for segment in curve.segments().unwrap() {
+        assert!(segment.points.iter().flatten().all(|p| p.is_finite()));
+        for t in [0., 0.25, 0.5, 0.75, 1.] {
+            assert!(segment.point(t).iter().all(|p| p.is_finite()));
+        }
+    }
+    let library = CurveLibrary::parse(&serde_json::to_vec(&serde_json::json!({"format":"rpen-animation-curves","version":1,"templates":[{"curve":curve}]})).unwrap()).unwrap();
+    assert!(
+        library.templates[0]
+            .curve
+            .geometry()
+            .unwrap()
+            .sample(0.25)
+            .is_finite()
+    );
+}
+
+#[test]
+fn stale_template_replacement_and_deletion_are_atomic() {
+    let mut library = CurveLibrary::default();
+    library.save("Keep", Curve::default(), None).unwrap();
+    let before = library.clone();
+    assert!(
+        library
+            .save("Missing", Curve::default(), Some("absent"))
+            .is_err()
+    );
+    assert_eq!(library, before);
+    assert!(library.remove("absent").is_err());
+    assert_eq!(library, before);
+    library.remove(&before.templates[0].id).unwrap();
+    assert!(library.templates.is_empty());
+}
+
+#[test]
 fn authoring_keeps_one_logical_event_and_has_exact_one_step_undo_redo() {
     for kind in EventType::ALL {
         let (doc, id) = document(kind);

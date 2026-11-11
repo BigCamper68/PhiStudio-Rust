@@ -173,7 +173,11 @@ pub(super) fn canvas(ui: &mut egui::Ui, state: &mut State, height: f32) {
         }
     }
     if let Some(request) = &state.request {
-        let domain = request.domain;
+        let domain = if state.draft.preserve_domain {
+            request.domain
+        } else {
+            [0., 1.]
+        };
         if domain != [0., 1.] {
             let a = view.point([domain[0].min(domain[1]), 0.]).x;
             let b = view.point([domain[0].max(domain[1]), 0.]).x;

@@ -1,6 +1,7 @@
 //! A local curve draft; chart history remains owned by the calling inspector.
 mod graph;
 mod input;
+pub(crate) mod library;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub(crate) mod probe;
 #[cfg(test)]
@@ -45,12 +46,14 @@ enum Tool {
 struct Draft {
     curve: Curve,
     selected: BTreeSet<usize>,
+    preserve_domain: bool,
 }
 impl Default for Draft {
     fn default() -> Self {
         Self {
             curve: Curve::default(),
             selected: BTreeSet::from([0]),
+            preserve_domain: true,
         }
     }
 }
@@ -76,6 +79,7 @@ pub(crate) struct State {
     tool: Tool,
     multiple: bool,
     details: bool,
+    library_view: bool,
     view: graph::Bounds,
     pointer: Option<input::Pointer>,
     navigation: input::Navigation,
@@ -87,6 +91,13 @@ pub(crate) struct State {
     animate: bool,
 }
 impl State {
+    pub(crate) fn back(&mut self) {
+        if self.library_view {
+            self.library_view = false;
+        } else {
+            self.close();
+        }
+    }
     pub(crate) fn close(&mut self) {
         self.cancel_gesture();
         self.pending = None;
@@ -109,7 +120,8 @@ impl State {
         (expected == *key).then_some(event)
     }
     fn remember(&mut self, before: Draft) {
-        if before.curve == self.draft.curve {
+        if before.curve == self.draft.curve && before.preserve_domain == self.draft.preserve_domain
+        {
             return;
         }
         if self.undo.len() == 128 {
@@ -170,12 +182,25 @@ impl State {
     fn set_mode(&mut self, mode: Mode) {
         self.edit(self.draft.curve.set_mode(&self.indices(), mode));
     }
+    fn load_template(&mut self, curve: Curve) {
+        self.finish_numeric();
+        let before = self.draft.clone();
+        self.view = graph::Bounds::fit(&curve);
+        self.draft = Draft {
+            curve,
+            selected: BTreeSet::from([0]),
+            preserve_domain: false,
+        };
+        self.remember(before);
+        self.library_view = false;
+    }
     fn prepare(&mut self) {
         self.finish_numeric();
         let Some(request) = &self.request else { return };
         let snapshot = request.snapshot.clone();
         let kind = request.key.id.kind;
         let curve = self.draft.curve.clone();
+        let preserve_domain = self.draft.preserve_domain;
         self.serial = self.serial.wrapping_add(1);
         let cancel = Arc::new(AtomicBool::new(false));
         let canceled = cancel.clone();
@@ -188,9 +213,13 @@ impl State {
         self.error = None;
         std::thread::spawn(move || {
             let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                let edit = snapshot
-                    .prepare_preserving_domains(&curve, || canceled.load(Ordering::Relaxed))
-                    .map_err(|e| e.to_string())?;
+                let active = || canceled.load(Ordering::Relaxed);
+                let edit = if preserve_domain {
+                    snapshot.prepare_preserving_domains(&curve, active)
+                } else {
+                    snapshot.prepare(&curve, active)
+                }
+                .map_err(|e| e.to_string())?;
                 let (_, _, _, raw) = edit
                     .authored_events()
                     .next()
@@ -233,6 +262,10 @@ impl State {
 }
 
 impl Workbench {
+    pub(crate) fn custom_easing_back(&mut self) {
+        self.curve_templates.confirm = None;
+        self.custom_easing.back();
+    }
     pub(crate) fn open_custom_easing(&mut self, key: DraftKey) {
         let result = (|| {
             let mut event = key.event.clone();
@@ -248,6 +281,7 @@ impl Workbench {
         match result {
             Ok((snapshot, curve, domain)) => {
                 self.custom_easing.close();
+                self.curve_templates.confirm = None;
                 self.custom_easing = State {
                     open: true,
                     request: Some(Request {

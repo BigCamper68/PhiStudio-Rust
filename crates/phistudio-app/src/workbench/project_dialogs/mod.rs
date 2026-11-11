@@ -52,6 +52,12 @@ impl Workbench {
             self.accept_editor_sound(event, file);
             return;
         }
+        if kind == MediaKind::CurveTemplates {
+            if let Err(error) = self.curve_templates.import(file) {
+                self.error = Some(error);
+            }
+            return;
+        }
         if kind == MediaKind::Shader {
             self.accept_shader_file(file);
             return;
@@ -72,6 +78,7 @@ impl Workbench {
         if let Some(draft) = &mut self.files.new_chart {
             match kind {
                 MediaKind::SoundPack
+                | MediaKind::CurveTemplates
                 | MediaKind::EditorSound(_)
                 | MediaKind::Shader
                 | MediaKind::Resource

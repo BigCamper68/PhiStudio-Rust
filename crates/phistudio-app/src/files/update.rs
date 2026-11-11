@@ -6,6 +6,7 @@ impl FileManager {
         self.edit_time.update(app);
         if let Some(root) = &self.root {
             app.update_clipboard_history(root);
+            app.poll_curve_templates(root);
         }
         if let Some(root) = &self.root
             && let Some(error) = app.presets.update(root)
@@ -197,8 +198,13 @@ impl FileManager {
                             }
                         }
                         #[cfg(not(any(target_os = "android", target_os = "ios")))]
-                        Ok(WorkerResult::ExportWritten) => {
-                            app.status = "Project package exported".into()
+                        Ok(WorkerResult::ExportWritten { templates }) => {
+                            app.status = if templates {
+                                "Curve templates exported"
+                            } else {
+                                "Project package exported"
+                            }
+                            .into()
                         }
                         Ok(WorkerResult::Startup {
                             library,
@@ -298,7 +304,17 @@ impl FileManager {
             if let Some(error) = result.error {
                 app.error = Some(error);
             } else if pending.export.is_some() {
-                app.status = if result.canceled {
+                app.status = if pending
+                    .export
+                    .as_ref()
+                    .is_some_and(|p| p.name.ends_with(".rpencurve"))
+                {
+                    if result.canceled {
+                        "Curve template export canceled"
+                    } else {
+                        "Curve templates exported"
+                    }
+                } else if result.canceled {
                     "Project export canceled"
                 } else {
                     "Project package exported"

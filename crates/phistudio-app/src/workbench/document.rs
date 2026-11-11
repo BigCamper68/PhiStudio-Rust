@@ -107,6 +107,8 @@ impl Workbench {
         let sounds = std::mem::take(&mut self.sounds);
         let updates = std::mem::take(&mut self.updates);
         let presets = std::mem::take(&mut self.presets);
+        let mut curve_templates = std::mem::take(&mut self.curve_templates);
+        curve_templates.clear_confirmation();
         let clipboard_history = std::mem::take(&mut self.clipboard_history);
         let preferences = self.preferences();
         let plugins = std::mem::take(&mut self.plugins);
@@ -136,6 +138,7 @@ impl Workbench {
         self.sounds = sounds;
         self.updates = updates;
         self.presets = presets;
+        self.curve_templates = curve_templates;
         self.clipboard_history = clipboard_history;
         self.preview.floating = floating;
         self.windows.sidebar = show_context;

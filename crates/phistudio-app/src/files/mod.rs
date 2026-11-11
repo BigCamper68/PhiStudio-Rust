@@ -26,6 +26,8 @@ pub enum FileRequest {
     ImportSource(MediaFile),
     #[cfg(any(target_os = "android", target_os = "ios"))]
     ReadyExport(phistudio_core::ProjectExport),
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    ReadyFileExport(phistudio_core::ProjectExport),
     ProviderPick(phistudio_plugins::Operation),
     ProviderSnapshot(phistudio_plugins::Operation),
     ProviderImport(phistudio_plugins::Artifact),
@@ -178,7 +180,9 @@ enum WorkerResult {
         content: phistudio_sdk::FileContent,
     },
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
-    ExportWritten,
+    ExportWritten {
+        templates: bool,
+    },
     Library(phistudio_core::ProjectLibrary),
     Startup {
         library: phistudio_core::ProjectLibrary,
@@ -255,6 +259,7 @@ impl FileManager {
         self.preferences.flush(app)?;
         self.checkpoints.flush(app, discard)?;
         app.presets.flush()?;
+        app.curve_templates.flush()?;
         app.clipboard_history.flush()
     }
 }

@@ -37,17 +37,22 @@ impl Workbench {
         }
         let mut open = true;
         let mut cancel = false;
+        let mut import = false;
         if !blocked
             && ctx.input(|i| i.key_pressed(egui::Key::Escape))
             && !ctx.wants_keyboard_input()
         {
-            if state.pointer.is_some() {
+            if state.library_view {
+                state.library_view = false;
+                self.curve_templates.confirm = None;
+            } else if state.pointer.is_some() {
                 state.cancel_gesture();
             } else {
                 open = false;
             }
         }
-        if !blocked && !ctx.wants_keyboard_input() && state.pending.is_none() {
+        if !blocked && !ctx.wants_keyboard_input() && state.pending.is_none() && !state.library_view
+        {
             let undo = ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Z));
             let redo = ctx.input_mut(|i| {
                 i.consume_key(
@@ -88,6 +93,12 @@ impl Workbench {
                 if compact { ui.spacing_mut().item_spacing.y = 3.; }
                 ui.set_enabled(!blocked);
                 ui.add_enabled_ui(state.pending.is_none(), |ui| {
+                    if state.library_view {
+                        let reserve = if ui.available_width() < 520. { 122. } else { 82. };
+                        let height = (ui.available_height() - reserve).max(32.);
+                        import = library::draw(ui, &mut state, &mut self.curve_templates, height);
+                        return;
+                    }
                     toolbar(ui, &mut state, compact);
                     if compact {
                         ui.horizontal_wrapped(|ui| {
@@ -97,6 +108,7 @@ impl Workbench {
                         let reserve = if ui.available_width() < 360. { 72. } else { 40. };
                         if state.details {
                             point_actions(ui, &mut state);
+                            if ui.available_width() < 360. { ui.toggle_value(&mut state.animate, tr("Preview")); }
                             details(ui, &mut state, (ui.available_height() - reserve).max(32.));
                         } else {
                             let height = (ui.available_height() - reserve).clamp(100., 510.);
@@ -120,13 +132,30 @@ impl Workbench {
                 if let Some(error) = &state.error {
                     ui.colored_label(theme::flick(), tr(error));
                 }
+                let footer_width = ui.available_width();
                 ui.horizontal_wrapped(|ui| {
-                    let button = ui.add_enabled(!blocked && state.pending.is_none() && state.pointer.is_none(), egui::Button::new(tr("Use curve")))
+                    let templates = state.library_view;
+                    let usable = !templates || self.curve_templates.can_use();
+                    let button = ui.add_enabled(!blocked && usable && state.pending.is_none() && state.pointer.is_none(), egui::Button::new(tr(if templates { "Use template" } else { "Use curve" })))
                         .on_hover_text(tr("Use curve updates the inspector draft. Apply the event to save it in the chart."));
                     ctx.data_mut(|d| d.insert_temp(egui::Id::new("custom-easing-use"), button.rect));
-                    if button.clicked() { state.prepare(); }
-                    if ui.button(tr("Cancel")).clicked() { cancel = true; }
-                    if compact {
+                    if button.clicked() {
+                        if templates {
+                            if let Some(curve) = self.curve_templates.selected_curve() { state.load_template(curve); }
+                        } else { state.prepare(); }
+                    }
+                    if !templates && ui.button(tr("Cancel")).clicked() { cancel = true; }
+                    let switch = ui.button(tr(if templates { "Back to curve" } else { "Templates" }));
+                    ctx.data_mut(|d| d.insert_temp(egui::Id::new("custom-easing-templates"), switch.rect));
+                    if switch.clicked() {
+                        state.finish_numeric();
+                        state.library_view = !templates;
+                        self.curve_templates.confirm = None;
+                        if state.library_view {
+                            self.curve_templates.open(&state.draft.curve.name);
+                        }
+                    }
+                    if compact && footer_width >= 360. && !templates {
                         ui.toggle_value(&mut state.animate, tr("Preview"));
                     }
                     if state.pending.is_some() {
@@ -140,6 +169,9 @@ impl Workbench {
             state.close();
         }
         self.custom_easing = state;
+        if import {
+            self.open_media_picker(crate::media::MediaKind::CurveTemplates);
+        }
     }
 }
 fn toolbar(ui: &mut egui::Ui, state: &mut State, compact: bool) {

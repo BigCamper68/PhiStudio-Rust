@@ -10,6 +10,14 @@ impl FileManager {
         Ok(())
     }
     pub(super) fn media(&mut self, app: &mut Workbench, kind: MediaKind, file: MediaFile) {
+        if kind == MediaKind::CurveTemplates {
+            app.status = "Importing curve templates…".into();
+            app.error = None;
+            if let Err(error) = app.curve_templates.import(file) {
+                app.error = Some(error);
+            }
+            return;
+        }
         let (sender, receiver) = mpsc::channel();
         self.worker = Some(receiver);
         app.files.busy = true;
@@ -104,9 +112,22 @@ impl FileManager {
         app: &mut Workbench,
         package: phistudio_core::ProjectExport,
     ) -> anyhow::Result<()> {
+        self.pick_export_kind(app, package, false)
+    }
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    pub(super) fn pick_export_kind(
+        &mut self,
+        app: &mut Workbench,
+        package: phistudio_core::ProjectExport,
+        generic: bool,
+    ) -> anyhow::Result<()> {
         self.checkpoint(app, false).map_err(anyhow::Error::msg)?;
         self.token += 1;
-        mobile::request_export_package(package.path(), &package.name, self.token)?;
+        if generic {
+            mobile::request_export_file(package.path(), &package.name, self.token)?;
+        } else {
+            mobile::request_export_package(package.path(), &package.name, self.token)?;
+        }
         self.pending = Some(Pending {
             provider: None,
             artifact: None,

@@ -128,6 +128,16 @@ pub async fn run() -> Result<()> {
     if std::env::args().nth(2).as_deref() == Some("custom-easing") {
         return crate::custom_easing_ui::probe::run(&mut gui, &mut app, &mut preview, &out).await;
     }
+    if std::env::args().nth(2).as_deref() == Some("curve-templates") {
+        crate::custom_easing_ui::probe::run(&mut gui, &mut app, &mut preview, &out).await?;
+        return crate::custom_easing_ui::library::probe::run(
+            &mut gui,
+            &mut app,
+            &mut preview,
+            &out,
+        )
+        .await;
+    }
     if std::env::args().nth(2).as_deref() == Some("note-defaults") {
         return note_defaults::run(&mut gui, &mut app, &mut preview, &out).await;
     }

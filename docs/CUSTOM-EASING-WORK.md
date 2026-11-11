@@ -1,8 +1,9 @@
 # Custom easing implementation record
 
-Status: in progress. The graph workspace is connected to normal line-event
-inspectors. Persistent templates and additional curve owners remain pending;
-this record does not mark the full custom easing requirement complete.
+Status: in progress. The graph workspace and persistent template library are
+connected to normal line-event inspectors. Additional owners and batch workflows
+remain pending; this record does not mark the full custom easing requirement
+complete.
 
 ## Implemented data and playback integration
 
@@ -12,7 +13,10 @@ insertion, node/handle edits and validation. Curves support 2–256 nodes. Named
 libraries serialize as `phistudio-animation-curves` version 1 and accept
 `rpen-animation-curves` version 1 template files. Input/output size is bounded
 at 8 MiB and 512 templates; merging resolves name collisions without overwriting
-saved work. Persistent library UI/file-worker integration is still pending.
+saved work. Rpe-next imports normalize omitted template identifiers/names;
+`.rpencurve` exports use `rpen-animation-curves` version 1 directly.
+Automatic tangents retain finite geometry even for imported subnormal point
+spacing; validation does not rely on an overflowing intermediate slope.
 
 `LineEvent.custom_easing` stores an authoritative boxed `Binding` under
 `phiStudioCustomEasing`. The binding retains the full curve, source domain and
@@ -75,7 +79,36 @@ canceling or using the graph does not edit the chart; **Apply event** publishes
 the inspector draft as one normal chart action. Cropped/reversed source domains
 remain attached when editing the root curve. The inspector also permits an
 explicit return to standard easing. Workspace labels cover all seven locales.
-The persistent template manager and other owner contexts are not yet connected.
+Other owner contexts and batch workflows are still being integrated.
+
+## Shared template library
+
+**Templates** opens a searchable list with cached curve thumbnails and point
+counts. Save current curve and Import templates remain visible; Template actions
+groups rename, replacement, deletion and selected/all-library export. Replacement
+and deletion require confirmation. The selected template's Use template button
+stays outside the scroll area, including compact phone layouts.
+
+Templates live in `custom-easing/templates.json` below the private workspace
+root, independently of chart data, preferences and chart Undo/Redo. A bounded,
+serialized worker owns parsing, thumbnail preparation and atomic writes. A failed
+write/import leaves the previous file and published model unchanged. Writes also
+check the previously loaded bytes so externally changed libraries require a
+reload. The worker and queued writes survive project replacement; app lifecycle
+checkpoints flush them before continuing. Pending confirmations are dismissed
+when their source editor/project closes.
+
+Loading a template copies its geometry into the curve draft as one local Undo
+step and applies it over the event's complete visible interval. Existing cropped
+source mappings remain intact when editing their root curve directly. Local
+history retains this distinction even when the two curve geometries are equal.
+Neither template management nor loading changes chart history; Use curve and
+Apply event retain their inspector ownership rules.
+
+Import/export use the existing platform file workflows. Mobile template exports
+use the generic file bridge with the `.rpencurve` filename. Imported picker
+snapshots are released after success or failure. The private library stays
+available across charts and application launches.
 
 ## Validation
 
@@ -120,18 +153,34 @@ retained unsaved numeric properties, Save, exact header Undo/Redo, reimport of
 the saved logical curve and unchanged external source. Evidence is in
 `artifacts/checks/custom-easing-workspace-runtime`.
 
+Template-library validation additionally covers optional import metadata,
+selected/all-library portability, name collisions, stale replacements, failed
+writes, external file changes, corrupt libraries, picker ownership, queued writes
+through project replacement and fresh event values after loading a shared curve.
+The Miniquad probe's `curve-templates` mode extends the real graph/touch checks
+with name input, scrolling, selection, save, import/export and lifecycle flushing.
+The ordinary two-session smoke also saves/reopens a template and verifies that
+chart Undo/Redo never changes its private file.
+
+At the template-library checkpoint, all 412 runnable app library tests pass
+(22 explicitly ignored), together with 18 custom easing core cases and seven
+native parser cases. Workspace all-target Clippy, the desktop app/probe build
+and an `aarch64-linux-android` library check pass. The four density/viewport
+probes in `artifacts/checks/curve-templates-261` through `curve-templates-264`
+pass graph and template acceptance in all seven locales; compact library
+screenshots were inspected. This includes touch scrolling, file workflows and
+the fixed footer at 240×520 logical points. Logs are retained in
+`artifacts/checks/template-library`. No APK or physical-device run is implied.
+
 ## Remaining integration gates
 
-- Complete template management and additional owner integration in the workspace.
-  Measure larger curves/projects before adding renderer caches; retain all
+- Connect the workspace to existing batch easing/curve tools and applicable
+  Storyboard/Noise Field and other curve-owner contexts. Retain their explicit
+  scalar/vector/color/text types and ownership.
+- Measure larger curves/projects before adding renderer caches; retain all
   source dependencies and original native clock semantics.
-- Connect persistent named templates, thumbnails, save/replace/delete and platform
-  import/export through existing workers/pickers. Keep the library separate from
-  chart history and ordinary preference updates.
-- Integrate applicable Storyboard/Noise Field and other curve-owner contexts.
-  Retain their explicit scalar/vector/color/text types and ownership.
-- Extend actual Miniquad/Gui touch and main-application acceptance to the template
-  manager and additional owners before marking the feature complete. Physical
+- Extend actual Miniquad/Gui touch and main-application acceptance to additional
+  owners before marking the feature complete. Physical
   Android testing remains separate from simulated input checks.
 
 The behavior reference remains the pinned rpe-next tree in

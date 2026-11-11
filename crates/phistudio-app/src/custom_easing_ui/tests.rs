@@ -359,6 +359,53 @@ fn invalid_times_and_cancel_never_publish_a_curve_draft() {
 }
 
 #[test]
+fn loading_a_template_resets_cropped_mapping_and_local_history_restores_it() {
+    let (mut app, key) = editor();
+    let binding = phistudio_core::custom_easing::Binding::new(Curve::default())
+        .crop([0., 100.], 0.2, 0.8)
+        .unwrap();
+    let event = LineEvent {
+        start: 20.,
+        end: 80.,
+        custom_easing: Some(Box::new(binding)),
+        ..key.event.clone()
+    };
+    assert!(app.commit_authoring(Command::UpdateEvent {
+        id: key.id,
+        event: event.clone()
+    }));
+    let key = DraftKey {
+        revision: app.editor.revision(),
+        event,
+        ..key
+    };
+    app.open_custom_easing(key.clone());
+    app.custom_easing.load_template(Curve::default());
+    assert_eq!(
+        app.custom_easing.undo.len(),
+        1,
+        "Changing only domain policy must have local history"
+    );
+    assert!(!app.custom_easing.draft.preserve_domain);
+    app.custom_easing.history(false);
+    assert!(app.custom_easing.draft.preserve_domain);
+    app.custom_easing.history(true);
+    app.custom_easing.prepare();
+    for _ in 0..500 {
+        app.custom_easing.poll();
+        if !app.custom_easing.open {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(2));
+    }
+    let event = app.custom_easing.take_completed(&key).unwrap();
+    let binding = event.custom_easing.unwrap();
+    assert_eq!(binding.domain, [0., 1.]);
+    assert!(binding.source.is_none());
+    assert_eq!([event.start, event.end], [20., 80.]);
+}
+
+#[test]
 fn graph_and_precision_views_fit_compact_screens_in_every_locale() {
     for size in [
         egui::vec2(582., 262.),

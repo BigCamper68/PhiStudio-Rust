@@ -161,6 +161,7 @@ pub(super) fn handle(ui: &egui::Ui, state: &mut State, view: &View, response: &e
                     before: Draft {
                         curve: before.curve,
                         selected: state.draft.selected.clone(),
+                        preserve_domain: before.preserve_domain,
                     },
                     origin: pos,
                     view: state.view,

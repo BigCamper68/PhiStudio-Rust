@@ -115,7 +115,7 @@ impl Workbench {
             return;
         }
         if self.custom_easing.open && !self.modal_open_except_custom_easing() {
-            self.custom_easing.close();
+            self.custom_easing_back();
             return;
         }
         if self.speed_curve.open && !self.modal_open_except_speed_curve() {

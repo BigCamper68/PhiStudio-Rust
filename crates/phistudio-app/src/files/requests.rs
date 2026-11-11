@@ -38,6 +38,12 @@ impl FileManager {
                     app.error = Some(format!("{error:#}"));
                 }
             }
+            #[cfg(any(target_os = "android", target_os = "ios"))]
+            FileRequest::ReadyFileExport(package) => {
+                if let Err(error) = self.pick_export_kind(app, package, true) {
+                    app.error = Some(format!("{error:#}"));
+                }
+            }
             request @ (FileRequest::ProviderPick(_)
             | FileRequest::ProviderSnapshot(_)
             | FileRequest::ProviderImport(_)
@@ -473,7 +479,9 @@ impl FileManager {
                         let _ = sender.send(
                             package
                                 .write_to(&path)
-                                .map(|()| WorkerResult::ExportWritten)
+                                .map(|()| WorkerResult::ExportWritten {
+                                    templates: package.name.ends_with(".rpencurve"),
+                                })
                                 .map_err(|e| e.to_string()),
                         );
                     });

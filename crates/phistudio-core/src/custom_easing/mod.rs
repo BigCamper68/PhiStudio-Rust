@@ -11,7 +11,7 @@ use crate::ChartError;
 pub use authoring::{Edit, RECIPE_KEY, Snapshot, Source};
 pub use binding::{Binding, CURVE_KEY};
 pub use geometry::{Geometry, Segment};
-pub use library::{CurveLibrary, Template};
+pub use library::{CurveLibrary, MAX_LIBRARY_BYTES, MAX_TEMPLATES, Template};
 use serde::{Deserialize, Serialize};
 
 /// Maximum geometric error in event-value units before native f32/time rounding.
@@ -158,11 +158,13 @@ impl Curve {
             }
             let before = &self.nodes[index.saturating_sub(1)];
             let after = &self.nodes[(index + 1).min(self.nodes.len() - 1)];
-            let slope = (after.y - before.y) / (after.x - before.x);
-            let length = if outgoing { dx / 3. } else { -dx / 3. };
+            // The normalized width stays bounded even for subnormal node gaps;
+            // computing the unbounded slope first can produce infinity * zero.
+            let width = if outgoing { dx } else { -dx };
+            let offset = (after.y - before.y) * (width / (after.x - before.x)) / 3.;
             [
-                n.x + length,
-                (n.y + length * slope).clamp(-MAX_VALUE, MAX_VALUE),
+                n.x + width / 3.,
+                (n.y + offset).clamp(-MAX_VALUE, MAX_VALUE),
             ]
         };
         let points = match a.mode {

@@ -13,11 +13,23 @@ pub struct Template {
 pub struct CurveLibrary {
     pub templates: Vec<Template>,
 }
-#[derive(Serialize, Deserialize)]
-struct File {
+#[derive(Deserialize)]
+struct ImportFile {
     format: String,
     version: u32,
-    templates: Vec<Template>,
+    templates: Vec<ImportTemplate>,
+}
+#[derive(Deserialize)]
+struct ImportTemplate {
+    id: Option<String>,
+    name: Option<String>,
+    curve: Curve,
+}
+#[derive(Serialize)]
+struct ExportFile<'a> {
+    format: &'a str,
+    version: u32,
+    templates: &'a [Template],
 }
 impl CurveLibrary {
     pub fn validate(&self) -> Result<(), ChartError> {
@@ -44,25 +56,72 @@ impl CurveLibrary {
         if bytes.len() > MAX_LIBRARY_BYTES {
             return Err(invalid("The easing library exceeds 8 MiB"));
         }
-        let file: File = serde_json::from_slice(bytes)?;
+        let file: ImportFile = serde_json::from_slice(bytes)?;
         if file.version != 1
             || !["phistudio-animation-curves", "rpen-animation-curves"]
                 .contains(&file.format.as_str())
         {
             return Err(invalid("Unsupported easing library format"));
         }
-        let result = Self {
-            templates: file.templates,
-        };
+        if file.templates.len() > MAX_TEMPLATES {
+            return Err(invalid("The easing library supports up to 512 templates"));
+        }
+        let compatible = file.format == "rpen-animation-curves";
+        let mut ids: BTreeSet<_> = file.templates.iter().filter_map(|t| t.id.clone()).collect();
+        let mut templates = Vec::with_capacity(file.templates.len());
+        for entry in file.templates {
+            let id = match entry.id {
+                Some(id) => id,
+                None if compatible => {
+                    let mut number = templates.len() + 1;
+                    while ids.contains(&format!("imported-{number}")) {
+                        number += 1;
+                    }
+                    let id = format!("imported-{number}");
+                    ids.insert(id.clone());
+                    id
+                }
+                None => return Err(invalid("Easing templates need an identifier")),
+            };
+            let name = if compatible {
+                entry
+                    .name
+                    .filter(|n| !n.trim().is_empty())
+                    .unwrap_or_else(|| {
+                        if entry.curve.name.trim().is_empty() {
+                            "Curve".into()
+                        } else {
+                            entry.curve.name.clone()
+                        }
+                    })
+            } else {
+                entry
+                    .name
+                    .ok_or_else(|| invalid("Easing templates need a name"))?
+            };
+            templates.push(Template {
+                id,
+                name,
+                curve: entry.curve,
+            });
+        }
+        let result = Self { templates };
         result.validate()?;
         Ok(result)
     }
     pub fn export(&self) -> Result<Vec<u8>, ChartError> {
+        self.encode("phistudio-animation-curves")
+    }
+    /// Portable geometry/templates use the same versioned schema as rpe-next.
+    pub fn export_rpen(&self) -> Result<Vec<u8>, ChartError> {
+        self.encode("rpen-animation-curves")
+    }
+    fn encode(&self, format: &str) -> Result<Vec<u8>, ChartError> {
         self.validate()?;
-        let bytes = serde_json::to_vec_pretty(&File {
-            format: "phistudio-animation-curves".into(),
+        let bytes = serde_json::to_vec_pretty(&ExportFile {
+            format,
             version: 1,
-            templates: self.templates.clone(),
+            templates: &self.templates,
         })?;
         if bytes.len() > MAX_LIBRARY_BYTES {
             return Err(invalid("The easing library exceeds 8 MiB"));
@@ -85,6 +144,9 @@ impl CurveLibrary {
             base
         };
         let replaced = replace.and_then(|id| self.templates.iter().position(|t| t.id == id));
+        if replace.is_some() && replaced.is_none() {
+            return Err(invalid("The easing template no longer exists"));
+        }
         if replaced.is_none() && self.templates.len() >= MAX_TEMPLATES {
             return Err(invalid("The easing library supports up to 512 templates"));
         }
@@ -125,6 +187,16 @@ impl CurveLibrary {
             self.templates.push(entry);
         }
         Ok(id)
+    }
+    pub fn remove(&mut self, id: &str) -> Result<(), ChartError> {
+        self.validate()?;
+        let index = self
+            .templates
+            .iter()
+            .position(|t| t.id == id)
+            .ok_or_else(|| invalid("The easing template no longer exists"))?;
+        self.templates.remove(index);
+        Ok(())
     }
     pub fn merge(&mut self, other: &Self) -> Result<(), ChartError> {
         self.validate()?;

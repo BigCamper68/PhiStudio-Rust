@@ -76,6 +76,15 @@ def session(storage, source, number, expected=None):
             click(1040, 437)  # The actual event inspector opens the workspace.
             capture_window(window, OUTPUT / f"workspace-{number}.png")
             if number == 2:
+                library = storage / "custom-easing/templates.json"
+                templates = json.loads(library.read_text())["templates"]
+                assert len(templates) == 1 and templates[0]["name"] == "Main loop"
+                assert len(templates[0]["curve"]["nodes"]) == 3
+                click(190, 778)  # Load the private template library in a fresh process.
+                time.sleep(0.7)
+                capture_window(window, OUTPUT / "library-reopened.png")
+                xdo("key", "Escape")
+                time.sleep(0.3)
                 xdo("key", "Escape")
                 time.sleep(0.3)
                 saved(lambda raw: raw == expected)
@@ -91,6 +100,20 @@ def session(storage, source, number, expected=None):
                 click(105, 82)
                 click(380, 300)
                 capture_window(window, OUTPUT / "curve-draft.png")
+                click(190, 778)  # Templates; the graph draft remains staged.
+                time.sleep(0.7)
+                click(80, 170)  # Save current curve under its existing name.
+                library = storage / "custom-easing/templates.json"
+                deadline = time.monotonic() + 10
+                while not library.exists() and time.monotonic() < deadline:
+                    time.sleep(0.1)
+                templates = json.loads(library.read_text())["templates"]
+                assert len(templates) == 1 and templates[0]["name"] == "Main loop"
+                assert len(templates[0]["curve"]["nodes"]) == 3
+                template_bytes = library.read_bytes()
+                capture_window(window, OUTPUT / "library-saved.png")
+                xdo("key", "Escape")
+                time.sleep(0.3)
                 click(50, 778)  # Use curve; worker completion returns an inspector draft.
                 time.sleep(0.7)
                 saved(lambda raw: raw == before)
@@ -118,6 +141,7 @@ def session(storage, source, number, expected=None):
                 saved(lambda raw: raw == before)
                 click(344, 20)
                 saved(lambda raw: raw == after)
+                assert library.read_bytes() == template_bytes, "Chart Undo/Redo changed the template library"
             path = Path(json.loads(marker.read_text())["chart"])
             request_window_quit(window)
             process.wait(timeout=15)
@@ -156,7 +180,8 @@ with tempfile.TemporaryDirectory(prefix="phistudio-easing-workspace-") as privat
     assert source.read_bytes() == original, "The external imported source changed"
     result = dict(main_loop=True, inspector_entry=True, graph_insertion=True, canceled_draft=True,
                   unsaved_properties=True, worker_draft=True, logical_event=True, exact_undo_redo=True,
-                  reopened=True, source_preserved=True)
+                  reopened=True, source_preserved=True, template_saved=True, template_reopened=True,
+                  library_outside_chart_history=True)
     result["pass"] = True
     (OUTPUT / "result.json").write_text(json.dumps(result, indent=2))
     print("Custom easing workspace main-loop smoke PASS:", result)
