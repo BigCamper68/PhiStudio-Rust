@@ -6,6 +6,8 @@ to eight beats before judgment and ends at judgment, or at the end of a hold.
 The source remains pinned while selecting a destination or inspecting events.
 
 Choose a beat range, a new or existing judgment line, and event layer 0–3.
+New destinations use the editor's line-creation defaults for alpha and speed;
+tracing compensates initial motion on other layers.
 **Track rotation** also generates rotation events. Select 60, 120 or 240 Hz;
 higher rates capture fast motion more accurately. Position and rotation
 tolerances under **Tracing precision** simplify the sampled trajectory, in RPE

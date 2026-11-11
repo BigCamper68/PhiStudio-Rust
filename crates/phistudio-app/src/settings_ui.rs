@@ -165,6 +165,8 @@ impl Workbench {
             crate::i18n::tr("Beat labels"),
         );
         ui.separator();
+        self.new_line_defaults_ui(ui);
+        ui.separator();
         ui.strong(crate::i18n::tr("Audio"));
         self.editor_sounds_ui(ui);
         ui.collapsing(crate::i18n::tr("Audio guide"), |ui| {

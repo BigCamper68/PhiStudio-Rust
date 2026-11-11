@@ -2235,5 +2235,9 @@
   "Native tracing sample budget exceeded; request fewer times": "Se superó el límite de cálculo. Solicita menos muestras.",
   "Destination parent transform is singular": "La transformación del padre del destino es singular",
   "The native note pose exceeds the editable tracing range": "La posición de la nota supera el rango editable",
-  "Distance control is undefined at the crossing": "El control de distancia no está definido en el cruce"
+  "Distance control is undefined at the crossing": "El control de distancia no está definido en el cruce",
+  "New line defaults": "Valores iniciales de líneas",
+  "Initial events for new lines only. Existing lines and copies keep their values.": "Solo eventos iniciales de líneas nuevas. Las líneas existentes y sus copias conservan sus valores.",
+  "Reset defaults": "Restablecer valores",
+  "Line defaults need finite positions, rotation and speed within ±1e9, and alpha from -255 to 255": "La posición, rotación y velocidad deben ser finitas y estar entre ±1e9; alfa, entre -255 y 255."
 }

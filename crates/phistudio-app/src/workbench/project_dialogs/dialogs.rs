@@ -122,14 +122,18 @@ impl Workbench {
                         });
                 });
             if create && let Some(media) = draft.media() {
-                let document =
-                    ChartDocument::empty(draft.name.trim(), draft.bpm).and_then(|document| {
-                        let mut value = document.as_json().clone();
-                        value["META"]["level"] = draft.level.clone().into();
-                        value["META"]["composer"] = draft.composer.clone().into();
-                        value["META"]["charter"] = draft.charter.clone().into();
-                        ChartDocument::from_value(value)
-                    });
+                let document = ChartDocument::empty_with_line_defaults(
+                    draft.name.trim(),
+                    draft.bpm,
+                    &self.options.new_line_defaults,
+                )
+                .and_then(|document| {
+                    let mut value = document.as_json().clone();
+                    value["META"]["level"] = draft.level.clone().into();
+                    value["META"]["composer"] = draft.composer.clone().into();
+                    value["META"]["charter"] = draft.charter.clone().into();
+                    ChartDocument::from_value(value)
+                });
                 match document {
                     Ok(document) => {
                         self.files.request = Some(FileRequest::CreateProject { document, media })

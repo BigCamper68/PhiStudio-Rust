@@ -28,6 +28,12 @@ impl Snapshot {
             ));
         }
         let mut additions = Vec::new();
+        let offsets = self
+            .new_line
+            .filter(|_| self.spec.layer > 0)
+            .map_or([0.; 3], |defaults| {
+                [defaults.x, defaults.y, defaults.rotation]
+            });
         let beat = |time| Beat::from_grid(self.tempo.beat_at(time), 1_000_000_000);
         for pair in points.windows(2) {
             if pair[1].break_before {
@@ -48,8 +54,8 @@ impl Snapshot {
                 let event = LineEvent {
                     start_time: start,
                     end_time: end,
-                    start: pair[0].values[axis],
-                    end: pair[1].values[axis],
+                    start: pair[0].values[axis] - offsets[axis],
+                    end: pair[1].values[axis] - offsets[axis],
                     ..Default::default()
                 };
                 additions.push((self.line, self.spec.layer, kind, event.merge(kind, None)?));
@@ -81,8 +87,8 @@ impl Snapshot {
                         Some(next) => next,
                         None => self.spec.range[1].checked_add(Beat::ONE)?,
                     },
-                    start: last.values[axis],
-                    end: last.values[axis],
+                    start: last.values[axis] - offsets[axis],
+                    end: last.values[axis] - offsets[axis],
                     ..Default::default()
                 };
                 additions.push((self.line, self.spec.layer, kind, event.merge(kind, None)?));
@@ -156,7 +162,7 @@ impl Snapshot {
             revision,
             line_count: self.line_count,
             line: self.line,
-            new_line: self.spec.destination.is_none(),
+            new_line: self.new_line,
             range: self.spec.range,
             remove: self.existing.into_iter().map(|e| e.id).collect(),
             additions,

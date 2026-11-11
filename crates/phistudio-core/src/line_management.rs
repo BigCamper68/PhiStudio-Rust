@@ -80,6 +80,14 @@ pub(crate) fn prepare(
     doc: &ChartDocument,
     command: Command,
 ) -> Result<Option<(LineDelta, &'static str)>, ChartError> {
+    prepare_with_defaults(doc, command, &crate::LineCreationDefaults::default())
+}
+pub(crate) fn prepare_with_defaults(
+    doc: &ChartDocument,
+    command: Command,
+    defaults: &crate::LineCreationDefaults,
+) -> Result<Option<(LineDelta, &'static str)>, ChartError> {
+    defaults.validate()?;
     let lines = doc.root["judgeLineList"].as_array().unwrap();
     let require = |index: usize| {
         lines
@@ -95,7 +103,7 @@ pub(crate) fn prepare(
         Command::AddLine { name } => (
             Edit::Append {
                 start: lines.len(),
-                values: vec![ChartDocument::new_line(&name)],
+                values: vec![defaults.line(&name)?],
             },
             "Add line",
         ),
@@ -109,8 +117,8 @@ pub(crate) fn prepare(
                 Edit::Append {
                     start: lines.len(),
                     values: (0..count)
-                        .map(|i| ChartDocument::new_line(&format!("Line {}", lines.len() + i)))
-                        .collect(),
+                        .map(|i| defaults.line(&format!("Line {}", lines.len() + i)))
+                        .collect::<Result<_, _>>()?,
                 },
                 "Create lines",
             )

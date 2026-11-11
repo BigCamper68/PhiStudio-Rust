@@ -33,6 +33,7 @@ struct Key {
     aspect: u32,
     modern: bool,
     uniform_scale: bool,
+    line_defaults: Option<phistudio_core::LineCreationDefaults>,
     spec: Spec,
 }
 struct Sampling {
@@ -158,6 +159,10 @@ impl Workbench {
             aspect: self.preview_aspect().to_bits(),
             modern: self.project_options.use_rpe_170_speed,
             uniform_scale: self.project_options.note_uniform_scale,
+            line_defaults: state
+                .destination
+                .is_none()
+                .then_some(self.options.new_line_defaults),
             spec,
         })
     }
@@ -188,8 +193,12 @@ impl Workbench {
     fn begin_note_trace(&mut self) {
         let result = (|| {
             let key = self.tracing_key()?;
-            let snapshot = Snapshot::capture(self.editor.document(), key.spec.clone())
-                .map_err(|e| e.to_string())?;
+            let snapshot = Snapshot::capture_with_line_defaults(
+                self.editor.document(),
+                key.spec.clone(),
+                key.line_defaults.unwrap_or_default(),
+            )
+            .map_err(|e| e.to_string())?;
             self.note_tracing.cancel();
             self.note_tracing.prepared = None;
             self.note_tracing.pending = Some(Pending {

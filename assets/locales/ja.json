@@ -2235,5 +2235,9 @@
   "Native tracing sample budget exceeded; request fewer times": "計算量の上限を超えました。時刻の数を減らしてください。",
   "Destination parent transform is singular": "出力先の親変換を逆変換できません",
   "The native note pose exceeds the editable tracing range": "ノーツの姿勢が編集可能な範囲を超えています",
-  "Distance control is undefined at the crossing": "交差点の距離制御が未定義です"
+  "Distance control is undefined at the crossing": "交差点の距離制御が未定義です",
+  "New line defaults": "新規ラインの既定値",
+  "Initial events for new lines only. Existing lines and copies keep their values.": "新しいラインの初期イベントに適用します。既存のラインやコピーの値は保持されます。",
+  "Reset defaults": "既定値に戻す",
+  "Line defaults need finite positions, rotation and speed within ±1e9, and alpha from -255 to 255": "位置・回転・速度は ±1e9 以内の有限値、アルファは -255～255 である必要があります。"
 }

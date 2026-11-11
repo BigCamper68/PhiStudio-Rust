@@ -61,6 +61,7 @@ impl PreviewAspect {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct EditorOptions {
+    pub new_line_defaults: crate::LineCreationDefaults,
     pub fullscreen_app: bool,
     pub check_updates_on_start: bool,
     pub release_notes_seen: Option<String>,
@@ -107,6 +108,7 @@ pub struct EditorOptions {
 impl Default for EditorOptions {
     fn default() -> Self {
         Self {
+            new_line_defaults: Default::default(),
             fullscreen_app: false,
             check_updates_on_start: true,
             release_notes_seen: None,
@@ -219,6 +221,7 @@ impl Language {
 }
 impl EditorOptions {
     pub fn normalized(mut self) -> Self {
+        self.new_line_defaults = self.new_line_defaults.normalized();
         self.release_notes_seen = self
             .release_notes_seen
             .filter(|v| !v.is_empty() && v.len() <= 128);

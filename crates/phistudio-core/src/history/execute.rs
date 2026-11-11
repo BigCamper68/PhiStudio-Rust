@@ -35,6 +35,27 @@ impl Editor {
         Ok(true)
     }
 
+    /// Defaults affect newly authored lines; all other commands retain their
+    /// explicit values, including duplication, imports and pasted objects.
+    pub fn execute_with_line_defaults(
+        &mut self,
+        command: Command,
+        defaults: &crate::LineCreationDefaults,
+    ) -> Result<bool, ChartError> {
+        if !matches!(command, Command::AddLine { .. } | Command::AddLines { .. }) {
+            return self.execute(command);
+        }
+        let Some((delta, label)) =
+            crate::line_management::prepare_with_defaults(&self.document, command, defaults)?
+        else {
+            return Ok(false);
+        };
+        let delta = Delta::Lines(delta);
+        delta.apply(&mut self.document, true);
+        self.record(delta, label);
+        Ok(true)
+    }
+
     /// A transaction exposes either all edits or none. Validation failure rolls
     /// back the prepared deltas without changing history, revision or dirty state.
     pub fn execute_batch(
@@ -80,14 +101,16 @@ impl Editor {
             ));
         }
         let mut deltas = Vec::new();
-        if edit.new_line
-            && let Some((delta, _)) = Delta::prepare(
+        if let Some(defaults) = edit.new_line
+            && let Some((delta, _)) = crate::line_management::prepare_with_defaults(
                 &self.document,
                 Command::AddLine {
                     name: "Note trace".into(),
                 },
+                &defaults,
             )?
         {
+            let delta = Delta::Lines(delta);
             delta.apply(&mut self.document, true);
             deltas.push(delta);
         }

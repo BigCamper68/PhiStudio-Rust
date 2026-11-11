@@ -2235,5 +2235,9 @@
   "Native tracing sample budget exceeded; request fewer times": "샘플 계산 한도를 넘었습니다. 시점 수를 줄이세요.",
   "Destination parent transform is singular": "대상 부모 변환의 역변환을 구할 수 없습니다",
   "The native note pose exceeds the editable tracing range": "노트 위치가 편집 가능한 추적 범위를 벗어났습니다",
-  "Distance control is undefined at the crossing": "교차점에서 거리 제어가 정의되지 않았습니다"
+  "Distance control is undefined at the crossing": "교차점에서 거리 제어가 정의되지 않았습니다",
+  "New line defaults": "새 판정선 기본값",
+  "Initial events for new lines only. Existing lines and copies keep their values.": "새 판정선의 초기 이벤트에만 적용됩니다. 기존 판정선과 복사본의 값은 유지됩니다.",
+  "Reset defaults": "기본값으로 초기화",
+  "Line defaults need finite positions, rotation and speed within ±1e9, and alpha from -255 to 255": "위치, 회전, 속도는 ±1e9 이내의 유한한 값, 알파는 -255–255여야 합니다."
 }

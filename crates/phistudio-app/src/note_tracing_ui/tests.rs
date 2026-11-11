@@ -85,3 +85,14 @@ fn cancellation_signals_the_worker_and_closing_state_cancels_too() {
     drop(app);
     assert!(cancel.load(Ordering::Relaxed));
 }
+#[test]
+fn line_creation_settings_invalidate_only_new_destination_previews() {
+    let mut app = app();
+    let before = app.tracing_key().unwrap();
+    app.options.new_line_defaults.x = 123.;
+    assert_ne!(before, app.tracing_key().unwrap());
+    app.note_tracing.destination = Some(0);
+    let before = app.tracing_key().unwrap();
+    app.options.new_line_defaults.y = 456.;
+    assert_eq!(before, app.tracing_key().unwrap());
+}

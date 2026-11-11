@@ -11,6 +11,8 @@ pub use formula::Formula;
 mod authoring;
 mod beat;
 mod conversion;
+mod creation_defaults;
+pub use creation_defaults::LineCreationDefaults;
 mod document;
 mod events;
 mod export;

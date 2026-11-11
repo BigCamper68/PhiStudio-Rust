@@ -27,7 +27,7 @@ upstream source is studied as a behavior reference, not copied or bundled.
 - [ ] New-note defaults: all applicable Note Properties (including size, speed,
   fake, above and extensions), editing once and applying consistently to new
   authoring paths, without altering imports, existing notes or pasted objects.
-- [ ] New-line defaults: initial X/Y/Rotation/Alpha/Speed events, persistent
+- [x] New-line defaults: initial X/Y/Rotation/Alpha/Speed events, persistent
   settings and an independent Reset Defaults button, including batch creation.
 - [x] Projects: accumulated EditTime persists between sessions; local rows show
   EditTime, event count, then note count, with accurate cached summaries.
@@ -169,5 +169,40 @@ Note Tracing validation:
 - `tools/verify-prpr-source.py`: 186 upstream files verified; no vendor/phira
   source changes. Physical Android/APK verification has not been performed.
 
-Remaining requested work is custom easing, creation defaults and, last, advanced
+Remaining requested work is custom easing, new-note defaults and, last, advanced
 stem/ML audio guidance. This delivery does not complete the overall goal.
+
+Implemented in the new-line defaults delivery slice:
+
+- Settings → New line defaults exposes initial X/Y/rotation/alpha/speed with an
+  independent Reset defaults button. Values persist in editor preferences;
+  changing/resetting them never edits the current chart or adds history.
+- Ordinary single/batch line creation and the first line of a newly created
+  project use the same validated template. Existing imports, duplication and
+  explicit pasted/generated geometry retain their source/required values.
+  Stock templates retain their existing JSON structure and values.
+- Note Tracing captures the intended new-line style, uses its alpha/speed and
+  subtracts initial motion on other layers. Changing defaults invalidates only
+  prepared traces targeting a new line. The native scaled-hold/layer-3 probe
+  now uses nonzero X/Y/rotation and customized alpha/speed.
+
+New-line defaults validation:
+
+- Workspace tests: 810 passed, zero failed, 26 ignored. Six focused core cases
+  cover single/batch creation, source-copy preservation, stock compatibility,
+  atomic invalid-input rejection, preference migration/persistence/normalization,
+  new-project initial-line persistence and tracing compensation in layers 0/3.
+  App cases cover preferences across sessions, native command routing and
+  tracing-cache ownership. Workspace all-target Clippy and app/probe builds pass.
+- Actual Miniquad/Gui touch probes pass at 873×393 and at 990×2145 with density
+  2.75. They swipe a numeric field, render all seven locales, activate Reset,
+  preserve chart/history, and create/undo a batch using custom defaults. Header
+  state stays open across language changes through a stable untranslated ID.
+- The native Note Tracing geometry probe still passes its three cases, including
+  the customized initial events in layer 0 underneath the hold trace in layer 3.
+- `tools/creation-defaults-smoke.py` passes two normal application launches with
+  persistent managed storage. Each launch adds a line via the sidebar, verifies
+  all five saved tracks against settings, and checks exact header Undo/Redo.
+  The script reads the authoritative active copied chart from last-project.json;
+  external imported input bytes remain untouched. Clean shutdown retains the
+  preferences for the next session. Physical Android validation remains pending.

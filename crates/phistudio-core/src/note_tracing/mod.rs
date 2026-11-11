@@ -57,9 +57,17 @@ pub struct Snapshot {
     recipes: Option<Value>,
     right_continuations: [bool; 3],
     next_events: [Option<Beat>; 3],
+    new_line: Option<crate::LineCreationDefaults>,
 }
 impl Snapshot {
     pub fn capture(doc: &ChartDocument, spec: Spec) -> Result<Self, ChartError> {
+        Self::capture_with_line_defaults(doc, spec, crate::LineCreationDefaults::default())
+    }
+    pub fn capture_with_line_defaults(
+        doc: &ChartDocument,
+        spec: Spec,
+        defaults: crate::LineCreationDefaults,
+    ) -> Result<Self, ChartError> {
         spec.validate()?;
         doc.note(spec.source.line, spec.source.index)?;
         let line_count = doc.line_count();
@@ -70,7 +78,8 @@ impl Snapshot {
         let created = spec
             .destination
             .is_none()
-            .then(|| ChartDocument::new_line("Note trace"));
+            .then(|| defaults.line("Note trace"))
+            .transpose()?;
         let target = created
             .as_ref()
             .unwrap_or_else(|| &doc.as_json()["judgeLineList"][line]);
@@ -138,6 +147,7 @@ impl Snapshot {
             }
         }
         Ok(Self {
+            new_line: spec.destination.is_none().then_some(defaults),
             spec,
             tempo: doc.tempo().clone(),
             native_components,
@@ -158,7 +168,7 @@ pub struct Edit {
     pub(crate) revision: u64,
     pub(crate) line_count: usize,
     pub(crate) line: usize,
-    pub(crate) new_line: bool,
+    pub(crate) new_line: Option<crate::LineCreationDefaults>,
     pub(crate) range: [Beat; 2],
     pub(crate) remove: Vec<EventId>,
     pub(crate) additions: Vec<(usize, usize, EventType, Value)>,

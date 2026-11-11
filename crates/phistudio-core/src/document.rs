@@ -266,10 +266,18 @@ impl ChartDocument {
     }
 
     pub fn empty(name: &str, bpm: f64) -> Result<Self, ChartError> {
+        Self::empty_with_line_defaults(name, bpm, &crate::LineCreationDefaults::default())
+    }
+    pub fn empty_with_line_defaults(
+        name: &str,
+        bpm: f64,
+        defaults: &crate::LineCreationDefaults,
+    ) -> Result<Self, ChartError> {
+        let line = defaults.line("Line 0")?;
         Self::from_value(json!({
             "META": {"RPEVersion": 123, "name": name, "composer": "", "charter": "", "level": "", "offset": 0, "song": "", "background": ""},
             "BPMList": [{"bpm": bpm, "startTime": [0,0,1]}],
-            "judgeLineGroup": ["Default"], "judgeLineList": [Self::new_line("Line 0")]
+            "judgeLineGroup": ["Default"], "judgeLineList": [line]
         }))
     }
 

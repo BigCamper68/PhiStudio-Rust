@@ -2235,5 +2235,9 @@
   "Native tracing sample budget exceeded; request fewer times": "Превышен лимит расчёта. Запросите меньше замеров.",
   "Destination parent transform is singular": "Невозможно преобразовать координаты родительской линии",
   "The native note pose exceeds the editable tracing range": "Положение ноты выходит за допустимый диапазон",
-  "Distance control is undefined at the crossing": "На границе не удалось определить контроль расстояния"
+  "Distance control is undefined at the crossing": "На границе не удалось определить контроль расстояния",
+  "New line defaults": "Значения для новых линий",
+  "Initial events for new lines only. Existing lines and copies keep their values.": "Начальные события только для новых линий. Существующие линии и копии сохраняют свои значения.",
+  "Reset defaults": "Сбросить значения",
+  "Line defaults need finite positions, rotation and speed within ±1e9, and alpha from -255 to 255": "Положение, вращение и скорость должны быть конечными, в пределах ±1e9, а альфа — от -255 до 255."
 }

@@ -13,7 +13,10 @@ impl Workbench {
         let anchor = self.anchor();
         let line_remap = self.pending_line_remap(&command);
         let sound = crate::editor_sounds::command_event(&command);
-        match self.editor.execute(command) {
+        match self
+            .editor
+            .execute_with_line_defaults(command, &self.options.new_line_defaults)
+        {
             Ok(changed) => {
                 self.error = None;
                 if changed {

@@ -2235,5 +2235,9 @@
   "Native tracing sample budget exceeded; request fewer times": "超出原生取樣計算限制，請減少時間點。",
   "Destination parent transform is singular": "目標父線變換不可逆",
   "The native note pose exceeds the editable tracing range": "原生音符位置超出可編輯追蹤範圍",
-  "Distance control is undefined at the crossing": "交點處的距離控制未定義"
+  "Distance control is undefined at the crossing": "交點處的距離控制未定義",
+  "New line defaults": "新判定線預設值",
+  "Initial events for new lines only. Existing lines and copies keep their values.": "僅用於新判定線的初始事件，現有判定線及其副本保留原值。",
+  "Reset defaults": "重設預設值",
+  "Line defaults need finite positions, rotation and speed within ±1e9, and alpha from -255 to 255": "位置、旋轉和速度必須為 ±1e9 以內的有限值，透明度必須為 -255 至 255。"
 }

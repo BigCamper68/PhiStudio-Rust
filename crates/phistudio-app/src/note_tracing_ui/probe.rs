@@ -193,6 +193,17 @@ pub(crate) async fn run(
         }
         app.replace_document(ChartDocument::from_value(document)?, None, None);
         app.project_options.note_uniform_scale = case == "hold-new-line";
+        app.options.new_line_defaults = if case == "hold-new-line" {
+            phistudio_core::LineCreationDefaults {
+                x: 123.,
+                y: -64.,
+                rotation: 35.,
+                alpha: 172.,
+                speed: 12.,
+            }
+        } else {
+            Default::default()
+        };
         app.select(Some(NoteId { line: 0, index: 0 }));
         app.tools.show = true;
         app.tools.page = crate::toolkit::Page::Motion;
