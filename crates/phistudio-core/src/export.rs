@@ -229,7 +229,11 @@ pub fn prepare_project_export_with_plugin_data_checked(
         .filter_map(serde_json::Value::as_str)
         .map(str::len)
         .sum();
-    let (noise_chart, noise_resources) = crate::noise_fields::export::prepare(document, &files)?;
+    let (mut noise_chart, noise_resources) =
+        crate::noise_fields::export::prepare(document, &files)?;
+    crate::custom_easing::projection::expand(&mut noise_chart, document.tempo(), true, || {
+        !active()
+    })?;
     let chart_bytes = serde_json::to_vec_pretty(&noise_chart)?;
     check()?;
     if chart_bytes.len() > ChartDocument::MAX_JSON_BYTES {
@@ -359,10 +363,9 @@ fn filtered_chart_resource(
     policy: phistudio_sdk::PluginDataExport,
     active: &impl Fn() -> bool,
 ) -> Result<Option<Vec<u8>>, ChartError> {
-    if policy == phistudio_sdk::PluginDataExport::Preserve
-        || path
-            .extension()
-            .is_none_or(|s| !s.eq_ignore_ascii_case("json"))
+    if path
+        .extension()
+        .is_none_or(|s| !s.eq_ignore_ascii_case("json"))
     {
         return Ok(None);
     }
@@ -402,16 +405,22 @@ fn filtered_chart_resource(
     {
         return Ok(None);
     }
-    match crate::plugin_data::export_value(&value, policy)? {
-        std::borrow::Cow::Borrowed(_) => Ok(None),
-        std::borrow::Cow::Owned(value) => {
-            let bytes = serde_json::to_vec_pretty(&value)?;
-            if bytes.len() > 128 * 1024 * 1024 {
-                return Err(invalid("Filtered chart exceeds 128 MiB"));
-            }
-            Ok(Some(bytes))
-        }
+    let filtered = crate::plugin_data::export_value(&value, policy)?;
+    let curves = crate::custom_easing::projection::has_bindings(&filtered);
+    if !curves && matches!(filtered, std::borrow::Cow::Borrowed(_)) {
+        return Ok(None);
     }
+    let mut filtered = filtered.into_owned();
+    if curves {
+        let changes = serde_json::from_value(filtered["BPMList"].clone())?;
+        let tempo = crate::TempoMap::new(changes)?;
+        crate::custom_easing::projection::expand(&mut filtered, &tempo, true, || !active())?;
+    }
+    let bytes = serde_json::to_vec_pretty(&filtered)?;
+    if bytes.len() > 128 * 1024 * 1024 {
+        return Err(invalid("Filtered chart exceeds 128 MiB"));
+    }
+    Ok(Some(bytes))
 }
 
 #[cfg(test)]

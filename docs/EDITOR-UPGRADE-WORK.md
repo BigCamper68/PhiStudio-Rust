@@ -251,9 +251,11 @@ New-note defaults validation:
 Remaining work is the full custom easing workspace and, last, advanced stem/ML
 audio guidance. The overall user goal remains active.
 
-Custom easing foundation is now implemented and covered by eight focused core
-cases and three original-prpr integration cases. This is not the finished
-workspace: authoritative logical event storage, renderer/export projection,
-property/tool integration and the actual touch UI remain. In particular, native
-compiled fragments must not become the editor's primary event model. See
-`CUSTOM-EASING-WORK.md` for current evidence and the remaining integration gates.
+Custom easing now has authoritative logical event bindings and native renderer/
+export projection. Curves remain one event through property/time/BPM edits and
+X/Y timing links; cropped/reversed mappings, package reimport and native jump/
+clock semantics are covered. The inspector identifies custom curves and supports
+explicit standard-easing replacement. This is still not the finished workspace:
+the graph editor, persistent template manager, additional owner contexts and
+actual touch-workspace acceptance remain. See `CUSTOM-EASING-WORK.md` for the
+current integration boundary and validation record.

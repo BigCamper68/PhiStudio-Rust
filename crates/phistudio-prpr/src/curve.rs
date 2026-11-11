@@ -1,11 +1,28 @@
-//! Curve display delegates interpolation to the same prpr tweens as RPE.
+//! Authoring displays use native legacy tweens or retained custom geometry.
+//! Custom chart playback is projected into the original prpr parser.
 use phistudio_core::{EventType, LineEvent};
 use prpr::core::{BezierTween, ClampedTween, StaticTween, TweenFunction};
 use std::rc::Rc;
 
-pub struct EventCurve(Rc<dyn TweenFunction>);
+pub struct EventCurve {
+    native: Rc<dyn TweenFunction>,
+    custom: Option<(phistudio_core::custom_easing::Geometry, [f64; 2], [f64; 2])>,
+    endpoints: [f64; 2],
+}
 impl EventCurve {
     pub fn new(kind: EventType, event: &LineEvent) -> Self {
+        if let Some(binding) = &event.custom_easing
+            && let (Ok(geometry), Ok(source)) = (
+                binding.curve.geometry(),
+                binding.scalar_source([event.start, event.end]),
+            )
+        {
+            return Self {
+                native: StaticTween::get_rc(2),
+                custom: Some((geometry, binding.domain, source)),
+                endpoints: [event.start, event.end],
+            };
+        }
         let tween = if kind == EventType::Speed {
             2
         } else {
@@ -24,10 +41,38 @@ impl EventCurve {
         } else {
             Rc::new(ClampedTween::new(tween, left..right))
         };
-        Self(curve)
+        Self {
+            native: curve,
+            custom: None,
+            endpoints: [event.start, event.end],
+        }
     }
     pub fn sample(&self, fraction: f32) -> f32 {
-        self.0.y(fraction.clamp(0., 1.))
+        if let Some((geometry, domain, _)) = &self.custom {
+            let reversed = domain[1] < domain[0];
+            let p = geometry.sample_in_direction(domain[0], reversed);
+            let q = geometry.sample_in_direction(domain[1], reversed);
+            let v = geometry.sample_in_direction(
+                domain[0] + (domain[1] - domain[0]) * f64::from(fraction.clamp(0., 1.)),
+                reversed,
+            );
+            return if (q - p).abs() > 1e-12 {
+                ((v - p) / (q - p)) as f32
+            } else {
+                v as f32
+            };
+        }
+        self.native.y(fraction.clamp(0., 1.))
+    }
+    /// Actual values also support cropped loops with equal visible endpoints.
+    /// Custom geometry is for authoring; chart playback uses the native projection.
+    pub fn value(&self, fraction: f32) -> f64 {
+        if let Some((geometry, domain, [a, b])) = &self.custom {
+            let x = domain[0] + (domain[1] - domain[0]) * f64::from(fraction.clamp(0., 1.));
+            return a + (b - a) * geometry.sample_in_direction(x, domain[1] < domain[0]);
+        }
+        self.endpoints[0]
+            + (self.endpoints[1] - self.endpoints[0]) * f64::from(self.sample(fraction))
     }
 }
 
@@ -46,6 +91,16 @@ pub fn slice_event(
     }
     let right = right.min(1.);
     let mut result = event.clone();
+    if let Some(binding) = &event.custom_easing {
+        result.start = binding.scalar_value([event.start, event.end], left)?;
+        result.end = binding.scalar_value([event.start, event.end], right)?;
+        result.custom_easing = Some(Box::new(binding.crop(
+            [event.start, event.end],
+            left,
+            right,
+        )?));
+        return Ok(result);
+    }
     let curve = EventCurve::new(kind, event);
     result.start = event.start + (event.end - event.start) * f64::from(curve.sample(left as f32));
     result.end = event.start + (event.end - event.start) * f64::from(curve.sample(right as f32));

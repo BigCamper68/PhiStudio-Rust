@@ -112,10 +112,13 @@ pub fn join_events(doc: &ChartDocument, selection: &Selection) -> Result<ToolEdi
             "Join requires Linear speed intervals; imported speed curve metadata is preserved",
         ));
     }
-    let linear = |e: &LineEvent| {
-        kind == EventType::Speed || e.start == e.end || (e.easing_type == 1 && e.bezier == 0)
+    let linear = |e: &LineEvent| -> Result<bool, ChartError> {
+        if let Some(binding) = &e.custom_easing {
+            return binding.is_scalar_linear([e.start, e.end]);
+        }
+        Ok(kind == EventType::Speed || e.start == e.end || (e.easing_type == 1 && e.bezier == 0))
     };
-    if !linear(&merged) {
+    if !linear(&merged)? {
         return Err(invalid(
             "Join supports continuous constant or linear events; subdividing retains other curves",
         ));
@@ -138,7 +141,7 @@ pub fn join_events(doc: &ChartDocument, selection: &Selection) -> Result<ToolEdi
         if (item.line, item.event) != key
             || merged.end_time != event.start_time
             || (merged.end - event.start).abs() > 1e-7
-            || !linear(&event)
+            || !linear(&event)?
             || (slope - next_slope).abs() > 1e-7
             || a != b
         {

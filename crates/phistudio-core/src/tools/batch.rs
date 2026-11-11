@@ -70,6 +70,7 @@ pub fn batch_values(
             let mut event = LineEvent::read(kind, &item.value)?;
             match field {
                 ValueField::EventEasing => {
+                    event.custom_easing = None;
                     event.easing_type =
                         mode.apply(f64::from(event.easing_type), value).round() as i32;
                     event.bezier = 0;

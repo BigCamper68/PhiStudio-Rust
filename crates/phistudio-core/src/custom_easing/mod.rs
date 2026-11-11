@@ -2,12 +2,15 @@
 //! Playback remains ordinary RPE events evaluated by the original prpr engine.
 mod authoring;
 mod bake;
+mod binding;
 mod edit;
 mod geometry;
 mod library;
+pub mod projection;
 use crate::ChartError;
 pub use authoring::{Edit, RECIPE_KEY, Snapshot, Source};
-pub use geometry::Segment;
+pub use binding::{Binding, CURVE_KEY};
+pub use geometry::{Geometry, Segment};
 pub use library::{CurveLibrary, Template};
 use serde::{Deserialize, Serialize};
 

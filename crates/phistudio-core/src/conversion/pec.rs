@@ -465,6 +465,12 @@ pub fn pec_height_signature(root: &Value) -> Option<String> {
                     push(&mut h, beat_hash(&event["startTime"])?);
                     push(&mut h, beat_hash(&event["endTime"])?);
                     if index == 4 {
+                        if event
+                            .get(crate::custom_easing::CURVE_KEY)
+                            .is_some_and(|v| !v.is_null())
+                        {
+                            return None;
+                        }
                         for key in ["start", "end"] {
                             let value = event[key].as_f64()?;
                             push(&mut h, if value == 0. { 0 } else { value.to_bits() });

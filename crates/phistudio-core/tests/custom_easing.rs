@@ -200,7 +200,7 @@ fn portable_templates_roundtrip_and_import_merge_is_atomic() {
 }
 
 #[test]
-fn authoring_reopens_whole_groups_and_has_exact_one_step_undo_redo() {
+fn authoring_keeps_one_logical_event_and_has_exact_one_step_undo_redo() {
     for kind in EventType::ALL {
         let (doc, id) = document(kind);
         let before = doc.as_json().clone();
@@ -235,7 +235,7 @@ fn authoring_reopens_whole_groups_and_has_exact_one_step_undo_redo() {
             .prepare(&changed, || false)
             .unwrap();
         next.apply(&mut editor, false).unwrap();
-        assert_eq!(editor.document().event_values(0, 0, kind).unwrap().len(), 2);
+        assert_eq!(editor.document().event_values(0, 0, kind).unwrap().len(), 1);
         editor.undo();
         assert_eq!(editor.document().as_json(), &after);
     }
@@ -252,7 +252,14 @@ fn changed_members_or_tempo_detach_a_saved_curve_without_trusting_stale_metadata
         .apply(&mut editor, false)
         .unwrap()
         .unwrap();
-    let original = editor.document().as_json().clone();
+    let mut original = editor.document().as_json().clone();
+    phistudio_core::custom_easing::projection::expand(
+        &mut original,
+        editor.document().tempo(),
+        true,
+        || false,
+    )
+    .unwrap();
     for change_tempo in [false, true] {
         let mut raw = original.clone();
         if change_tempo {
@@ -262,7 +269,7 @@ fn changed_members_or_tempo_detach_a_saved_curve_without_trusting_stale_metadata
         }
         let doc = ChartDocument::from_value(raw).unwrap();
         assert!(
-            Source::capture(&doc, selection.events[1])
+            Source::capture(&doc, selection.events[0])
                 .unwrap()
                 .curve
                 .is_none()
@@ -283,7 +290,7 @@ fn changed_members_or_tempo_detach_a_saved_curve_without_trusting_stale_metadata
     assert!(
         Source::capture(
             &ChartDocument::from_value(raw).unwrap(),
-            selection.events[1]
+            selection.events[0]
         )
         .unwrap()
         .curve
@@ -323,7 +330,7 @@ fn cancellation_stale_edits_and_native_timing_failures_are_atomic() {
 }
 
 #[test]
-fn final_hold_preserves_untouched_following_events_and_reopens_continuations() {
+fn final_hold_uses_a_projected_instant_without_extending_the_authoring_range() {
     let (doc, id) = document(EventType::MoveX);
     let mut raw = doc.as_json().clone();
     let mut next = raw["judgeLineList"][0]["eventLayers"][0]["moveXEvents"][0].clone();
@@ -355,16 +362,386 @@ fn final_hold_preserves_untouched_following_events_and_reopens_continuations() {
     .apply(&mut editor, false)
     .unwrap()
     .unwrap();
-    let track = editor
-        .document()
-        .event_values(0, 0, EventType::MoveX)
+    assert_eq!(
+        editor
+            .document()
+            .event_values(0, 0, EventType::MoveX)
+            .unwrap()
+            .len(),
+        2
+    );
+    let projected = editor.document().render_value().unwrap();
+    let track = projected["judgeLineList"][0]["eventLayers"][0]["moveXEvents"]
+        .as_array()
         .unwrap();
     assert_eq!(track.last().unwrap(), &next);
     assert_eq!(track[1]["startTime"], json!([8, 0, 1]));
-    assert_eq!(track[1]["endTime"], json!([10, 0, 1]));
+    assert_eq!(track[1]["endTime"], json!([8, 0, 1]));
     assert_eq!(track[1]["start"], 100.);
     assert_eq!(track[1]["end"], 100.);
-    let source = Source::capture(editor.document(), selected.events[1]).unwrap();
-    assert_eq!(source.members.len(), 2);
+    let source = Source::capture(editor.document(), selected.events[0]).unwrap();
+    assert_eq!(source.members.len(), 1);
     assert_eq!(source.curve, Some(hold));
+}
+
+#[test]
+fn logical_curves_roundtrip_portable_exports_and_preserve_xy_timing_links() {
+    let (doc, id) = document(EventType::MoveX);
+    let mut raw = doc.as_json().clone();
+    raw["judgeLineList"][0]["eventLayers"][0]["moveYEvents"] =
+        raw["judgeLineList"][0]["eventLayers"][0]["moveXEvents"].clone();
+    let mut editor = Editor::new(ChartDocument::from_value(raw).unwrap());
+    Snapshot::capture(editor.document(), &[id], editor.revision())
+        .unwrap()
+        .prepare(&curve(), || false)
+        .unwrap()
+        .apply(&mut editor, true)
+        .unwrap();
+    editor.document().validate_xy_layer(0, 0).unwrap();
+    let original = editor.document().as_json().clone();
+    let package =
+        phistudio_core::prepare_project_export(editor.document(), &Default::default(), None, None)
+            .unwrap();
+    let mut zip = zip::ZipArchive::new(std::fs::File::open(package.path()).unwrap()).unwrap();
+    let mut bytes = String::new();
+    use std::io::Read as _;
+    zip.by_name("chart.rpe.json")
+        .unwrap()
+        .read_to_string(&mut bytes)
+        .unwrap();
+    let portable: serde_json::Value = serde_json::from_str(&bytes).unwrap();
+    let track = portable["judgeLineList"][0]["eventLayers"][0]["moveXEvents"]
+        .as_array()
+        .unwrap();
+    assert!(track.len() > 5);
+    assert!(
+        track
+            .iter()
+            .all(|v| v.get(phistudio_core::custom_easing::CURVE_KEY).is_none())
+    );
+    let restored = ChartDocument::parse(&bytes).unwrap();
+    assert_eq!(restored.as_json(), &original);
+    assert_eq!(editor.document().as_json(), &original);
+    let root = tempfile::tempdir().unwrap();
+    let imported =
+        phistudio_core::import_project(package.path(), root.path(), "Curves.pez", true).unwrap();
+    assert_eq!(
+        phistudio_core::load_chart(&imported.charts[imported.suggested.unwrap()].path)
+            .unwrap()
+            .as_json(),
+        &original
+    );
+}
+
+#[test]
+fn cropped_bindings_rebase_visible_endpoints_and_keep_equal_value_excursions() {
+    use phistudio_core::custom_easing::Binding;
+    let original = Binding::new(curve());
+    let mut twice = original.clone();
+    twice.reverse([100., 10.]);
+    twice.reverse([10., 100.]);
+    assert_eq!(twice, original);
+    let binding = original.crop([10., 100.], 0.2, 0.8).unwrap();
+    let before = [
+        binding.scalar_value([10., 100.], 0.).unwrap(),
+        binding.scalar_value([10., 100.], 1.).unwrap(),
+    ];
+    let rebased = binding.rebase(before, [25., 125.]).unwrap();
+    for (x, expected) in [(0., 25.), (1., 125.)] {
+        assert!((rebased.scalar_value([25., 125.], x).unwrap() - expected).abs() < 1e-8);
+    }
+    let mut reversed = binding.clone();
+    reversed.reverse([before[1], before[0]]);
+    for i in 0..=100 {
+        let t = i as f64 / 100.;
+        assert!(
+            (binding.scalar_value(before, 1. - t).unwrap()
+                - reversed.scalar_value([before[1], before[0]], t).unwrap())
+            .abs()
+                < 1e-9
+        );
+    }
+    let c = Curve {
+        nodes: vec![
+            Node::new(0., 0., Mode::Linear),
+            Node {
+                x: 0.25,
+                y: 0.5,
+                mode: Mode::Corner,
+                incoming: None,
+                outgoing: Some([0.4, 1.5]),
+            },
+            Node {
+                x: 0.75,
+                y: 0.5,
+                mode: Mode::Linear,
+                incoming: Some([0.6, 1.5]),
+                outgoing: None,
+            },
+            Node::new(1., 1., Mode::Linear),
+        ],
+        ..Default::default()
+    };
+    let equal = Binding::new(c).crop([0., 100.], 0.25, 0.75).unwrap();
+    assert!((equal.scalar_value([50., 50.], 0.5).unwrap() - 50.).abs() > 20.);
+    assert!(equal.rebase([50., 50.], [25., 26.]).is_err());
+    let shifted = equal.rebase([50., 50.], [25., 25.]).unwrap();
+    assert!(
+        (shifted.scalar_value([25., 25.], 0.5).unwrap()
+            - (equal.scalar_value([50., 50.], 0.5).unwrap() - 25.))
+            .abs()
+            < 1e-9
+    );
+}
+
+#[test]
+fn ordinary_property_edits_moves_and_bpm_changes_keep_authoritative_curve_data() {
+    use phistudio_core::tools::{self, Selection, Transform};
+    let (doc, id) = document(EventType::MoveX);
+    let mut editor = Editor::new(doc);
+    Snapshot::capture(editor.document(), &[id], editor.revision())
+        .unwrap()
+        .prepare(&curve(), || false)
+        .unwrap()
+        .apply(&mut editor, false)
+        .unwrap();
+    let before = editor.document().as_json().clone();
+    let mut event = editor.document().event(id).unwrap();
+    event.start = 20.;
+    event.end = 120.;
+    editor.execute(Command::UpdateEvent { id, event }).unwrap();
+    assert_eq!(
+        editor
+            .document()
+            .event(id)
+            .unwrap()
+            .custom_easing
+            .as_ref()
+            .unwrap()
+            .curve,
+        curve()
+    );
+    let selected = Selection {
+        notes: vec![],
+        events: vec![id],
+    };
+    tools::transform(editor.document(), &selected, Transform::ReverseTime)
+        .unwrap()
+        .apply(&mut editor)
+        .unwrap();
+    assert!(
+        editor
+            .document()
+            .event(id)
+            .unwrap()
+            .custom_easing
+            .as_ref()
+            .unwrap()
+            .domain[0]
+            > 0.9
+    );
+    tools::transform(editor.document(), &selected, Transform::Easing(6))
+        .unwrap()
+        .apply(&mut editor)
+        .unwrap();
+    assert!(editor.document().event(id).unwrap().custom_easing.is_none());
+    editor.undo();
+    editor.undo();
+    editor.undo();
+    assert_eq!(editor.document().as_json(), &before);
+    let mut raw = before;
+    raw["BPMList"][0]["bpm"] = json!(90.);
+    let changed = ChartDocument::from_value(raw).unwrap();
+    assert_eq!(
+        changed
+            .event(id)
+            .unwrap()
+            .custom_easing
+            .as_ref()
+            .unwrap()
+            .curve,
+        curve()
+    );
+    assert!(
+        changed.render_value().unwrap()["judgeLineList"][0]["eventLayers"][0]["moveXEvents"]
+            .as_array()
+            .unwrap()
+            .len()
+            > 5
+    );
+}
+
+#[test]
+fn package_secondary_charts_are_portable_and_opaque_resource_bytes_stay_unchanged() {
+    use std::io::Read as _;
+    let (doc, id) = document(EventType::MoveX);
+    let mut editor = Editor::new(doc);
+    Snapshot::capture(editor.document(), &[id], editor.revision())
+        .unwrap()
+        .prepare(&curve(), || false)
+        .unwrap()
+        .apply(&mut editor, false)
+        .unwrap();
+    let assets = tempfile::tempdir().unwrap();
+    let first = assets.path().join("first.rpe.json");
+    let second = assets.path().join("second.rpe.json");
+    phistudio_core::save_chart(editor.document(), &first).unwrap();
+    phistudio_core::save_chart(editor.document(), &second).unwrap();
+    let original_second = std::fs::read(&second).unwrap();
+    let opaque = b"{\n  \"arbitrary\": {\"phiStudioCustomEasing\": [1, 2, 3]}\n}\n";
+    std::fs::write(assets.path().join("opaque.json"), opaque).unwrap();
+    let export = phistudio_core::prepare_project_export(
+        editor.document(),
+        &Default::default(),
+        Some(assets.path()),
+        Some(&first),
+    )
+    .unwrap();
+    let mut zip = zip::ZipArchive::new(std::fs::File::open(export.path()).unwrap()).unwrap();
+    for name in ["first.rpe.json", "second.rpe.json"] {
+        let mut text = String::new();
+        zip.by_name(name)
+            .unwrap()
+            .read_to_string(&mut text)
+            .unwrap();
+        let raw: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert!(
+            raw["judgeLineList"][0]["eventLayers"][0]["moveXEvents"]
+                .as_array()
+                .unwrap()
+                .len()
+                > 5
+        );
+        assert_eq!(
+            ChartDocument::parse(&text).unwrap().as_json(),
+            editor.document().as_json()
+        );
+    }
+    let mut bytes = vec![];
+    zip.by_name("opaque.json")
+        .unwrap()
+        .read_to_end(&mut bytes)
+        .unwrap();
+    assert_eq!(bytes, opaque);
+    assert_eq!(std::fs::read(second).unwrap(), original_second);
+}
+
+#[test]
+fn curve_projection_never_inserts_absent_fields_into_sparse_imports() {
+    let mut raw = ChartDocument::empty("Sparse", 120.)
+        .unwrap()
+        .as_json()
+        .clone();
+    raw["judgeLineList"][0]["eventLayers"] = json!([{}, null]);
+    let imported = ChartDocument::from_value(raw.clone()).unwrap();
+    assert_eq!(imported.as_json(), &raw);
+    assert_eq!(imported.render_value().unwrap(), raw);
+    raw["judgeLineList"][0]
+        .as_object_mut()
+        .unwrap()
+        .shift_remove("eventLayers");
+    assert_eq!(
+        ChartDocument::from_value(raw.clone()).unwrap().as_json(),
+        &raw
+    );
+}
+
+#[test]
+fn explicit_custom_speed_invalidates_only_the_previous_pec_height_override() {
+    use phistudio_core::{
+        NoteId, decode_chart, pec_height_signature, speed_curve::SpeedCurveSource,
+    };
+    let decoded = decode_chart(include_str!("fixtures/conversion/pec-minimum.pec")).unwrap();
+    let mut editor = Editor::new(decoded.document);
+    let before = editor.document().as_json().clone();
+    assert!(pec_height_signature(&before).is_some());
+    assert!(SpeedCurveSource::capture(editor.document(), NoteId { line: 0, index: 0 }).is_err());
+    let id = EventId {
+        line: 0,
+        layer: 0,
+        kind: EventType::Speed,
+        index: 0,
+    };
+    Snapshot::capture(editor.document(), &[id], editor.revision())
+        .unwrap()
+        .prepare(&Curve::default(), || false)
+        .unwrap()
+        .apply(&mut editor, false)
+        .unwrap();
+    assert!(pec_height_signature(editor.document().as_json()).is_none());
+    assert!(SpeedCurveSource::capture(editor.document(), NoteId { line: 0, index: 0 }).is_ok());
+    editor.undo();
+    assert_eq!(editor.document().as_json(), &before);
+    assert!(pec_height_signature(editor.document().as_json()).is_some());
+}
+
+#[test]
+fn join_checks_actual_custom_geometry_and_batch_easing_explicitly_replaces_it() {
+    use phistudio_core::tools::{self, Selection, ValueField, ValueMode};
+    for curved in [false, true] {
+        let (doc, id) = document(EventType::MoveX);
+        let mut raw = doc.as_json().clone();
+        raw["BPMList"] = json!([{"bpm":120,"startTime":[0,0,1]}]);
+        let mut second = raw["judgeLineList"][0]["eventLayers"][0]["moveXEvents"][0].clone();
+        second["startTime"] = json!([8, 0, 1]);
+        second["endTime"] = json!([16, 0, 1]);
+        second["start"] = json!(100.);
+        second["end"] = json!(190.);
+        raw["judgeLineList"][0]["eventLayers"][0]["moveXEvents"]
+            .as_array_mut()
+            .unwrap()
+            .push(second);
+        let mut editor = Editor::new(ChartDocument::from_value(raw).unwrap());
+        let ids = [id, EventId { index: 1, ..id }];
+        let selected = Selection {
+            notes: vec![],
+            events: ids.to_vec(),
+        };
+        let curve = if curved { curve() } else { Curve::default() };
+        Snapshot::capture(editor.document(), &ids, editor.revision())
+            .unwrap()
+            .prepare(&curve, || false)
+            .unwrap()
+            .apply(&mut editor, false)
+            .unwrap();
+        let original = editor.document().as_json().clone();
+        if curved {
+            assert!(tools::join_events(editor.document(), &selected).is_err());
+            tools::batch_values(
+                editor.document(),
+                &selected,
+                ValueField::EventEasing,
+                ValueMode::Set,
+                &[1.],
+            )
+            .unwrap()
+            .apply(&mut editor)
+            .unwrap();
+            assert!(
+                editor
+                    .document()
+                    .events(0, 0, EventType::MoveX)
+                    .unwrap()
+                    .into_iter()
+                    .all(|(_, e)| e.custom_easing.is_none())
+            );
+        }
+        tools::join_events(editor.document(), &selected)
+            .unwrap()
+            .apply(&mut editor)
+            .unwrap();
+        assert_eq!(
+            editor
+                .document()
+                .event_values(0, 0, EventType::MoveX)
+                .unwrap()
+                .len(),
+            1
+        );
+        editor.undo();
+        if curved {
+            editor.undo();
+        }
+        assert_eq!(editor.document().as_json(), &original);
+    }
 }

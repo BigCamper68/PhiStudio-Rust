@@ -2262,5 +2262,7 @@
   "Hitsound contains invalid samples": "El sonido contiene muestras no válidas",
   "Hitsounds must be at most 10 seconds and 192 kHz": "El sonido debe durar hasta 10 segundos y tener hasta 192 kHz",
   "Could not prepare staged note audio: {0}": "No se pudo preparar el audio de notas: {0}",
-  "Note sound volume must be between 0 and 100%": "El volumen de notas debe estar entre 0 y 100%"
+  "Note sound volume must be between 0 and 100%": "El volumen de notas debe estar entre 0 y 100%",
+  "Custom easing": "Curva personalizada",
+  "Use standard easing": "Usar interpolación estándar"
 }

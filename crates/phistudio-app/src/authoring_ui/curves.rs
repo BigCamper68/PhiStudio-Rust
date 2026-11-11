@@ -46,6 +46,23 @@ pub(crate) fn shader_easing_fields(ui: &mut egui::Ui, event: &mut LineEvent) {
 }
 
 pub(super) fn easing_fields_impl(ui: &mut egui::Ui, event: &mut LineEvent, allow_bezier: bool) {
+    if let Some(binding) = &event.custom_easing {
+        ui.strong(crate::i18n::tr("Custom easing"));
+        if !binding.curve.name.trim().is_empty() {
+            ui.label(&binding.curve.name);
+        }
+        if ui
+            .add(egui::Button::new(crate::i18n::tr("Use standard easing")).wrap(true))
+            .clicked()
+        {
+            event.custom_easing = None;
+            event.easing_type = 1;
+            event.easing_left = 0.;
+            event.easing_right = 1.;
+            event.bezier = 0;
+        }
+        return;
+    }
     let form = crate::form::Form::new(
         ui,
         &[

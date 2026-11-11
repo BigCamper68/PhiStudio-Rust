@@ -8,6 +8,9 @@ use phistudio_core::{
 /// sampled from the original native tween, never a parallel easing table.
 pub fn editable_easing(kind: EventType, event: &LineEvent) -> Result<Curve, ChartError> {
     event.validate(kind)?;
+    if let Some(binding) = &event.custom_easing {
+        return Ok(binding.curve.clone());
+    }
     if kind == EventType::Speed || (event.bezier == 0 && event.easing_type == 1) {
         return Ok(Curve::default());
     }
@@ -259,5 +262,197 @@ mod tests {
         let curve = editable_easing(EventType::MoveX, &event).unwrap();
         assert_eq!(curve.nodes[0].outgoing, Some([0.15, -0.5]));
         assert_eq!(curve.nodes[1].incoming, Some([0.8, 1.5]));
+    }
+
+    #[test]
+    fn native_cropped_loops_and_reversed_curves_retain_their_source_mapping() {
+        use phistudio_core::{Command, custom_easing::Binding};
+        let c = Curve {
+            nodes: vec![
+                Node::new(0., 0., Mode::Linear),
+                Node {
+                    x: 0.25,
+                    y: 0.5,
+                    mode: Mode::Corner,
+                    incoming: None,
+                    outgoing: Some([0.4, 1.5]),
+                },
+                Node {
+                    x: 0.75,
+                    y: 0.5,
+                    mode: Mode::Linear,
+                    incoming: Some([0.6, 1.5]),
+                    outgoing: None,
+                },
+                Node::new(1., 1., Mode::Linear),
+            ],
+            ..Default::default()
+        };
+        let original = Binding::new(c).crop([10., 100.], 0.25, 0.75).unwrap();
+        for reversed in [false, true] {
+            let mut binding = original.clone();
+            if reversed {
+                binding.reverse([55., 55.]);
+            }
+            let mut raw = ChartDocument::empty("Cropped", 120.)
+                .unwrap()
+                .as_json()
+                .clone();
+            let event = LineEvent {
+                start: 55.,
+                end: 55.,
+                end_time: Beat::new(8, 0, 1).unwrap(),
+                custom_easing: Some(Box::new(binding)),
+                ..Default::default()
+            };
+            raw["judgeLineList"][0]["eventLayers"][0]["moveXEvents"] = json!([event]);
+            let mut editor = Editor::new(ChartDocument::from_value(raw).unwrap());
+            let id = EventId {
+                line: 0,
+                layer: 0,
+                kind: EventType::MoveX,
+                index: 0,
+            };
+            let event = editor.document().event(id).unwrap();
+            let mut sliced = crate::slice_event(EventType::MoveX, &event, 0.1, 0.7).unwrap();
+            sliced.start_time = Beat::ZERO;
+            sliced.end_time = event.end_time;
+            editor
+                .execute(Command::UpdateEvent { id, event: sliced })
+                .unwrap();
+            let mut edited = editor.document().event(id).unwrap();
+            edited.start = 25.;
+            edited.end = 125.;
+            editor
+                .execute(Command::UpdateEvent { id, event: edited })
+                .unwrap();
+            let event = editor.document().event(id).unwrap();
+            let curve = crate::EventCurve::new(EventType::MoveX, &event);
+            let mut native = parse(editor.document(), false);
+            for i in 0..=1000 {
+                let fraction = i as f32 / 1000.;
+                native.lines[0]
+                    .object
+                    .translation
+                    .0
+                    .set_time(f64::from(fraction) * 4.);
+                let actual = f64::from(native.lines[0].object.translation.0.now()) * 675.;
+                assert!(
+                    (actual - curve.value(fraction)).abs() < 0.0012,
+                    "reversed={reversed}, at {fraction}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn projected_hold_endpoints_preserve_the_native_terminal_clock() {
+        let hold = curves().remove(1);
+        for kind in EventType::ALL {
+            let doc = authored(kind, &hold);
+            let before = crate::speed_curve::clock::native_horizon(&doc);
+            let projected = ChartDocument::from_value(doc.render_value().unwrap()).unwrap();
+            assert_eq!(
+                crate::speed_curve::clock::native_horizon(&projected),
+                before,
+                "{kind:?}"
+            );
+            let mut chart = parse(&doc, true);
+            let end = doc.tempo().seconds_at(8.);
+            if kind == EventType::Speed {
+                let h = &mut chart.lines[0].height;
+                h.set_time(end);
+                let first = h.now();
+                h.set_time(end + 0.2);
+                assert!(
+                    (f64::from(h.now() - first) - 100. * 0.2 * 2. / 9. / prpr::core::HEIGHT_RATIO)
+                        .abs()
+                        < 0.001
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn note_distance_graph_uses_the_same_logical_speed_projection_as_playback() {
+        use phistudio_core::{NoteId, speed_curve::SpeedCurveSource};
+        let mut raw = authored(EventType::Speed, &curves().remove(0))
+            .as_json()
+            .clone();
+        // Old renderer metadata is superseded by the explicit custom binding.
+        // Registering this unused control in prpr's legacy cache would overflow.
+        raw["judgeLineList"][0]["eventLayers"][0]["speedEvents"][0]["bezier"] = json!(1);
+        raw["judgeLineList"][0]["eventLayers"][0]["speedEvents"][0]["bezierPoints"] =
+            json!([0.2, 1e6, 0.8, 1e6]);
+        let doc = ChartDocument::from_value(raw).unwrap();
+        let mut source = SpeedCurveSource::capture(&doc, NoteId { line: 0, index: 0 }).unwrap();
+        source.native_horizon = Some(crate::speed_curve::clock::native_horizon(&doc));
+        for modern in [false, true] {
+            let mut native = parse(&doc, modern);
+            let height = &mut native.lines[0].height;
+            height.set_time(doc.tempo().seconds_at(8.));
+            let hit = f64::from(height.now());
+            let profile = pollster::block_on(crate::speed_curve_profile(
+                &source,
+                0,
+                [Beat::ZERO, Beat::new(8, 0, 1).unwrap()],
+                modern,
+            ))
+            .unwrap();
+            for sample in &profile.samples {
+                height.set_time(doc.tempo().seconds_at(sample[0]));
+                let expected = (hit - f64::from(height.now())) * 450.;
+                assert!(
+                    (expected - sample[1]).abs() < 0.02,
+                    "modern={modern}, {sample:?} vs {expected}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn reversed_hold_boundaries_match_native_values_and_double_reverse_is_exact() {
+        use phistudio_core::tools::{self, Selection, Transform};
+        let doc = authored(EventType::MoveX, &curves().remove(1));
+        let before = doc.as_json().clone();
+        let mut editor = Editor::new(doc);
+        let id = EventId {
+            line: 0,
+            layer: 0,
+            kind: EventType::MoveX,
+            index: 0,
+        };
+        let selected = Selection {
+            notes: vec![],
+            events: vec![id],
+        };
+        tools::transform(editor.document(), &selected, Transform::ReverseTime)
+            .unwrap()
+            .apply(&mut editor)
+            .unwrap();
+        let event = editor.document().event(id).unwrap();
+        assert!((event.start - 73.).abs() < 1e-9);
+        let curve = crate::EventCurve::new(EventType::MoveX, &event);
+        let mut native = parse(editor.document(), false);
+        let duration = editor.document().tempo().seconds_at(8.);
+        for i in 0..=1000 {
+            let f = i as f32 / 1000.;
+            native.lines[0]
+                .object
+                .translation
+                .0
+                .set_time(f64::from(f) * duration);
+            assert!(
+                (f64::from(native.lines[0].object.translation.0.now()) * 675. - curve.value(f))
+                    .abs()
+                    < 0.0012,
+                "at {f}"
+            );
+        }
+        tools::transform(editor.document(), &selected, Transform::ReverseTime)
+            .unwrap()
+            .apply(&mut editor)
+            .unwrap();
+        assert_eq!(editor.document().as_json(), &before);
     }
 }

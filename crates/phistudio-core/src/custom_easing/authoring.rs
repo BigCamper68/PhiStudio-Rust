@@ -6,12 +6,12 @@ use std::collections::BTreeSet;
 
 pub const RECIPE_KEY: &str = "phiStudioEasing";
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct Recipe {
-    version: u32,
-    curve: Curve,
-    source: Value,
-    count: usize,
-    signature: String,
+pub(super) struct Recipe {
+    pub(super) version: u32,
+    pub(super) curve: Curve,
+    pub(super) source: Value,
+    pub(super) count: usize,
+    pub(super) signature: String,
 }
 /// A logical event can span several native intervals after custom easing.
 #[derive(Clone, Debug)]
@@ -34,6 +34,18 @@ impl Source {
             .ok_or_else(|| invalid("The easing source event no longer exists"))?;
         if track.len() > tools::MAX_OBJECTS {
             return Err(invalid("The easing source track exceeds 20,000 events"));
+        }
+        let event = LineEvent::read(id.kind, raw)?;
+        if let Some(binding) = &event.custom_easing {
+            event.validate(id.kind)?;
+            return Ok(Self {
+                id,
+                members: vec![id],
+                raw: raw.clone(),
+                curve: Some(binding.curve.clone()),
+                next_start: next_start(track, id.kind, event.end_time, id.index..id.index + 1)?,
+                event,
+            });
         }
         let bpm = &doc.as_json()["BPMList"];
         for (first, value) in track.iter().enumerate().take(id.index + 1) {
@@ -116,7 +128,7 @@ fn next_start(
     }
     Ok(result)
 }
-fn signature(
+pub(super) fn signature(
     kind: EventType,
     curve: &Curve,
     source: &Value,
@@ -157,6 +169,7 @@ pub struct Edit {
     bpm: Value,
     expected: Vec<(EventId, Value)>,
     additions: Vec<(usize, usize, EventType, Value)>,
+    compiled: Vec<(usize, usize, EventType, Value)>,
 }
 impl Snapshot {
     pub fn capture(
@@ -200,30 +213,75 @@ impl Snapshot {
         })
     }
     pub fn prepare(self, curve: &Curve, canceled: impl Fn() -> bool) -> Result<Edit, ChartError> {
+        self.prepare_impl(curve, false, canceled)
+    }
+    pub fn prepare_preserving_domains(
+        self,
+        curve: &Curve,
+        canceled: impl Fn() -> bool,
+    ) -> Result<Edit, ChartError> {
+        self.prepare_impl(curve, true, canceled)
+    }
+    fn prepare_impl(
+        self,
+        curve: &Curve,
+        preserve: bool,
+        canceled: impl Fn() -> bool,
+    ) -> Result<Edit, ChartError> {
         curve.validate()?;
         let mut additions = Vec::new();
+        let mut compiled = Vec::new();
         for source in &self.sources {
-            let mut pieces = super::bake::bake(
-                &source.raw,
+            if canceled() {
+                return Err(invalid("Custom easing preparation canceled"));
+            }
+            let mut event = source.event.clone();
+            let mut binding = if preserve {
+                event
+                    .custom_easing
+                    .clone()
+                    .map(|binding| *binding)
+                    .unwrap_or_else(|| Binding::new(curve.clone()))
+            } else {
+                Binding::new(curve.clone())
+            };
+            binding.curve = curve.clone();
+            let ends = [event.start, event.end];
+            if binding.source.is_some() {
+                event.start = binding.scalar_value(ends, 0.)?;
+                event.end = binding.scalar_value(ends, 1.)?;
+            }
+            event.custom_easing = Some(Box::new(binding));
+            event.easing_type = 1;
+            event.easing_left = 0.;
+            event.easing_right = 1.;
+            event.bezier = 0;
+            let mut authored = event.merge(source.id.kind, Some(&source.raw))?;
+            if source.id.kind == EventType::Speed {
+                let canonical = serde_json::to_value(&event)?;
+                for key in [
+                    "easingType",
+                    "easingLeft",
+                    "easingRight",
+                    "bezier",
+                    "bezierPoints",
+                ] {
+                    authored[key] = canonical[key].clone();
+                }
+            }
+            authored.as_object_mut().unwrap().shift_remove(RECIPE_KEY);
+            let pieces = super::bake::bake_bound(
+                &authored,
                 source.id.kind,
-                curve,
                 &self.tempo,
                 source.next_start,
                 &canceled,
             )?;
-            if additions.len() + pieces.len() > tools::MAX_OBJECTS {
+            if compiled.len() + pieces.len() > tools::MAX_OBJECTS {
                 return Err(invalid("The custom easing exceeds 20,000 events"));
             }
-            let signature = signature(source.id.kind, curve, &source.raw, &self.bpm, &pieces)?;
-            let recipe = Recipe {
-                version: 1,
-                curve: curve.clone(),
-                source: source.raw.clone(),
-                count: pieces.len(),
-                signature,
-            };
-            pieces[0][RECIPE_KEY] = serde_json::to_value(recipe)?;
-            additions.extend(
+            additions.push((source.id.line, source.id.layer, source.id.kind, authored));
+            compiled.extend(
                 pieces
                     .into_iter()
                     .map(|raw| (source.id.line, source.id.layer, source.id.kind, raw)),
@@ -234,15 +292,17 @@ impl Snapshot {
             bpm: self.bpm,
             expected: self.expected,
             additions,
+            compiled,
         })
     }
 }
+
 impl Edit {
     pub fn event_count(&self) -> usize {
-        self.additions.len()
+        self.compiled.len()
     }
     pub fn preview_events(&self) -> impl Iterator<Item = (usize, usize, EventType, &Value)> {
-        self.additions
+        self.compiled
             .iter()
             .map(|(line, layer, kind, raw)| (*line, *layer, *kind, raw))
     }

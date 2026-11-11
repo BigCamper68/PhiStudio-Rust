@@ -2262,5 +2262,7 @@
   "Hitsound contains invalid samples": "타격음에 잘못된 샘플이 있습니다",
   "Hitsounds must be at most 10 seconds and 192 kHz": "타격음은 10초 이하, 192 kHz 이하여야 합니다",
   "Could not prepare staged note audio: {0}": "노트 미리보기 소리를 준비하지 못했습니다: {0}",
-  "Note sound volume must be between 0 and 100%": "노트 음량은 0–100%여야 합니다"
+  "Note sound volume must be between 0 and 100%": "노트 음량은 0–100%여야 합니다",
+  "Custom easing": "사용자 지정 이징",
+  "Use standard easing": "기본 이징 사용"
 }

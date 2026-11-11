@@ -92,7 +92,7 @@ impl Workbench {
                         draft.event.end = draft.event.start;
                     }
                 }
-                if id.kind != EventType::Speed {
+                if id.kind != EventType::Speed || draft.event.custom_easing.is_some() {
                     easing_fields(ui, &mut draft.event);
                 }
                 form.field(ui, "Link group", |ui| {
@@ -103,7 +103,7 @@ impl Workbench {
                 });
             });
         });
-        if id.kind == EventType::Speed {
+        if id.kind == EventType::Speed && draft.event.custom_easing.is_none() {
             ui.small(
                 RichText::new(crate::i18n::tr(
                     "Speed edits use Linear. Imported easing metadata is preserved.",

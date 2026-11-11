@@ -187,6 +187,7 @@ impl ChartDocument {
     pub fn from_value(mut root: Value) -> Result<Self, ChartError> {
         Self::validate_root(&root)?;
         crate::noise_fields::export::restore(&mut root)?;
+        crate::custom_easing::projection::restore(&mut root)?;
         Self::from_edit_value(root)
     }
 
@@ -416,6 +417,7 @@ impl ChartDocument {
         root["BPMList"].as_array_mut().unwrap().sort_by_key(|x| {
             serde_json::from_value::<Beat>(x["startTime"].clone()).expect("validated tempo")
         });
+        crate::custom_easing::projection::expand(&mut root, &self.tempo, false, || false)?;
         Ok(root)
     }
 }

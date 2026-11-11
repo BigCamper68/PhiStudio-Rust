@@ -2262,5 +2262,7 @@
   "Hitsound contains invalid samples": "ヒット音に無効なサンプルが含まれています",
   "Hitsounds must be at most 10 seconds and 192 kHz": "ヒット音は 10 秒以内、192 kHz 以下にしてください",
   "Could not prepare staged note audio: {0}": "ノーツプレビューの音を準備できませんでした: {0}",
-  "Note sound volume must be between 0 and 100%": "ノーツの音量は 0～100% にしてください"
+  "Note sound volume must be between 0 and 100%": "ノーツの音量は 0～100% にしてください",
+  "Custom easing": "カスタムイージング",
+  "Use standard easing": "標準のイージングに戻す"
 }

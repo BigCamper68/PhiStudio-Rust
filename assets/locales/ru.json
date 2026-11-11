@@ -2262,5 +2262,7 @@
   "Hitsound contains invalid samples": "Звук ноты содержит некорректные аудиоданные",
   "Hitsounds must be at most 10 seconds and 192 kHz": "Звук ноты должен быть не длиннее 10 секунд и не выше 192 кГц",
   "Could not prepare staged note audio: {0}": "Не удалось подготовить звук предпросмотра нот: {0}",
-  "Note sound volume must be between 0 and 100%": "Громкость ноты должна быть от 0 до 100%"
+  "Note sound volume must be between 0 and 100%": "Громкость ноты должна быть от 0 до 100%",
+  "Custom easing": "Пользовательская кривая",
+  "Use standard easing": "Стандартная интерполяция"
 }

@@ -68,6 +68,18 @@ pub(super) fn nonlinear_speed(item: &Object, event: &LineEvent) -> bool {
 }
 
 pub fn reversed_easing(event: &mut LineEvent) {
+    if let Some(binding) = &mut event.custom_easing {
+        binding.reverse([event.start, event.end]);
+        if let (Ok(start), Ok(end)) = (
+            binding.scalar_value([event.start, event.end], 0.),
+            binding.scalar_value([event.start, event.end], 1.),
+        ) {
+            event.start = start;
+            event.end = end;
+            binding.canonicalize_scalar([start, end]);
+        }
+        return;
+    }
     event.easing_type = match event.easing_type {
         2 => 3,
         3 => 2,
@@ -169,7 +181,7 @@ pub(crate) fn transform_bounds(
                 if let Some((_, kind)) = item.event {
                     let mut event = LineEvent::read(kind, &item.value)?;
                     std::mem::swap(&mut event.start, &mut event.end);
-                    if kind != EventType::Speed {
+                    if kind != EventType::Speed || event.custom_easing.is_some() {
                         reversed_easing(&mut event);
                     }
                     item.value = event.merge(kind, Some(&item.value))?;
@@ -242,6 +254,7 @@ pub(crate) fn transform_bounds(
                 }
                 let mut event = LineEvent::read(kind, &item.value)?;
                 event.easing_type = easing;
+                event.custom_easing = None;
                 event.bezier = 0;
                 event.easing_left = 0.;
                 event.easing_right = 1.;
@@ -259,6 +272,7 @@ pub(crate) fn transform_bounds(
                     ));
                 }
                 let mut event = LineEvent::read(kind, &item.value)?;
+                event.custom_easing = None;
                 event.easing_type = easing;
                 event.easing_left = window[0];
                 event.easing_right = window[1];

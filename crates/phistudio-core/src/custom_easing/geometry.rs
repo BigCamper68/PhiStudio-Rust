@@ -1,5 +1,43 @@
 use super::*;
 
+pub struct Geometry {
+    pub segments: Vec<Segment>,
+}
+impl Geometry {
+    pub fn sample(&self, x: f64) -> f64 {
+        self.sample_in_direction(x, false)
+    }
+    /// Reverse traversal takes the left limit at jumps so animation time
+    /// retains the native right-continuous boundary convention.
+    pub fn sample_in_direction(&self, x: f64, reversed: bool) -> f64 {
+        if x <= 0. {
+            return 0.;
+        }
+        if x >= 1. && !reversed {
+            return 1.;
+        }
+        let index = self
+            .segments
+            .partition_point(|s| {
+                if reversed {
+                    s.points[3][0] < x
+                } else {
+                    s.points[3][0] <= x
+                }
+            })
+            .min(self.segments.len() - 1);
+        let s = &self.segments[index];
+        s.point(s.parameter_at(x))[1]
+    }
+}
+impl Curve {
+    pub fn geometry(&self) -> Result<Geometry, ChartError> {
+        Ok(Geometry {
+            segments: self.segments()?,
+        })
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Segment {
     pub points: [[f64; 2]; 4],

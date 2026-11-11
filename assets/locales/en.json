@@ -2262,5 +2262,7 @@
   "Hitsound contains invalid samples": "Hitsound contains invalid samples",
   "Hitsounds must be at most 10 seconds and 192 kHz": "Hitsounds must be at most 10 seconds and 192 kHz",
   "Could not prepare staged note audio: {0}": "Could not prepare staged note audio: {0}",
-  "Note sound volume must be between 0 and 100%": "Note sound volume must be between 0 and 100%"
+  "Note sound volume must be between 0 and 100%": "Note sound volume must be between 0 and 100%",
+  "Custom easing": "Custom easing",
+  "Use standard easing": "Use standard easing"
 }

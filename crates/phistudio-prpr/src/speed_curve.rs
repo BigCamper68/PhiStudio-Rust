@@ -56,10 +56,11 @@ impl NativeModel {
             let mut alpha = vec![sentinel.clone()];
             // The upstream Bezier registry is populated by non-speed tracks.
             // Register speed controls in this private, visually unused parser copy.
-            for event in events
-                .iter()
-                .filter(|v| v["bezier"].as_u64().unwrap_or(0) != 0)
-            {
+            for event in events.iter().filter(|v| {
+                v["bezier"].as_u64().unwrap_or(0) != 0
+                    && v.get(phistudio_core::custom_easing::CURVE_KEY)
+                        .is_none_or(Value::is_null)
+            }) {
                 let mut definition = sentinel.clone();
                 definition["bezier"] = event["bezier"].clone();
                 definition["bezierPoints"] = event["bezierPoints"].clone();
@@ -68,13 +69,9 @@ impl NativeModel {
             line["eventLayers"] = json!([{"speedEvents":events,"alphaEvents":alpha}]);
             root["judgeLineList"] = json!([line]);
             let mut fs = crate::assets::ChartAssets::new(None)?;
-            let mut parsed = prpr::parse::parse_rpe(
-                &serde_json::to_string(&root)?,
-                &mut fs,
-                ChartExtra::default(),
-                modern,
-            )
-            .await?;
+            let projected = ChartDocument::from_value(root.clone())?.render_json()?;
+            let mut parsed =
+                prpr::parse::parse_rpe(&projected, &mut fs, ChartExtra::default(), modern).await?;
             height.push(parsed.lines.remove(0).height);
         }
         let mut model = Self {

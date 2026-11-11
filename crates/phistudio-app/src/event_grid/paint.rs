@@ -186,7 +186,7 @@ pub(super) fn draw(
         .filter_map(|i| {
             let y = visible.bottom() - visible.height() * i as f32 / samples as f32;
             let t = ((start - y) / (start - end)).clamp(0., 1.);
-            let v = event.start + (event.end - event.start) * curve.sample(t) as f64;
+            let v = curve.value(t);
             v.is_finite().then(|| {
                 pos2(
                     col.left() + ((v - lo) / (hi - lo)).clamp(0., 1.) as f32 * col.width(),

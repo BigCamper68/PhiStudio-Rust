@@ -85,14 +85,16 @@ fn event_delta(
             }
             timing = old.start_time != event.start_time || old.end_time != event.end_time;
         }
+        let merged = event.merge(id.kind, before)?;
+        let canonical = LineEvent::read(id.kind, &merged)?;
         doc.validate_event(
             id.line,
             id.layer,
             id.kind,
-            &event,
+            &canonical,
             if inserting { None } else { Some(id.index) },
         )?;
-        Some(event.merge(id.kind, before)?)
+        Some(merged)
     } else {
         None
     };

@@ -61,7 +61,12 @@ pub fn speed_signature(events: &[Value]) -> String {
 impl SpeedCurveSource {
     pub fn capture(doc: &ChartDocument, id: NoteId) -> Result<Self, ChartError> {
         let note = doc.note(id.line, id.index)?;
-        if doc.as_json()["META"].get("phiPecHeights").is_some() {
+        if doc.as_json()["META"]["phiPecHeights"]["signature"]
+            .as_str()
+            .is_some_and(|stored| {
+                crate::pec_height_signature(doc.as_json()).as_deref() == Some(stored)
+            })
+        {
             return Err(ChartError::Invalid(
                 "Speed curves require native speed events; this chart has a PEC height override"
                     .into(),

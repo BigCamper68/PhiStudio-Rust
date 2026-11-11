@@ -2262,5 +2262,7 @@
   "Hitsound contains invalid samples": "打击音包含无效采样",
   "Hitsounds must be at most 10 seconds and 192 kHz": "打击音时长不得超过 10 秒，采样率不得超过 192 kHz",
   "Could not prepare staged note audio: {0}": "无法准备音符预览声音：{0}",
-  "Note sound volume must be between 0 and 100%": "音符声音音量必须在 0–100% 之间"
+  "Note sound volume must be between 0 and 100%": "音符声音音量必须在 0–100% 之间",
+  "Custom easing": "自定义缓动",
+  "Use standard easing": "使用标准缓动"
 }

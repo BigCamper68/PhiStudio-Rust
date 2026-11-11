@@ -87,6 +87,12 @@ pub struct LineEvent {
     pub easing_right: f64,
     pub bezier: u8,
     pub bezier_points: [f64; 4],
+    #[serde(
+        rename = "phiStudioCustomEasing",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub custom_easing: Option<Box<crate::custom_easing::Binding>>,
     #[serde(rename = "linkgroup")]
     pub link_group: i32,
 }
@@ -103,6 +109,7 @@ impl Default for LineEvent {
             easing_right: 1.,
             bezier: 0,
             bezier_points: [0.; 4],
+            custom_easing: None,
             link_group: 0,
         }
     }
@@ -147,7 +154,11 @@ impl LineEvent {
         {
             return fail("Event values must be finite");
         }
+        if let Some(binding) = &self.custom_easing {
+            binding.validate_scalar_endpoints([self.start, self.end])?;
+        }
         if kind == EventType::Alpha
+            && self.custom_easing.is_none()
             && [self.start, self.end]
                 .iter()
                 .any(|v| !(-255. ..=255.).contains(v))
@@ -168,13 +179,33 @@ impl LineEvent {
         Ok(())
     }
     pub(crate) fn merge(&self, kind: EventType, raw: Option<&Value>) -> Result<Value, ChartError> {
-        self.validate(kind)?;
-        let before = raw
-            .map(|v| Self::read(kind, v))
-            .transpose()?
-            .map(|v| serde_json::to_value(v).unwrap());
+        let mut next = self.clone();
+        let previous = raw.map(|v| Self::read(kind, v)).transpose()?;
+        if let Some(before) = &previous
+            && next.custom_easing == before.custom_easing
+            && let Some(binding) = &next.custom_easing
+        {
+            next.custom_easing = Some(Box::new(
+                binding.rebase([before.start, before.end], [next.start, next.end])?,
+            ));
+        }
+        if next.constant
+            && let Some(binding) = &mut next.custom_easing
+        {
+            binding.source = Some([json!(next.start), json!(next.start)]);
+        }
+        next.validate(kind)?;
+        let before = previous.as_ref().map(serde_json::to_value).transpose()?;
         let mut result = raw.cloned().unwrap_or_else(|| json!({}));
-        for (key, value) in serde_json::to_value(self)?.as_object().unwrap() {
+        if next.custom_easing.is_none()
+            && previous.as_ref().is_some_and(|e| e.custom_easing.is_some())
+        {
+            result
+                .as_object_mut()
+                .unwrap()
+                .shift_remove(crate::custom_easing::CURVE_KEY);
+        }
+        for (key, value) in serde_json::to_value(&next)?.as_object().unwrap() {
             if kind == EventType::Speed
                 && matches!(
                     key.as_str(),
