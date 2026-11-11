@@ -39,6 +39,7 @@ pub struct ChartChoice {
     pub path: PathBuf,
     pub name: String,
     pub notes: usize,
+    pub events: usize,
     pub format: ChartFormat,
     pub source: PathBuf,
 }

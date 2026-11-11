@@ -27,6 +27,7 @@ mod patch;
 pub mod patterns;
 pub mod plugin_data;
 mod preferences;
+mod project_activity;
 mod project_assets;
 mod project_management;
 mod project_options;
@@ -72,6 +73,7 @@ pub use preferences::{
     NumericDragOptions, PreviewAspect, ThemeColors, load_editor_preferences,
     save_editor_preferences,
 };
+pub use project_activity::{project_edit_time, record_project_edit_time};
 pub use project_assets::{
     MAX_HITSOUND_BYTES, hitsound_path, import_hitsound_asset, list_hitsound_assets,
     write_generated_hitsound,

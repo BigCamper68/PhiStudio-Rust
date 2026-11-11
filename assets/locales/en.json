@@ -2189,5 +2189,6 @@
   "Curve actions": "Curve actions",
   "Curve actions…": "Curve actions…",
   "Loop range": "Loop range",
-  "Drag empty space to pan. Pinch to zoom distance; spread horizontally to zoom time. Drag the white playhead to seek. Drag the bottom range handles to set playback bounds.": "Drag empty space to pan. Pinch to zoom distance; spread horizontally to zoom time. Drag the white playhead to seek. Drag the bottom range handles to set playback bounds."
+  "Drag empty space to pan. Pinch to zoom distance; spread horizontally to zoom time. Drag the white playhead to seek. Drag the bottom range handles to set playback bounds.": "Drag empty space to pan. Pinch to zoom distance; spread horizontally to zoom time. Drag the white playhead to seek. Drag the bottom range handles to set playback bounds.",
+  "EditTime {0} · {1} events · {2} notes": "EditTime {0} · {1} events · {2} notes"
 }

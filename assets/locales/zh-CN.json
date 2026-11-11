@@ -2189,5 +2189,6 @@
   "Curve actions": "曲線操作",
   "Curve actions…": "曲線操作…",
   "Loop range": "循环范围",
-  "Drag empty space to pan. Pinch to zoom distance; spread horizontally to zoom time. Drag the white playhead to seek. Drag the bottom range handles to set playback bounds.": "拖动空白区域平移。双指缩放距离；水平张开双指缩放时间。拖动白色播放头定位，拖动底部标记设置播放范围。"
+  "Drag empty space to pan. Pinch to zoom distance; spread horizontally to zoom time. Drag the white playhead to seek. Drag the bottom range handles to set playback bounds.": "拖动空白区域平移。双指缩放距离；水平张开双指缩放时间。拖动白色播放头定位，拖动底部标记设置播放范围。",
+  "EditTime {0} · {1} events · {2} notes": "编辑 {0} · {1} 个事件 · {2} 个音符"
 }

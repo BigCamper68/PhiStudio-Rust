@@ -1,5 +1,6 @@
 //! Platform pickers exchange paths to bounded private snapshots, never chart
 //! JSON over JNI. ZIP decoding and chart discovery run off the rendering thread.
+mod edit_time;
 mod pickers;
 mod providers;
 mod requests;
@@ -194,6 +195,7 @@ pub struct FileManager {
     query: Option<WorkspaceQuery>,
     root: Option<PathBuf>,
     checkpoints: crate::persistence::Checkpoints,
+    edit_time: edit_time::EditTime,
     preferences: crate::settings::Preferences,
     skins_loading: Option<Receiver<Result<Vec<phistudio_core::skins::SkinEntry>, String>>>,
     worker: Option<Receiver<Result<WorkerResult, String>>>,
@@ -232,6 +234,7 @@ impl FileManager {
             query: None,
             skins_loading,
             checkpoints: crate::persistence::Checkpoints::new(root.clone()),
+            edit_time: edit_time::EditTime::new(root.clone()),
             preferences: crate::settings::Preferences::new(root.clone()),
             root,
             worker: None,
@@ -243,6 +246,7 @@ impl FileManager {
         }
     }
     pub fn checkpoint(&mut self, app: &Workbench, discard: bool) -> Result<(), String> {
+        self.edit_time.flush(app)?;
         self.preferences.flush(app)?;
         self.checkpoints.flush(app, discard)?;
         app.presets.flush()?;

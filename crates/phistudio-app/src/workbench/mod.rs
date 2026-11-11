@@ -43,6 +43,7 @@ pub struct NoteDraft {
 }
 
 pub struct Workbench {
+    pub(crate) editor_focused: bool,
     pub(crate) updates: crate::updates::State,
     pub(crate) sounds: crate::editor_sounds::State,
     pub(crate) speed_curve: crate::speed_curve_ui::State,
@@ -130,6 +131,7 @@ impl Workbench {
             sounds: Default::default(),
             speed_curve: Default::default(),
             hitsound_audition: Default::default(),
+            editor_focused: false,
             updates: Default::default(),
             audio_guide: Default::default(),
             audio_notes: Default::default(),
@@ -186,6 +188,7 @@ impl Workbench {
     }
 
     pub fn ui(&mut self, ctx: &egui::Context, canceled: bool) {
+        self.editor_focused = ctx.input(|i| i.raw.has_focus);
         self.speed_curve.input_canceled = canceled;
         if canceled {
             self.speed_curve.cancel();

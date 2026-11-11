@@ -19,6 +19,8 @@ pub struct ProjectSummary {
     pub name: String,
     pub source_name: String,
     pub notes: usize,
+    pub events: Option<usize>,
+    pub edit_time_ms: u64,
     pub last_opened_ms: u64,
     pub cover: Option<PathBuf>,
 }
@@ -37,6 +39,8 @@ struct Record {
     chart: PathBuf,
     assets: Option<PathBuf>,
     notes: usize,
+    #[serde(default)]
+    events: Option<usize>,
     last_opened_ms: u64,
     #[serde(default)]
     cover: Option<PathBuf>,
@@ -134,8 +138,30 @@ pub fn list_projects(root: &Path) -> Result<ProjectLibrary, ChartError> {
         }
         let workspace = checked_workspace(root, &entry.path())?;
         let folder = entry.file_name().to_string_lossy().into_owned();
+        let edit_time_ms = match crate::project_edit_time(root, &workspace) {
+            Ok(ms) => ms,
+            Err(error) => {
+                library.issues.push(format!("{folder}: {error}"));
+                0
+            }
+        };
         match read_record(root, &workspace) {
-            Ok(Some(record)) => {
+            Ok(Some(mut record)) => {
+                if record.events.is_none() {
+                    // Migrate a pre-count record on the library worker, retaining
+                    // its name, source and last-opened metadata.
+                    match load_chart(&workspace.join(&record.chart)) {
+                        Ok(document) => {
+                            record.events = Some(document.event_count());
+                            record.notes = document.note_count();
+                            if let Err(error) = write_json(&record_path(root, &workspace), &record)
+                            {
+                                library.issues.push(format!("{folder}: {error}"));
+                            }
+                        }
+                        Err(error) => library.issues.push(format!("{folder}: {error}")),
+                    }
+                }
                 let assets = record
                     .assets
                     .as_ref()
@@ -153,6 +179,8 @@ pub fn list_projects(root: &Path) -> Result<ProjectLibrary, ChartError> {
                     name: record.display_name.unwrap_or(record.name),
                     source_name: record.source_name,
                     notes: record.notes,
+                    events: record.events,
+                    edit_time_ms,
                     last_opened_ms: record.last_opened_ms,
                 });
                 continue;
@@ -172,6 +200,8 @@ pub fn list_projects(root: &Path) -> Result<ProjectLibrary, ChartError> {
                     name: choice.map_or_else(|| project.name.clone(), |c| c.name.clone()),
                     source_name: folder,
                     notes: project.charts.iter().map(|c| c.notes).sum(),
+                    events: Some(project.charts.iter().map(|c| c.events).sum()),
+                    edit_time_ms,
                     last_opened_ms: 0,
                 });
             }
@@ -271,6 +301,7 @@ pub(crate) fn record_opened_project(
             }
         }),
         notes: document.note_count(),
+        events: Some(document.event_count()),
         last_opened_ms: now_ms(),
     };
     let directory = root.join("library");

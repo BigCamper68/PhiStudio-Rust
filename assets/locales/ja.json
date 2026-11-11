@@ -2189,5 +2189,6 @@
   "Curve actions": "カーブ操作",
   "Curve actions…": "カーブ操作…",
   "Loop range": "範囲をループ",
-  "Drag empty space to pan. Pinch to zoom distance; spread horizontally to zoom time. Drag the white playhead to seek. Drag the bottom range handles to set playback bounds.": "空白部分をドラッグして移動。ピンチで距離、指を左右に広げて時間を拡大縮小します。白い再生ヘッドでシークし、下部のハンドルで再生範囲を指定します。"
+  "Drag empty space to pan. Pinch to zoom distance; spread horizontally to zoom time. Drag the white playhead to seek. Drag the bottom range handles to set playback bounds.": "空白部分をドラッグして移動。ピンチで距離、指を左右に広げて時間を拡大縮小します。白い再生ヘッドでシークし、下部のハンドルで再生範囲を指定します。",
+  "EditTime {0} · {1} events · {2} notes": "編集 {0} · イベント {1} · ノーツ {2}"
 }

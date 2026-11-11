@@ -12,6 +12,7 @@ pub(super) struct DocumentView {
     notes: BTreeMap<usize, Notes>,
     lines: Option<Arc<Vec<LineSummary>>>,
     extent: Option<f64>,
+    counts: Option<(usize, usize)>,
 }
 impl DocumentView {
     fn refresh(&mut self, editor: &Editor, session: u64) {
@@ -52,6 +53,13 @@ impl DocumentView {
             self.lines
                 .get_or_insert_with(|| Arc::new(editor.document().lines())),
         )
+    }
+    pub fn counts(&mut self, editor: &Editor, session: u64) -> (usize, usize) {
+        self.refresh(editor, session);
+        *self.counts.get_or_insert_with(|| {
+            let doc = editor.document();
+            (doc.note_count(), doc.event_count())
+        })
     }
     pub fn seek_extent(&mut self, editor: &Editor, session: u64) -> f64 {
         self.refresh(editor, session);

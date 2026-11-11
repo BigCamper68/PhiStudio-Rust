@@ -2189,5 +2189,6 @@
   "Curve actions": "Acciones de curva",
   "Curve actions…": "Acciones de curva…",
   "Loop range": "Repetir intervalo",
-  "Drag empty space to pan. Pinch to zoom distance; spread horizontally to zoom time. Drag the white playhead to seek. Drag the bottom range handles to set playback bounds.": "Arrastra el espacio vacío para desplazar. Pellizca para ajustar la distancia; separa horizontalmente para ampliar el tiempo. Arrastra la línea blanca para buscar y los marcadores inferiores para fijar el intervalo."
+  "Drag empty space to pan. Pinch to zoom distance; spread horizontally to zoom time. Drag the white playhead to seek. Drag the bottom range handles to set playback bounds.": "Arrastra el espacio vacío para desplazar. Pellizca para ajustar la distancia; separa horizontalmente para ampliar el tiempo. Arrastra la línea blanca para buscar y los marcadores inferiores para fijar el intervalo.",
+  "EditTime {0} · {1} events · {2} notes": "Edición {0} · {1} eventos · {2} notas"
 }

@@ -331,6 +331,33 @@ impl ChartDocument {
             .map(|i| self.note_values(i).map_or(0, |n| n.len()))
             .sum()
     }
+    /// Counts authored line tracks and extended storyboard events, without
+    /// interpreting individual values or including note control points.
+    pub fn event_count(&self) -> usize {
+        self.root["judgeLineList"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|line| {
+                let standard: usize = line["eventLayers"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .map(|layer| {
+                        crate::EventType::ALL
+                            .iter()
+                            .map(|kind| layer[kind.key()].as_array().map_or(0, Vec::len))
+                            .sum::<usize>()
+                    })
+                    .sum();
+                standard
+                    + crate::StoryKind::ALL
+                        .iter()
+                        .map(|kind| line["extended"][kind.key()].as_array().map_or(0, Vec::len))
+                        .sum::<usize>()
+            })
+            .sum()
+    }
     pub fn lines(&self) -> Vec<LineSummary> {
         self.root["judgeLineList"]
             .as_array()

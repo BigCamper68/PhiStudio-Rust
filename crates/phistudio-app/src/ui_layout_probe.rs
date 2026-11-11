@@ -313,6 +313,8 @@ async fn content_gallery(
                         name: format!("Project {i} · 中文 / Пример"),
                         source_name: format!("Chart {i}.pez"),
                         notes: 1000 + i,
+                        events: Some(42),
+                        edit_time_ms: 65_000,
                         last_opened_ms: 0,
                         cover: None,
                     })

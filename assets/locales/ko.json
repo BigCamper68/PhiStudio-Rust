@@ -2189,5 +2189,6 @@
   "Curve actions": "곡선 작업",
   "Curve actions…": "곡선 작업…",
   "Loop range": "구간 반복",
-  "Drag empty space to pan. Pinch to zoom distance; spread horizontally to zoom time. Drag the white playhead to seek. Drag the bottom range handles to set playback bounds.": "빈 공간을 끌어 이동합니다. 핀치로 거리를, 손가락을 가로로 벌려 시간을 확대합니다. 흰 재생선을 끌어 탐색하고 아래 핸들로 재생 구간을 설정합니다."
+  "Drag empty space to pan. Pinch to zoom distance; spread horizontally to zoom time. Drag the white playhead to seek. Drag the bottom range handles to set playback bounds.": "빈 공간을 끌어 이동합니다. 핀치로 거리를, 손가락을 가로로 벌려 시간을 확대합니다. 흰 재생선을 끌어 탐색하고 아래 핸들로 재생 구간을 설정합니다.",
+  "EditTime {0} · {1} events · {2} notes": "편집 {0} · 이벤트 {1} · 노트 {2}"
 }

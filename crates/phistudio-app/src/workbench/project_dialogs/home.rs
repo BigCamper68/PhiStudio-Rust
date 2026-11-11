@@ -5,6 +5,7 @@ impl Workbench {
         self.project_covers
             .get_or_insert_with(crate::covers::Covers::new)
             .update(ctx);
+        let current_counts = self.view.counts(&self.editor, self.session);
         let blocked = self.speed_curve.open
             || self.sounds.open
             || self.release_notes_open()
@@ -189,11 +190,28 @@ impl Workbench {
                                         - delete_width
                                         - ui.spacing().item_spacing.x * 2.)
                                         .max(90.);
-                                    let (rect, response) = ui.allocate_exact_size(
+                                    let (rect, mut response) = ui.allocate_exact_size(
                                         egui::vec2(width, 64.),
                                         egui::Sense::click(),
                                     );
                                     if ui.is_rect_visible(rect) {
+                                        let (notes, events) = if current {
+                                            (current_counts.0, Some(current_counts.1))
+                                        } else {
+                                            (project.notes, project.events)
+                                        };
+                                        let time = edit_time_label(project.edit_time_ms);
+                                        let event_label = events
+                                            .map_or_else(|| "—".to_owned(), |n| n.to_string());
+                                        let metadata = crate::i18n::format(
+                                            "EditTime {0} · {1} events · {2} notes",
+                                            &[time.clone(), event_label.clone(), notes.to_string()],
+                                        );
+                                        response = response.on_hover_text(format!(
+                                            "{}\n{}",
+                                            metadata, project.source_name
+                                        ));
+                                        let compact = width < 340.;
                                         let texture = project.cover.as_deref().and_then(|path| {
                                             self.project_covers.as_mut().unwrap().texture(ctx, path)
                                         });
@@ -202,7 +220,11 @@ impl Workbench {
                                         painter.rect_filled(rect, 3., visuals.bg_fill);
                                         let cover = egui::Rect::from_min_size(
                                             rect.min + egui::vec2(6., 6.),
-                                            egui::vec2(84., 52.),
+                                            if compact {
+                                                egui::vec2(46., 30.)
+                                            } else {
+                                                egui::vec2(84., 52.)
+                                            },
                                         );
                                         painter.rect_filled(cover, 2., panel());
                                         if let Some(texture) = texture {
@@ -221,18 +243,19 @@ impl Workbench {
                                             );
                                         } else {
                                             let center = cover.center();
+                                            let scale = if compact { 0.54 } else { 1. };
                                             painter.circle_stroke(
-                                                center + egui::vec2(12., -9.),
-                                                4.,
+                                                center + egui::vec2(12., -9.) * scale,
+                                                4. * scale,
                                                 egui::Stroke::new(1_f32, muted()),
                                             );
                                             painter.add(egui::Shape::line(
                                                 vec![
-                                                    center + egui::vec2(-23., 13.),
-                                                    center + egui::vec2(-8., -4.),
+                                                    center + egui::vec2(-23., 13.) * scale,
+                                                    center + egui::vec2(-8., -4.) * scale,
                                                     center + egui::vec2(4., 7.),
-                                                    center + egui::vec2(12., 0.),
-                                                    center + egui::vec2(23., 13.),
+                                                    center + egui::vec2(12., 0.) * scale,
+                                                    center + egui::vec2(23., 13.) * scale,
                                                 ],
                                                 egui::Stroke::new(1_f32, muted()),
                                             ));
@@ -257,21 +280,68 @@ impl Workbench {
                                             egui::FontId::proportional(14.),
                                             visuals.text_color(),
                                         );
-                                        text.text(
-                                            egui::pos2(text_rect.left(), rect.top() + 42.),
-                                            Align2::LEFT_CENTER,
-                                            {
-                                                let __i18n_arg_0 = &(project.notes);
-                                                let __i18n_arg_1 = &(project.source_name);
-                                                crate::i18n::format(
-                                                    "{0} notes · {1}",
-                                                    &[
-                                                        __i18n_arg_0.to_string(),
-                                                        __i18n_arg_1.to_string(),
-                                                    ],
+                                        let stats_rect = if compact {
+                                            rect.shrink2(egui::vec2(6., 0.))
+                                        } else {
+                                            text_rect
+                                        };
+                                        let stats = painter.with_clip_rect(stats_rect);
+                                        let font = egui::FontId::proportional(12.);
+                                        let full = stats.layout_no_wrap(
+                                            metadata.clone(),
+                                            font.clone(),
+                                            muted(),
+                                        );
+                                        let label = if full.size().x <= stats_rect.width() {
+                                            let with_source =
+                                                format!("{metadata} · {}", project.source_name);
+                                            if stats
+                                                .layout_no_wrap(
+                                                    with_source.clone(),
+                                                    font.clone(),
+                                                    muted(),
                                                 )
-                                            },
-                                            egui::FontId::proportional(12.),
+                                                .size()
+                                                .x
+                                                <= stats_rect.width()
+                                            {
+                                                with_source
+                                            } else {
+                                                metadata
+                                            }
+                                        } else {
+                                            format!(
+                                                "◷ {time}  ◇ {}  ♪ {}",
+                                                events
+                                                    .map_or_else(|| "—".to_owned(), compact_count),
+                                                compact_count(notes)
+                                            )
+                                        };
+                                        let galley = stats.layout_no_wrap(
+                                            label.clone(),
+                                            font.clone(),
+                                            muted(),
+                                        );
+                                        let font = if label.starts_with('◷')
+                                            && galley.size().x > stats.clip_rect().width()
+                                        {
+                                            egui::FontId::proportional(
+                                                (12. * (stats.clip_rect().width() - 2.)
+                                                    / galley.size().x)
+                                                    .floor()
+                                                    .clamp(8., 12.),
+                                            )
+                                        } else {
+                                            font
+                                        };
+                                        stats.text(
+                                            egui::pos2(
+                                                stats_rect.left(),
+                                                rect.top() + if compact { 51. } else { 42. },
+                                            ),
+                                            Align2::LEFT_CENTER,
+                                            label,
+                                            font,
                                             muted(),
                                         );
                                     }
@@ -385,5 +455,28 @@ impl Workbench {
                     self.files.request = Some(FileRequest::ExportProject(workspace));
                 }
             });
+    }
+}
+
+fn edit_time_label(milliseconds: u64) -> String {
+    let seconds = milliseconds / 1000;
+    if seconds < 3600 {
+        format!("{}:{:02}", seconds / 60, seconds % 60)
+    } else {
+        format!(
+            "{}:{:02}:{:02}",
+            seconds / 3600,
+            (seconds / 60) % 60,
+            seconds % 60
+        )
+    }
+}
+fn compact_count(count: usize) -> String {
+    if count >= 1_000_000 {
+        format!("{:.1}m", count as f64 / 1_000_000.)
+    } else if count >= 10_000 {
+        format!("{:.1}k", count as f64 / 1000.)
+    } else {
+        count.to_string()
     }
 }

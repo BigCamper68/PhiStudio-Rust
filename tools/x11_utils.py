@@ -47,7 +47,7 @@ def capture_window(window, path, width=1280, height=800):
         lib.XCloseDisplay(display)
 
 
-def wait_for_editor_paint(window, process, timeout=20, height=800):
+def wait_for_editor_paint(window, process, timeout=20, height=800, background=0x141b2a):
     """Wait for the toolbar to be painted, after asynchronous resource startup."""
     lib = C.CDLL(ctypes.util.find_library("X11"))
     lib.XOpenDisplay.argtypes = [C.c_char_p]
@@ -70,7 +70,7 @@ def wait_for_editor_paint(window, process, timeout=20, height=800):
                 assert image, "Could not read the editor window"
                 try: colors.append(lib.XGetPixel(image,0,0)&0xffffff)
                 finally: lib.XDestroyImage(image)
-            if colors == [0x141b2a,0x141b2a]: return
+            if colors == [background,background]: return
             time.sleep(0.05)
         raise AssertionError("Editor did not paint its toolbar")
     finally:
@@ -115,3 +115,40 @@ def canvas_right(path, density=1.):
             start = None
     assert end is not None, 'Canvas background was not visible'
     return end/density
+
+
+def request_window_quit(window):
+    """Send WM_DELETE_WINDOW directly, including on Xvfb without a window manager."""
+    class ClientData(C.Union):
+        _fields_ = [("longs", C.c_long * 5)]
+
+    class ClientMessage(C.Structure):
+        _fields_ = [("type", C.c_int), ("serial", C.c_ulong), ("send_event", C.c_int),
+                    ("display", C.c_void_p), ("window", C.c_ulong),
+                    ("message_type", C.c_ulong), ("format", C.c_int), ("data", ClientData)]
+
+    class XEvent(C.Union):
+        _fields_ = [("client", ClientMessage), ("padding", C.c_long * 24)]
+
+    lib = C.CDLL(ctypes.util.find_library("X11"))
+    lib.XOpenDisplay.argtypes = [C.c_char_p]
+    lib.XOpenDisplay.restype = C.c_void_p
+    lib.XInternAtom.argtypes = [C.c_void_p, C.c_char_p, C.c_int]
+    lib.XInternAtom.restype = C.c_ulong
+    lib.XSendEvent.argtypes = [C.c_void_p, C.c_ulong, C.c_int, C.c_long, C.POINTER(XEvent)]
+    lib.XFlush.argtypes = [C.c_void_p]
+    lib.XCloseDisplay.argtypes = [C.c_void_p]
+    display = lib.XOpenDisplay(None)
+    assert display
+    try:
+        event = XEvent()
+        event.client.type = 33
+        event.client.display = display
+        event.client.window = int(window)
+        event.client.message_type = lib.XInternAtom(display, b"WM_PROTOCOLS", 0)
+        event.client.format = 32
+        event.client.data.longs[0] = lib.XInternAtom(display, b"WM_DELETE_WINDOW", 0)
+        assert lib.XSendEvent(display, int(window), 0, 0, C.byref(event))
+        lib.XFlush(display)
+    finally:
+        lib.XCloseDisplay(display)

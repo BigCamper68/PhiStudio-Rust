@@ -318,6 +318,9 @@ impl FileManager {
                     app.error = Some(error);
                     return;
                 }
+                if let Err(error) = self.edit_time.flush(app) {
+                    app.error = Some(error);
+                }
                 let snapshot = matches!(request, FileRequest::SaveWorkspace)
                     .then(|| app.editor.document().clone());
                 let session = app.session;

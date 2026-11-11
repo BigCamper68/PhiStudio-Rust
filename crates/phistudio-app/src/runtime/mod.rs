@@ -246,6 +246,7 @@ pub(crate) async fn run(options: Options) -> Result<()> {
         {
             use std::sync::atomic::Ordering;
             if android::WAS_SUSPENDED.swap(false, Ordering::AcqRel) {
+                app.editor_focused = false;
                 app.transport.playing = false;
                 app.pause_playtest();
                 app.suspend_movie();
@@ -263,6 +264,7 @@ pub(crate) async fn run(options: Options) -> Result<()> {
         }
         #[cfg(target_os = "ios")]
         if ios::WAS_SUSPENDED.swap(false, std::sync::atomic::Ordering::AcqRel) {
+            app.editor_focused = false;
             app.transport.playing = false;
             app.pause_playtest();
             app.suspend_movie();

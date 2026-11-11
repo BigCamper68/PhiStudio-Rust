@@ -40,6 +40,7 @@ pub(super) fn described_project(
         charts.push(ChartChoice {
             name: stored.options.display_field(&document, "name").into(),
             notes: document.note_count(),
+            events: document.event_count(),
             path,
             format: stored.format,
             source,
@@ -147,6 +148,7 @@ pub(crate) fn inspect_workspace(
                 source: workspace.join(path),
                 name: chart.name().into(),
                 notes: chart.note_count(),
+                events: chart.event_count(),
                 format: ChartFormat::Rpe,
             });
         }

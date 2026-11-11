@@ -212,6 +212,8 @@ fn projects_actions_separator_and_rows_share_both_edges_with_scrollbar_outside()
                     name: format!("Project {i}"),
                     source_name: "Chart.pez".into(),
                     notes: 1000,
+                    events: Some(42),
+                    edit_time_ms: 65_000,
                     last_opened_ms: 0,
                     cover: None,
                 })
@@ -315,6 +317,46 @@ fn compact_windows_menu_does_not_justify_playback_speed_letters() {
             assert!(
                 !t.galley.job.justify && t.galley.job.halign == egui::Align::Min,
                 "{language:?}/{scale}: spaced-out speed caption"
+            );
+        }
+    }
+}
+
+#[test]
+fn projects_keep_time_events_and_notes_visible_in_that_order_on_phones() {
+    for language in Language::ALL {
+        let mut app = Workbench::new(ChartDocument::empty("Projects", 120.).unwrap(), None);
+        app.options.language = language;
+        app.show_projects = true;
+        app.library = Some(ProjectLibrary {
+            projects: vec![ProjectSummary {
+                workspace: "unused/project".into(),
+                name: "Chart with a long title".into(),
+                source_name: "A long imported project filename.pez".into(),
+                notes: 1000,
+                events: Some(42),
+                edit_time_ms: 65_000,
+                last_opened_ms: 0,
+                cover: None,
+            }],
+            issues: vec![],
+        });
+        for width in [320., 360., 873.] {
+            let size = vec2(width, 400.);
+            let ctx = context();
+            for _ in 0..4 {
+                draw(&mut app, &ctx, size, vec![]);
+            }
+            let output = draw(&mut app, &ctx, size, vec![]);
+            let (clip, text) = texts(&output)
+                .find(|(_, t)| t.galley.job.text.contains("1:05"))
+                .unwrap();
+            let label = &text.galley.job.text;
+            assert!(label.find("1:05").unwrap() < label.find("42").unwrap());
+            assert!(label.find("42").unwrap() < label.find("1000").unwrap());
+            assert!(
+                text.pos.x + text.galley.size().x <= clip.right() + 0.5,
+                "{language:?}/{width}: clipped {label:?}"
             );
         }
     }

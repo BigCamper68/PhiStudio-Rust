@@ -3,6 +3,7 @@ use super::*;
 impl FileManager {
     pub fn update(&mut self, app: &mut Workbench) {
         app.workspace.root = self.root.clone();
+        self.edit_time.update(app);
         if let Some(root) = &self.root {
             app.update_clipboard_history(root);
         }

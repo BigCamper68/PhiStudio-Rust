@@ -221,3 +221,78 @@ fn library_covers_resolve_manifest_assets_for_existing_imports_and_cached_record
             .is_none()
     );
 }
+
+#[test]
+fn legacy_library_counts_are_backfilled_without_touching_the_chart() {
+    let root = tempfile::tempdir().unwrap();
+    let mut raw = ChartDocument::empty("Extended", 120.)
+        .unwrap()
+        .as_json()
+        .clone();
+    raw["judgeLineList"][0]["extended"]["scaleXEvents"] = serde_json::json!([
+        {"startTime":[0,0,1],"endTime":[1,0,1],"start":1.,"end":1.},
+        {"startTime":[1,0,1],"endTime":[2,0,1],"start":1.,"end":2.}
+    ]);
+    let doc = ChartDocument::from_value(raw).unwrap();
+    let location = create_project(root.path(), &doc).unwrap();
+    let bytes = std::fs::read(&location.chart).unwrap();
+    assert_eq!(
+        list_projects(root.path()).unwrap().projects[0].events,
+        Some(7)
+    );
+    remember_project(root.path(), location.clone()).unwrap();
+    let path = std::fs::read_dir(root.path().join("library"))
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path();
+    let mut record: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    record.as_object_mut().unwrap().remove("events");
+    std::fs::write(&path, serde_json::to_vec(&record).unwrap()).unwrap();
+    let library = list_projects(root.path()).unwrap();
+    assert!(library.issues.is_empty());
+    assert_eq!(library.projects[0].events, Some(7));
+    assert_eq!(library.projects[0].notes, 0);
+    assert_eq!(library.projects[0].edit_time_ms, 0);
+    let migrated: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+    record["events"] = serde_json::json!(7);
+    assert_eq!(migrated, record);
+    assert_eq!(std::fs::read(&location.chart).unwrap(), bytes);
+}
+
+#[test]
+fn accumulated_time_is_idempotent_and_survives_save_refresh_and_trash_undo() {
+    use phistudio_core::{
+        record_project_edit_time, refresh_project_record, restore_project, trash_project,
+    };
+    let root = tempfile::tempdir().unwrap();
+    let doc = ChartDocument::empty("Work", 120.).unwrap();
+    let location = create_project(root.path(), &doc).unwrap();
+    let workspace = location.assets.as_ref().unwrap();
+    let bytes = std::fs::read(&location.chart).unwrap();
+    let report =
+        |session, ms| record_project_edit_time(root.path(), workspace, session, ms).unwrap();
+    assert_eq!(report("first", 2000), 2000);
+    assert_eq!(report("first", 2000), 2000);
+    assert_eq!(report("first", 1000), 2000);
+    assert_eq!(report("second", 500), 2500);
+    assert_eq!(report("first", 2700), 3200);
+    assert_eq!(std::fs::read(&location.chart).unwrap(), bytes);
+    let mut editor = Editor::new(doc);
+    editor.execute(Command::AddLines { count: 2 }).unwrap();
+    save_chart(editor.document(), &location.chart).unwrap();
+    refresh_project_record(root.path(), &location).unwrap();
+    let row = &list_projects(root.path()).unwrap().projects[0];
+    assert_eq!(row.events, Some(15));
+    assert_eq!(row.edit_time_ms, 3200);
+    let trash = trash_project(root.path(), workspace, "Work").unwrap();
+    assert!(list_projects(root.path()).unwrap().projects.is_empty());
+    restore_project(root.path(), &trash).unwrap();
+    assert_eq!(
+        list_projects(root.path()).unwrap().projects[0].edit_time_ms,
+        3200
+    );
+}

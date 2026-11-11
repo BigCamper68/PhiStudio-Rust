@@ -29,7 +29,7 @@ upstream source is studied as a behavior reference, not copied or bundled.
   authoring paths, without altering imports, existing notes or pasted objects.
 - [ ] New-line defaults: initial X/Y/Rotation/Alpha/Speed events, persistent
   settings and an independent Reset Defaults button, including batch creation.
-- [ ] Projects: accumulated EditTime persists between sessions; local rows show
+- [x] Projects: accumulated EditTime persists between sessions; local rows show
   EditTime, event count, then note count, with accurate cached summaries.
 - [x] Projects: remove the version/build row identified in the attachment;
   retain version information in About.
@@ -103,9 +103,25 @@ the final targeted graph test run.
 Physical Android hardware and a fresh APK were not tested in this environment;
 these must not be described as verified device behavior.
 
+The Projects delivery adds cached standard/Storyboard event totals and accumulated
+EditTime. Records from earlier builds acquire event counts on the library worker.
+The current chart uses revision-cached counts including unsaved edits. Time uses
+monotonic editor intervals, excludes Projects home and suspended gaps, writes
+periodically in a worker and flushes at lifecycle boundaries. A private activity
+record retains time through chart Save, record refresh and Trash/Undo. Per-session
+absolute checkpoints and file locking make retries idempotent.
+
+This delivery passed 786 workspace tests with 26 explicitly ignored tests, the
+all-target Clippy check and the desktop application/probe build. Layout tests
+verify time, events and notes in that order at 320/360/873 logical pixels across
+all seven languages. A main-loop smoke opens and gracefully closes the editor
+twice at density 2.75 and framebuffer 990x2145. Its two sessions accumulated
+1619 ms and 3228 ms total, Projects home retained the previous total and chart
+bytes stayed identical. Evidence is in `artifacts/checks/project-activity-runtime`
+and the reusable runner is `tools/project-activity-smoke.py`.
+
 Still required: the full custom easing workspace, Note Tracing inside Motion
-Generator, persistent new-note/new-line defaults, Projects event count and
-accumulated EditTime, then advanced stem/ML audio guidance LAST. This delivery
+Generator, persistent new-note/new-line defaults, then advanced stem/ML audio guidance LAST. This delivery
 slice does not complete the active user goal. The current reference cache also
 includes rpe-next's animation-curve editor/library, note-tracking and placement
 models; no upstream implementation or assets are copied into this repository.
