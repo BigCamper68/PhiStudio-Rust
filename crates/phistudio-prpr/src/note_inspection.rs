@@ -1,9 +1,11 @@
 //! Bounded geometry queries using the already parsed original prpr animations.
 //! No rendering, audio, judging, history or playback cursors are advanced.
+mod tracing;
 use crate::Preview;
 use anyhow::{Result, anyhow, ensure};
 use phistudio_sdk::{PreviewInspection, PreviewInspectionPoint, PreviewInspectionResult};
 use prpr::core::{AnimFloat, CtrlObject, Matrix, NoteKind, Object, Point, Vector};
+pub use tracing::{NoteTraceBoundaries, NoteTraceDestination, NoteTraceSample};
 
 #[derive(Debug, PartialEq)]
 struct Cursor(Vec<(f64, usize)>);
@@ -91,11 +93,18 @@ fn object_weight(object: &Object) -> usize {
     .sum()
 }
 
+struct NotePose {
+    transform: Matrix,
+    origin: Point,
+    base: f64,
+    speed: f64,
+    control_height: Option<f64>,
+    rotation: f64,
+}
 impl Preview {
-    pub fn inspect_note(&mut self, query: &PreviewInspection) -> Result<PreviewInspectionResult> {
-        query.validate().map_err(|e| anyhow!(e))?;
+    fn inspection_note(&mut self, line_index: usize, source_note: usize) -> Result<usize> {
         ensure!(
-            query.line < self.anchors.source_lines,
+            line_index < self.anchors.source_lines,
             "Source line is unavailable in the native preview"
         );
         if self.picking.inspection_offsets.is_empty() {
@@ -111,7 +120,6 @@ impl Preview {
                 })
                 .collect();
         }
-        let line_index = query.line;
         if let std::collections::btree_map::Entry::Vacant(entry) =
             self.picking.inspection.entry(line_index)
         {
@@ -136,10 +144,56 @@ impl Preview {
             entry.insert(index);
         }
         let note_index = self.picking.inspection[&line_index]
-            .get(query.note)
+            .get(source_note)
             .copied()
             .filter(|i| *i != usize::MAX)
             .ok_or_else(|| anyhow!("Source note is unavailable in the native preview"))?;
+        Ok(note_index)
+    }
+    fn note_pose(&self, line_index: usize, note_index: usize) -> NotePose {
+        let line = &self.chart.lines[line_index];
+        let note = &line.notes[note_index];
+        let mut ctrl = line.ctrl_obj.borrow_mut();
+        let line_height = f64::from(line.height.now());
+        let y = f64::from(note.object.translation.1.now());
+        let height = (note.height - line_height + y / note.speed) * 450.;
+        for anim in controls(&mut ctrl) {
+            seek(anim, height);
+        }
+        let speed = note.speed * f64::from(ctrl.y.now_opt().unwrap_or(1.));
+        let base = (note.height - line_height) / f64::from(self.resource.aspect_ratio) * speed;
+        let hold = matches!(note.kind, NoteKind::Hold { .. });
+        let transform = line.now_transform(&self.resource, &self.chart.lines)
+            * Matrix::new_nonuniform_scaling(&Vector::new(1., if note.above { 1. } else { -1. }))
+            * note.now_transform(
+                &self.resource,
+                &ctrl,
+                if hold { 0. } else { base as f32 },
+                if hold {
+                    0.
+                } else {
+                    line.incline.now_opt().unwrap_or(0.).to_radians().sin()
+                },
+            );
+        let origin = if hold && self.resource.time < note.time {
+            Point::new(0., base as f32)
+        } else {
+            Point::origin()
+        };
+        NotePose {
+            transform,
+            origin,
+            base,
+            speed,
+            control_height: height.is_finite().then_some(height),
+            rotation: f64::from(line.fetch_rot(&self.chart.lines))
+                + f64::from(note.object.rotation.now()) * if note.above { 1. } else { -1. },
+        }
+    }
+    pub fn inspect_note(&mut self, query: &PreviewInspection) -> Result<PreviewInspectionResult> {
+        query.validate().map_err(|e| anyhow!(e))?;
+        let line_index = query.line;
+        let note_index = self.inspection_note(line_index, query.note)?;
         let mut chain = vec![line_index];
         while let Some(parent) = self.chart.lines[*chain.last().unwrap()].parent {
             ensure!(
@@ -201,47 +255,22 @@ impl Preview {
                 &mut self.chart.lines[line_index].notes[note_index].object,
                 time,
             );
+            let pose = self.note_pose(line_index, note_index);
             let line = &self.chart.lines[line_index];
             let note = &line.notes[note_index];
-            let mut ctrl = line.ctrl_obj.borrow_mut();
+            let ctrl = line.ctrl_obj.borrow();
             let line_height = f64::from(line.height.now());
-            let y = f64::from(note.object.translation.1.now());
-            // This is the coordinate passed to CtrlObject by Note::render.
-            let height = (note.height - line_height + y / note.speed) * 450.;
-            for anim in controls(&mut ctrl) {
-                seek(anim, height)
-            }
-            let speed = note.speed * f64::from(ctrl.y.now_opt().unwrap_or(1.));
-            let base = (note.height - line_height) / ratio * speed;
-            let hold = matches!(note.kind, NoteKind::Hold { .. });
-            let transform = Matrix::new_nonuniform_scaling(&Vector::new(
+            let speed = pose.speed;
+            let base = pose.base;
+            let display = Matrix::new_nonuniform_scaling(&Vector::new(
                 if self.resource.config.flip_x() {
                     -1.
                 } else {
                     1.
                 },
                 -1.,
-            )) * line.now_transform(&self.resource, &self.chart.lines)
-                * Matrix::new_nonuniform_scaling(&Vector::new(
-                    1.,
-                    if note.above { 1. } else { -1. },
-                ))
-                * note.now_transform(
-                    &self.resource,
-                    &ctrl,
-                    if hold { 0. } else { base as f32 },
-                    if hold {
-                        0.
-                    } else {
-                        line.incline.now_opt().unwrap_or(0.).to_radians().sin()
-                    },
-                );
-            let origin = if hold {
-                Point::new(0., base as f32)
-            } else {
-                Point::origin()
-            };
-            let position = transform.transform_point(&origin);
+            ));
+            let position = display.transform_point(&pose.transform.transform_point(&pose.origin));
             let position = [
                 f64::from(position.x) / 2. + 0.5,
                 f64::from(position.y) * ratio / 2. + 0.5,

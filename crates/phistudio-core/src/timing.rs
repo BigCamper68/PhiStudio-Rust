@@ -41,6 +41,10 @@ impl TempoMap {
         Ok(Self { keys })
     }
 
+    pub fn changes(&self) -> impl Iterator<Item = BpmChange> + '_ {
+        self.keys.iter().map(|(change, _)| *change)
+    }
+
     pub fn seconds_at(&self, beat: f64) -> f64 {
         let i = self
             .keys

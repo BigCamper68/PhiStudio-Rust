@@ -15,7 +15,7 @@ upstream source is studied as a behavior reference, not copied or bundled.
 - [ ] Custom easing workspace replacing the simple Bezier controls: editable
   multi-point curves/handles, segment modes, reusable named templates and
   import/export, correct native preview/storage and coherent Undo/Redo.
-- [ ] Note Tracing in the Motion Generator tool menu (user clarification):
+- [x] Note Tracing in the Motion Generator tool menu (user clarification):
   inspired by rpe-next, sample the selected note's native
   trajectory and generate judge-line motion/optional rotation on a chosen
   destination line/layer or a new line, with preview, range/density controls,
@@ -125,3 +125,49 @@ Generator, persistent new-note/new-line defaults, then advanced stem/ML audio gu
 slice does not complete the active user goal. The current reference cache also
 includes rpe-next's animation-curve editor/library, note-tracking and placement
 models; no upstream implementation or assets are copied into this repository.
+
+Implemented in the Note Tracing delivery slice:
+
+- Tools → Motion generator now contains Trajectory and Note Tracing modes.
+  Tracing pins a selected source note, previews destination-local and screen
+  paths, and generates ordinary X/Y/optional rotation events on a new or existing
+  line/layer. It exposes beat bounds, 60/120/240 Hz, simplification tolerances,
+  explicit overlap replacement, cancellation and one Undo/Redo transaction.
+- Native note poses share prpr's existing inspection geometry and restore all
+  affected animation cursors, control curves and resource time after each batch.
+  Sampling accounts for parent transforms, other destination layers, BPM/native
+  time boundaries, below notes, incline and distance controls. Distance-control
+  crossings are refined incrementally through native animation queries. Hold
+  heads remain pinned after judgment, matching the original renderer.
+- Worker snapshots copy only overlapping destination events/recipes. Native
+  sampling is incremental; worker results reject changed projects, revisions,
+  assets, aspect/geometry settings and parameters. Outside fragments retain
+  their native easing and unknown fields; unrelated recipes and source notes
+  remain intact. See `NOTE-TRACING.md` for usage and boundary/accuracy details.
+
+Note Tracing validation:
+
+- Workspace tests: 802 passed, zero failed, 26 ignored. Ten focused core cases
+  cover sparse layers, full rotations, boundary jumps/continuations, BPM changes,
+  negative native chart seconds, conflicts, cancellation, stale edits, cropped
+  raw extensions, recipe detachment and exact Undo/Redo. Six app cases cover
+  source/request ownership, worker cancellation, stale application and distance
+  crossing schedules. Workspace all-target Clippy and the app/probe builds pass.
+- Actual GPU/Miniquad touch probes pass at 873×393 and density 2.75 at 990×2145
+  (360×780 logical). Both activate mode/preview/apply through Gui and the runtime
+  modal-input preflight. Cases include a below-line note with incline/controls,
+  a parented multilayer destination and a scaled hold traced into layer 3; all
+  seven locales render prepared results. Native poses are compared at 501 times
+  per case: maximum observed authored-coordinate error is 0.198 position units
+  and 0.000306 degrees. This includes between-sample approximation and native
+  float precision; the chosen tolerance applies to the sampled points.
+- `tools/note-tracing-smoke.py` passes against the ordinary application main loop
+  at 1280×800: preview leaves JSON unchanged, Apply creates a line without
+  changing the source, Save writes the chart, one header Undo restores original
+  JSON and Redo restores generated JSON. This test uses a private direct chart;
+  managed workspace imports edit their own copied/working chart instead.
+- `tools/verify-prpr-source.py`: 186 upstream files verified; no vendor/phira
+  source changes. Physical Android/APK verification has not been performed.
+
+Remaining requested work is custom easing, creation defaults and, last, advanced
+stem/ML audio guidance. This delivery does not complete the overall goal.

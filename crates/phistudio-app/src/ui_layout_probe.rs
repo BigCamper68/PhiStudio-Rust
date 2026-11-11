@@ -100,6 +100,9 @@ pub async fn run() -> Result<()> {
     app.note_highlights = preview.highlighted_notes();
     app.select(Some(NoteId { line: 0, index: 0 }));
     let mut gui = Gui::new();
+    if std::env::args().nth(2).as_deref() == Some("note-tracing") {
+        return crate::note_tracing_ui::probe::run(&mut gui, &mut app, &mut preview, &out).await;
+    }
     if std::env::args().nth(2).as_deref() == Some("speed-curves") {
         return crate::speed_curve_ui::probe::run(&mut gui, &mut app, &mut preview, &out).await;
     }

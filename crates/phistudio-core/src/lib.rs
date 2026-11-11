@@ -21,6 +21,7 @@ mod library;
 pub mod line_management;
 mod line_properties;
 mod note_extras;
+pub mod note_tracing;
 pub mod objects;
 mod package;
 mod patch;

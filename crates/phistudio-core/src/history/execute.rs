@@ -70,6 +70,71 @@ impl Editor {
         Ok(true)
     }
 
+    pub(crate) fn execute_note_trace(
+        &mut self,
+        edit: crate::note_tracing::Edit,
+    ) -> Result<crate::tools::Selection, ChartError> {
+        if self.revision != edit.revision || self.document.line_count() != edit.line_count {
+            return Err(ChartError::Invalid(
+                "The chart changed. Preview tracing again before applying it.".into(),
+            ));
+        }
+        let mut deltas = Vec::new();
+        if edit.new_line
+            && let Some((delta, _)) = Delta::prepare(
+                &self.document,
+                Command::AddLine {
+                    name: "Note trace".into(),
+                },
+            )?
+        {
+            delta.apply(&mut self.document, true);
+            deltas.push(delta);
+        }
+        let result = (|| {
+            let plan = crate::tools::generated_event_edit(
+                &self.document,
+                &edit.remove,
+                &edit.additions,
+                "Note Tracing",
+            )?;
+            if let Some((delta, mut selected, _)) = plan.prepare_apply(&mut self.document, false)? {
+                deltas.push(Delta::Tools(delta));
+                selected.events.retain(|id| {
+                    self.document
+                        .event(*id)
+                        .is_ok_and(|e| e.start_time >= edit.range[0] && e.end_time <= edit.range[1])
+                });
+                Ok(selected)
+            } else {
+                Ok(crate::tools::Selection::default())
+            }
+        })();
+        let selected = match result {
+            Ok(selected) => selected,
+            Err(error) => {
+                for delta in deltas.iter().rev() {
+                    delta.apply(&mut self.document, false);
+                }
+                return Err(error);
+            }
+        };
+        if let Some((before, after)) = edit.recipe_change {
+            let delta = Delta::LineField {
+                line: edit.line,
+                key: crate::trajectories::RECIPE_FIELD,
+                before: Some(before),
+                after,
+            };
+            delta.apply(&mut self.document, true);
+            deltas.push(delta);
+        }
+        if !deltas.is_empty() {
+            self.record(Delta::Group(deltas), "Note Tracing");
+        }
+        Ok(selected)
+    }
+
     pub(crate) fn execute_tool(
         &mut self,
         plan: crate::tools::ToolEdit,

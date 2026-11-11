@@ -26,6 +26,7 @@ mod noise_ui;
 #[doc(hidden)]
 pub mod note_grid_probe;
 mod note_index;
+mod note_tracing_ui;
 mod numeric;
 mod persistence;
 mod picking;

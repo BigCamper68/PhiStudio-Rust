@@ -79,6 +79,24 @@ impl Workbench {
     }
 
     pub(super) fn motion_generator_ui(&mut self, ui: &mut egui::Ui) {
-        self.trajectory_ui(ui);
+        use crate::note_tracing_ui::MotionMode;
+        ui.horizontal_wrapped(|ui| {
+            ui.selectable_value(
+                &mut self.note_tracing.mode,
+                MotionMode::Trajectory,
+                crate::i18n::tr("Trajectory"),
+            );
+            let response = ui.selectable_value(
+                &mut self.note_tracing.mode,
+                MotionMode::NoteTracing,
+                crate::i18n::tr("Note Tracing"),
+            );
+            ui.ctx()
+                .data_mut(|d| d.insert_temp(egui::Id::new("note-tracing-mode"), response.rect));
+        });
+        match self.note_tracing.mode {
+            MotionMode::Trajectory => self.trajectory_ui(ui),
+            MotionMode::NoteTracing => self.note_tracing_ui(ui),
+        }
     }
 }

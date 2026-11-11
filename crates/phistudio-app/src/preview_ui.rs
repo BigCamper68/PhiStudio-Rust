@@ -70,6 +70,7 @@ impl Workbench {
                 ),
             );
             self.preview.rect = rect;
+            self.paint_note_trace_path(&painter.with_clip_rect(area), rect);
             self.plugin_preview_overlay(&painter.with_clip_rect(area), rect, "grid-preview");
         }
     }
@@ -112,6 +113,7 @@ impl Workbench {
         } else {
             ui.painter().rect_filled(rect, 0., base());
         }
+        self.paint_note_trace_path(ui.painter(), rect);
         self.plugin_preview_overlay(ui.painter(), rect, "preview");
     }
     pub(crate) fn sidebar_preview(&mut self, ui: &mut egui::Ui) {

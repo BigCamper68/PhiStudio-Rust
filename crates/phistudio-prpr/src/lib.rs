@@ -10,6 +10,7 @@ mod line_audio;
 mod media;
 mod noise_fields;
 mod note_inspection;
+pub use note_inspection::{NoteTraceBoundaries, NoteTraceDestination, NoteTraceSample};
 mod sound_gain;
 mod speed_curve;
 pub use sound_gain::render_hitsound_gain;

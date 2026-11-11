@@ -439,6 +439,7 @@ pub(crate) async fn run(options: Options) -> Result<()> {
                 }
             }
         }
+        app.update_note_tracing(&mut preview, app.render_error.is_none());
         seek |= app.constrain_curve_playback();
         let seconds = app.editor.document().tempo().seconds_at(app.transport.beat);
         if let Err(error) = preview.set_playback(
