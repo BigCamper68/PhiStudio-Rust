@@ -2264,5 +2264,21 @@
   "Could not prepare staged note audio: {0}": "ノーツプレビューの音を準備できませんでした: {0}",
   "Note sound volume must be between 0 and 100%": "ノーツの音量は 0～100% にしてください",
   "Custom easing": "カスタムイージング",
-  "Use standard easing": "標準のイージングに戻す"
+  "Use standard easing": "標準のイージングに戻す",
+  "Custom easing editor": "カスタムイージングエディター",
+  "Edit custom easing…": "カスタムイージングを編集…",
+  "Use curve": "カーブを使用",
+  "Preparing curve…": "カーブを準備中…",
+  "Use curve updates the inspector draft. Apply the event to save it in the chart.": "カーブを使用するとプロパティの下書きが更新されます。イベントを適用してチャートに保存してください。",
+  "Select a point to edit its position and handles.": "点を選択して位置とハンドルを編集します。",
+  "Multiple selection": "複数選択",
+  "Incoming handle": "入力ハンドル",
+  "Outgoing handle": "出力ハンドル",
+  "Pan": "表示を移動",
+  "Automatic": "自動",
+  "Smooth": "スムーズ",
+  "Corner": "コーナー",
+  "Fit": "全体を表示",
+  "Point details": "点の詳細",
+  "Curve": "カーブ"
 }

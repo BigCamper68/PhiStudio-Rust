@@ -41,6 +41,24 @@ pub(crate) fn easing_fields(ui: &mut egui::Ui, event: &mut LineEvent) {
     easing_fields_impl(ui, event, true);
 }
 
+/// Existing Beziers open in the node workspace; ordinary edits retain their data.
+pub(crate) fn event_easing_fields(ui: &mut egui::Ui, event: &mut LineEvent) {
+    if event.custom_easing.is_none() && event.bezier != 0 {
+        ui.strong(crate::i18n::tr("Bezier"));
+        if ui
+            .add(egui::Button::new(crate::i18n::tr("Use standard easing")).wrap(true))
+            .clicked()
+        {
+            event.bezier = 0;
+            event.easing_type = 1;
+            event.easing_left = 0.;
+            event.easing_right = 1.;
+        }
+    } else {
+        easing_fields_impl(ui, event, false);
+    }
+}
+
 pub(crate) fn shader_easing_fields(ui: &mut egui::Ui, event: &mut LineEvent) {
     easing_fields_impl(ui, event, false);
 }

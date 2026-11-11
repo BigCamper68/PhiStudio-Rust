@@ -1,7 +1,8 @@
 # Custom easing implementation record
 
-Status: in progress. The separate graph workspace is not yet connected to the
-app. This record does not mark the custom easing requirement complete.
+Status: in progress. The graph workspace is connected to normal line-event
+inspectors. Persistent templates and additional curve owners remain pending;
+this record does not mark the full custom easing requirement complete.
 
 ## Implemented data and playback integration
 
@@ -54,9 +55,27 @@ data as ordinary playback, retaining its native terminal clock. Explicit custom
 speed invalidates an older PEC height override; Undo restores that override.
 Unused legacy Bezier controls do not enter the native speed parser's cache.
 
-The existing inspector identifies custom easing and allows an explicit return
-to standard easing, with labels in all seven locales. The standalone graph
-editor, creation controls and template manager are not yet available.
+The normal event inspector opens **Edit custom easing…** for all five tracks.
+Legacy Beziers seed editable node/handle geometry; the old four-number Bezier
+workflow is replaced there. Unconverted events keep their original data.
+The workspace offers shape-preserving point insertion, point/handle dragging,
+multiple selection, node modes, precision fields, pan/pinch/fit, an animated
+normalized preview and a local history bounded to 128 edits. Endpoints stay
+locked; a completed drag creates one local Undo. Pinch promotion and system
+touch cancellation restore any unfinished edit and retain navigation ownership
+until all fingers leave the graph. The graph has no parent touch-scroll area.
+Compact windows place the graph and precision fields on separate tabs; short
+localized titles and shared Undo/Redo icons keep controls accessible at larger
+interface scales.
+
+**Use curve** validates/prepares the current draft on a worker and returns it to
+the same inspector. The owner checks project session, document revision, event
+identity and unchanged draft values/times before accepting a result. Opening,
+canceling or using the graph does not edit the chart; **Apply event** publishes
+the inspector draft as one normal chart action. Cropped/reversed source domains
+remain attached when editing the root curve. The inspector also permits an
+explicit return to standard easing. Workspace labels cover all seven locales.
+The persistent template manager and other owner contexts are not yet connected.
 
 ## Validation
 
@@ -82,23 +101,38 @@ Save, exact header Undo/Redo, explicit standard-easing replacement and restorati
 and preservation of curve metadata, unrelated fields and the external input.
 It does not exercise a new graph window or claim physical-device verification.
 
+The workspace checkpoint adds ten focused app cases. All 402 runnable app
+library tests pass (22 explicitly ignored), as do the 15 custom easing core
+integration cases and workspace Clippy. Actual Miniquad/Gui probes include
+runtime modal-input preflight, insertion, node/handle dragging, native touch
+cancellation, pinch promotion, local history, worker-to-inspector ownership,
+native prpr loading and exact chart Undo/Redo. Both 873×393 and a 990×2145
+framebuffer at density 2.75 pass in all seven locales. Equivalent 150% interface
+scaling also passes using densities 1.5 and 4.125. A regression test covers both
+graph and precision views at those compact logical dimensions. Screenshots were
+inspected; evidence is in `artifacts/checks/custom-easing-248` through
+`custom-easing-251`.
+These are simulated platform inputs, not physical Android/APK verification.
+
+`tools/custom-easing-workspace-smoke.py` also passes two ordinary application
+sessions: the actual inspector entry, canceled and accepted graph drafts,
+retained unsaved numeric properties, Save, exact header Undo/Redo, reimport of
+the saved logical curve and unchanged external source. Evidence is in
+`artifacts/checks/custom-easing-workspace-runtime`.
+
 ## Remaining integration gates
 
-- Build the separate responsive workspace and replace the simple Bezier workflow:
-  point/handle selection and dragging, segment modes, precision fields,
-  pan/pinch/fit, local history, preview and coherent chart application.
-- Connect cancellation/coalesced workers with session/revision/request guards.
-  Avoid large compilation work on the UI thread or on every frame; cache native
-  results with all source dependencies. Keep original native clock semantics.
+- Complete template management and additional owner integration in the workspace.
+  Measure larger curves/projects before adding renderer caches; retain all
+  source dependencies and original native clock semantics.
 - Connect persistent named templates, thumbnails, save/replace/delete and platform
   import/export through existing workers/pickers. Keep the library separate from
   chart history and ordinary preference updates.
 - Integrate applicable Storyboard/Noise Field and other curve-owner contexts.
   Retain their explicit scalar/vector/color/text types and ownership.
-- Verify actual Miniquad/Gui touch through runtime modal-input preflight at phone
-  density, both orientations and all locales. Verify complete workspace Save,
-  Undo/Redo and native/export playback before marking the feature complete.
-  Physical Android testing remains separate from simulated input checks.
+- Extend actual Miniquad/Gui touch and main-application acceptance to the template
+  manager and additional owners before marking the feature complete. Physical
+  Android testing remains separate from simulated input checks.
 
 The behavior reference remains the pinned rpe-next tree in
 `EDITOR-UPGRADE-WORK.md`. No upstream implementation or assets are copied.

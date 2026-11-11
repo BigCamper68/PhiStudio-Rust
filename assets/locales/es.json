@@ -2264,5 +2264,21 @@
   "Could not prepare staged note audio: {0}": "No se pudo preparar el audio de notas: {0}",
   "Note sound volume must be between 0 and 100%": "El volumen de notas debe estar entre 0 y 100%",
   "Custom easing": "Curva personalizada",
-  "Use standard easing": "Usar interpolación estándar"
+  "Use standard easing": "Usar interpolación estándar",
+  "Custom easing editor": "Editor de curvas personalizadas",
+  "Edit custom easing…": "Editar curva personalizada…",
+  "Use curve": "Usar curva",
+  "Preparing curve…": "Preparando curva…",
+  "Use curve updates the inspector draft. Apply the event to save it in the chart.": "Usar curva actualiza el borrador del inspector. Aplica el evento para guardarla en el chart.",
+  "Select a point to edit its position and handles.": "Selecciona un punto para editar su posición y sus manejadores.",
+  "Multiple selection": "Selección múltiple",
+  "Incoming handle": "Manejador de entrada",
+  "Outgoing handle": "Manejador de salida",
+  "Pan": "Desplazar",
+  "Automatic": "Automático",
+  "Smooth": "Suave",
+  "Corner": "Esquina",
+  "Fit": "Ajustar",
+  "Point details": "Detalles del punto",
+  "Curve": "Curva"
 }

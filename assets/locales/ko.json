@@ -2264,5 +2264,21 @@
   "Could not prepare staged note audio: {0}": "노트 미리보기 소리를 준비하지 못했습니다: {0}",
   "Note sound volume must be between 0 and 100%": "노트 음량은 0–100%여야 합니다",
   "Custom easing": "사용자 지정 이징",
-  "Use standard easing": "기본 이징 사용"
+  "Use standard easing": "기본 이징 사용",
+  "Custom easing editor": "사용자 이징 편집기",
+  "Edit custom easing…": "사용자 이징 편집…",
+  "Use curve": "곡선 사용",
+  "Preparing curve…": "곡선 준비 중…",
+  "Use curve updates the inspector draft. Apply the event to save it in the chart.": "곡선 사용은 속성 초안을 갱신합니다. 이벤트를 적용하여 차트에 저장하세요.",
+  "Select a point to edit its position and handles.": "점을 선택하여 위치와 핸들을 편집하세요.",
+  "Multiple selection": "다중 선택",
+  "Incoming handle": "입력 핸들",
+  "Outgoing handle": "출력 핸들",
+  "Pan": "화면 이동",
+  "Automatic": "자동",
+  "Smooth": "부드럽게",
+  "Corner": "모서리",
+  "Fit": "전체 보기",
+  "Point details": "점 세부 정보",
+  "Curve": "곡선"
 }

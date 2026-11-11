@@ -2264,5 +2264,21 @@
   "Could not prepare staged note audio: {0}": "无法准备音符预览声音：{0}",
   "Note sound volume must be between 0 and 100%": "音符声音音量必须在 0–100% 之间",
   "Custom easing": "自定义缓动",
-  "Use standard easing": "使用标准缓动"
+  "Use standard easing": "使用标准缓动",
+  "Custom easing editor": "自定义缓动编辑器",
+  "Edit custom easing…": "编辑自定义缓动…",
+  "Use curve": "使用曲线",
+  "Preparing curve…": "正在准备曲线…",
+  "Use curve updates the inspector draft. Apply the event to save it in the chart.": "使用曲线会更新属性草稿。应用事件后才会保存到谱面。",
+  "Select a point to edit its position and handles.": "选择控制点以编辑其位置和手柄。",
+  "Multiple selection": "多选",
+  "Incoming handle": "入手柄",
+  "Outgoing handle": "出手柄",
+  "Pan": "平移",
+  "Automatic": "自动",
+  "Smooth": "平滑",
+  "Corner": "拐角",
+  "Fit": "适应视图",
+  "Point details": "控制点详情",
+  "Curve": "曲线"
 }

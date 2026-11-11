@@ -47,6 +47,7 @@ pub struct Workbench {
     pub(crate) updates: crate::updates::State,
     pub(crate) sounds: crate::editor_sounds::State,
     pub(crate) speed_curve: crate::speed_curve_ui::State,
+    pub(crate) custom_easing: crate::custom_easing_ui::State,
     pub(crate) hitsound_audition: crate::hitsound_ui::HitsoundAudition,
     pub(crate) plugins: crate::plugins::State,
     pub(crate) timeline: TimelineState,
@@ -132,6 +133,7 @@ impl Workbench {
             multi_line: Default::default(),
             sounds: Default::default(),
             speed_curve: Default::default(),
+            custom_easing: Default::default(),
             hitsound_audition: Default::default(),
             editor_focused: false,
             updates: Default::default(),
@@ -194,13 +196,20 @@ impl Workbench {
     pub fn ui(&mut self, ctx: &egui::Context, canceled: bool) {
         self.editor_focused = ctx.input(|i| i.raw.has_focus);
         self.speed_curve.input_canceled = canceled;
+        self.custom_easing.input_canceled = canceled;
         if canceled {
             self.speed_curve.cancel();
+            self.custom_easing.cancel_gesture();
         }
         if self.speed_curve.open
             && (self.show_projects || self.preview.fullscreen || self.playtest.active())
         {
             self.speed_curve.close();
+        }
+        if self.custom_easing.open
+            && (self.show_projects || self.preview.fullscreen || self.playtest.active())
+        {
+            self.custom_easing.close();
         }
         if canceled
             || ctx.input(|i| {

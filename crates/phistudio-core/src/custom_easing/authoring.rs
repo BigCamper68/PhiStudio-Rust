@@ -157,6 +157,7 @@ pub(super) fn signature(
     Ok(format!("{:x}", hasher.finalize()))
 }
 /// Bounded worker snapshot; it owns selected events rather than a chart clone.
+#[derive(Clone)]
 pub struct Snapshot {
     pub sources: Vec<Source>,
     tempo: TempoMap,
@@ -172,6 +173,27 @@ pub struct Edit {
     compiled: Vec<(usize, usize, EventType, Value)>,
 }
 impl Snapshot {
+    /// Stage an inspector draft while retaining the original source guards.
+    pub fn capture_draft(
+        doc: &ChartDocument,
+        id: EventId,
+        revision: u64,
+        event: &LineEvent,
+    ) -> Result<Self, ChartError> {
+        let mut snapshot = Self::capture(doc, &[id], revision)?;
+        let source = &mut snapshot.sources[0];
+        let raw = event.merge(id.kind, Some(&source.raw))?;
+        source.event = LineEvent::read(id.kind, &raw)?;
+        source.event.validate(id.kind)?;
+        source.curve = source.event.custom_easing.as_ref().map(|b| b.curve.clone());
+        source.next_start = next_start(
+            doc.event_values(id.line, id.layer, id.kind)?,
+            id.kind,
+            source.event.end_time,
+            id.index..id.index + 1,
+        )?;
+        Ok(snapshot)
+    }
     pub fn capture(
         doc: &ChartDocument,
         ids: &[EventId],
@@ -298,6 +320,12 @@ impl Snapshot {
 }
 
 impl Edit {
+    /// Logical authored records, kept separate from the native preview pieces.
+    pub fn authored_events(&self) -> impl Iterator<Item = (usize, usize, EventType, &Value)> {
+        self.additions
+            .iter()
+            .map(|(line, layer, kind, raw)| (*line, *layer, *kind, raw))
+    }
     pub fn event_count(&self) -> usize {
         self.compiled.len()
     }

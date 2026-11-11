@@ -20,7 +20,7 @@ mod shaders;
 mod sounds;
 mod versions;
 
-fn read_framebuffer() -> Image {
+pub(crate) fn read_framebuffer() -> Image {
     // Read the just-painted default framebuffer before the next frame clears it.
     // Macroquad's texture-copy readback is unreliable on some GLES drivers.
     unsafe {
@@ -125,6 +125,9 @@ pub async fn run() -> Result<()> {
     app.note_highlights = preview.highlighted_notes();
     app.select(Some(NoteId { line: 0, index: 0 }));
     let mut gui = Gui::new();
+    if std::env::args().nth(2).as_deref() == Some("custom-easing") {
+        return crate::custom_easing_ui::probe::run(&mut gui, &mut app, &mut preview, &out).await;
+    }
     if std::env::args().nth(2).as_deref() == Some("note-defaults") {
         return note_defaults::run(&mut gui, &mut app, &mut preview, &out).await;
     }

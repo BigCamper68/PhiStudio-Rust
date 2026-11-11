@@ -11,7 +11,7 @@ impl ModalInput {
         // Curve capture blocks chart tools while retaining the current pointer.
         // Resetting here would cancel every graph press on the following frame,
         // including an asynchronous edit still waiting to commit after release.
-        let blocked = app.show_projects || app.modal_open_except_speed_curve();
+        let blocked = app.show_projects || app.modal_open_except_graphs();
         let reset = blocked && !self.blocked;
         self.blocked = blocked;
         reset

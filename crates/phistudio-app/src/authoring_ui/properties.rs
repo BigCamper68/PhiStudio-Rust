@@ -32,6 +32,16 @@ impl Workbench {
             }
         }
         let draft = self.events.draft.as_mut().unwrap();
+        let key = crate::custom_easing_ui::DraftKey {
+            session: self.session,
+            revision,
+            id,
+            event: draft.event.clone(),
+            times: [draft.start.clone(), draft.end.clone()],
+        };
+        if let Some(event) = self.custom_easing.take_completed(&key) {
+            draft.event = event;
+        }
         ui.label(
             RichText::new({
                 let __i18n_arg_0 = &(crate::i18n::tr(id.kind.label()));
@@ -93,7 +103,7 @@ impl Workbench {
                     }
                 }
                 if id.kind != EventType::Speed || draft.event.custom_easing.is_some() {
-                    easing_fields(ui, &mut draft.event);
+                    event_easing_fields(ui, &mut draft.event);
                 }
                 form.field(ui, "Link group", |ui| {
                     ui.add(
@@ -111,10 +121,28 @@ impl Workbench {
                 .color(muted()),
             );
         }
+        let curve_editor = ui.add_enabled(
+            editable,
+            egui::Button::new(crate::i18n::tr("Edit custom easing…")),
+        );
+        ui.ctx().data_mut(|d| {
+            d.insert_temp(egui::Id::new("event-custom-easing-open"), curve_editor.rect)
+        });
+        let curve_request = curve_editor
+            .clicked()
+            .then(|| crate::custom_easing_ui::DraftKey {
+                session: self.session,
+                revision,
+                id,
+                event: draft.event.clone(),
+                times: [draft.start.clone(), draft.end.clone()],
+            });
         draw_curve(ui, id.kind, &draft.event);
-        let apply = ui
-            .add_enabled(editable, egui::Button::new(crate::i18n::tr("Apply event")))
-            .clicked();
+        let apply_button =
+            ui.add_enabled(editable, egui::Button::new(crate::i18n::tr("Apply event")));
+        ui.ctx()
+            .data_mut(|d| d.insert_temp(egui::Id::new("event-apply"), apply_button.rect));
+        let apply = apply_button.clicked();
         let delete = ui
             .add_enabled(
                 editable,
@@ -137,6 +165,8 @@ impl Workbench {
             }
         } else if delete {
             self.commit_authoring(Command::DeleteEvent(id));
+        } else if let Some(key) = curve_request {
+            self.open_custom_easing(key);
         }
     }
 }

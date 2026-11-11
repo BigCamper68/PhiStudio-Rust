@@ -256,6 +256,8 @@ export projection. Curves remain one event through property/time/BPM edits and
 X/Y timing links; cropped/reversed mappings, package reimport and native jump/
 clock semantics are covered. The inspector identifies custom curves and supports
 explicit standard-easing replacement. This is still not the finished workspace:
-the graph editor, persistent template manager, additional owner contexts and
-actual touch-workspace acceptance remain. See `CUSTOM-EASING-WORK.md` for the
-current integration boundary and validation record.
+the persistent template manager and additional owner contexts remain. The normal
+event inspector now opens the node/handle workspace with local history,
+pan/pinch navigation and worker-validated inspector drafts. Its Miniquad touch
+and two-session main-application acceptance pass; see `CUSTOM-EASING-WORK.md`
+for the current integration boundary and validation record.

@@ -35,6 +35,12 @@ impl Workbench {
         self.sounds.open || self.workflow_modal_open_without_sound_manager()
     }
     pub(crate) fn modal_open_except_speed_curve(&self) -> bool {
+        self.custom_easing.open || self.modal_open_except_graphs()
+    }
+    pub(crate) fn modal_open_except_custom_easing(&self) -> bool {
+        self.speed_curve.captures_input() || self.modal_open_except_graphs()
+    }
+    pub(crate) fn modal_open_except_graphs(&self) -> bool {
         self.release_notes_open()
             || self.sounds.open
             || self.plugin_editor_action_modal()
@@ -42,7 +48,9 @@ impl Workbench {
             || self.workflow_modal_open_without_curve()
     }
     fn workflow_modal_open_without_sound_manager(&self) -> bool {
-        self.speed_curve.captures_input() || self.workflow_modal_open_without_curve()
+        self.custom_easing.open
+            || self.speed_curve.captures_input()
+            || self.workflow_modal_open_without_curve()
     }
     fn workflow_modal_open_without_curve(&self) -> bool {
         self.plugins.permissions_open()
@@ -104,6 +112,10 @@ impl Workbench {
         }
         if self.sounds.open && !self.modal_open_except_editor_sounds() {
             self.sounds.open = false;
+            return;
+        }
+        if self.custom_easing.open && !self.modal_open_except_custom_easing() {
+            self.custom_easing.close();
             return;
         }
         if self.speed_curve.open && !self.modal_open_except_speed_curve() {

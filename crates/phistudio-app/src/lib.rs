@@ -7,6 +7,7 @@ mod authoring_ui;
 mod color_ui;
 mod covers;
 mod creation_defaults_ui;
+mod custom_easing_ui;
 mod editor_sounds;
 mod event_grid;
 mod files;

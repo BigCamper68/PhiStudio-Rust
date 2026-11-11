@@ -2264,5 +2264,21 @@
   "Could not prepare staged note audio: {0}": "Could not prepare staged note audio: {0}",
   "Note sound volume must be between 0 and 100%": "Note sound volume must be between 0 and 100%",
   "Custom easing": "Custom easing",
-  "Use standard easing": "Use standard easing"
+  "Use standard easing": "Use standard easing",
+  "Custom easing editor": "Custom easing editor",
+  "Edit custom easing…": "Edit custom easing…",
+  "Use curve": "Use curve",
+  "Preparing curve…": "Preparing curve…",
+  "Use curve updates the inspector draft. Apply the event to save it in the chart.": "Use curve updates the inspector draft. Apply the event to save it in the chart.",
+  "Select a point to edit its position and handles.": "Select a point to edit its position and handles.",
+  "Multiple selection": "Multiple selection",
+  "Incoming handle": "Incoming handle",
+  "Outgoing handle": "Outgoing handle",
+  "Pan": "Pan",
+  "Automatic": "Automatic",
+  "Smooth": "Smooth",
+  "Corner": "Corner",
+  "Fit": "Fit",
+  "Point details": "Point details",
+  "Curve": "Curve"
 }

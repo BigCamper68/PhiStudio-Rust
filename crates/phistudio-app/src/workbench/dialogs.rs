@@ -2,6 +2,7 @@ use super::*;
 
 impl Workbench {
     pub(super) fn dialogs(&mut self, ctx: &egui::Context) {
+        self.custom_easing_window(ctx);
         self.speed_curve_window(ctx);
         self.editor_sounds_window(ctx);
         self.plugin_windows(ctx);

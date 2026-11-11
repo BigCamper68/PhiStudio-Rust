@@ -2264,5 +2264,21 @@
   "Could not prepare staged note audio: {0}": "Не удалось подготовить звук предпросмотра нот: {0}",
   "Note sound volume must be between 0 and 100%": "Громкость ноты должна быть от 0 до 100%",
   "Custom easing": "Пользовательская кривая",
-  "Use standard easing": "Стандартная интерполяция"
+  "Use standard easing": "Стандартная интерполяция",
+  "Custom easing editor": "Редактор пользовательских кривых",
+  "Edit custom easing…": "Редактировать кривую…",
+  "Use curve": "Использовать кривую",
+  "Preparing curve…": "Подготовка кривой…",
+  "Use curve updates the inspector draft. Apply the event to save it in the chart.": "«Использовать кривую» обновляет черновик в свойствах. Примените событие, чтобы сохранить её в чарте.",
+  "Select a point to edit its position and handles.": "Выберите точку для изменения её положения и ручек.",
+  "Multiple selection": "Множественный выбор",
+  "Incoming handle": "Входящая ручка",
+  "Outgoing handle": "Исходящая ручка",
+  "Pan": "Перемещение вида",
+  "Automatic": "Автоматический",
+  "Smooth": "Плавный",
+  "Corner": "Угловой",
+  "Fit": "Вписать",
+  "Point details": "Параметры точки",
+  "Curve": "Кривая"
 }
